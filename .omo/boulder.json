@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "active_work_id": "kvm-microvm-orchestrator-21806520",
+  "works": {
+    "kvm-microvm-orchestrator-21806520": {
+      "work_id": "kvm-microvm-orchestrator-21806520",
+      "active_plan": "/home/mei/projects/kernels/kernel-v4/.omo/plans/kvm-microvm-orchestrator.md",
+      "plan_name": "kvm-microvm-orchestrator",
+      "status": "active",
+      "started_at": "2026-07-19T17:16:21.660Z",
+      "updated_at": "2026-07-19T17:16:21.660Z",
+      "session_ids": [
+        "opencode:ses_08873ff94ffexutIFprE5jL7Lx"
+      ],
+      "session_origins": {
+        "opencode:ses_08873ff94ffexutIFprE5jL7Lx": "direct"
+      },
+      "agent": "atlas",
+      "task_sessions": {}
+    }
+  },
+  "active_plan": "/home/mei/projects/kernels/kernel-v4/.omo/plans/kvm-microvm-orchestrator.md",
+  "started_at": "2026-07-19T17:16:21.660Z",
+  "status": "active",
+  "updated_at": "2026-07-19T17:16:21.660Z",
+  "session_ids": [
+    "opencode:ses_08873ff94ffexutIFprE5jL7Lx"
+  ],
+  "session_origins": {
+    "opencode:ses_08873ff94ffexutIFprE5jL7Lx": "direct"
+  },
+  "plan_name": "kvm-microvm-orchestrator",
+  "task_sessions": {},
+  "agent": "atlas"
+}
