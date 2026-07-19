@@ -1,0 +1,25 @@
+name: privileged-host
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  privileged:
+    name: preflight + privileged tests (self-hosted kvm runner)
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'privileged')
+    runs-on: [self-hosted, linux, x86_64, kvm]
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: install Nix
+        uses: cachix/install-nix-action@v31
+      - name: configure Cachix
+        uses: cachix/cachix-action@v16
+      - name: install devenv
+        run: nix profile add nixpkgs#devenv
+      - name: preflight (strict)
+        run: devenv shell -- bash scripts/preflight.sh --strict
+      - name: privileged tests
+        run: devenv shell -- bash scripts/run-privileged-tests.sh

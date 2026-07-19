@@ -1,0 +1,21 @@
+name: deterministic
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: devenv test (ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: install Nix
+        uses: cachix/install-nix-action@v31
+      - name: configure Cachix
+        uses: cachix/cachix-action@v16
+      - name: install devenv
+        run: nix profile add nixpkgs#devenv
+      - name: run devenv test
+        run: devenv test
