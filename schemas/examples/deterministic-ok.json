@@ -1,0 +1,28 @@
+{
+  "class": "deterministic",
+  "items": [
+    {
+      "name": "microvm-types::roundtrip",
+      "pass": true,
+      "duration_ms": 18,
+      "log_path": "target/nextest/default/microvm-types-roundtrip.xml"
+    },
+    {
+      "name": "microvm-lifecycle::state_machine::illegal_snapshot_from_created",
+      "pass": true,
+      "duration_ms": 7,
+      "log_path": "target/nextest/default/microvm-lifecycle-state_machine.xml"
+    },
+    {
+      "name": "microvm-scheduler::deterministic_placement",
+      "pass": true,
+      "duration_ms": 42,
+      "log_path": "target/nextest/default/microvm-scheduler-deterministic_placement.xml"
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "pass": 3,
+    "fail": 0
+  }
+}

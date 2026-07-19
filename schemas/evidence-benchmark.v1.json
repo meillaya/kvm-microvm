@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kvm-microvm-orchestrator.local/schemas/evidence-benchmark.v1.json",
+  "title": "benchmark evidence (v1)",
+  "description": "Outcome vocabulary for the benchmark lane. Benchmark artifacts publish p50/p95/p99 distributions under cold and warm conditions with full host metadata. Benchmark results are NEVER a binary pass/fail gate: a 'pass' field on a benchmark would encode a hidden SLA and obscure the actual distribution. This schema forbids any 'pass' field at every level via additionalProperties:false and an explicit not-required rule. Use blocked_reason on the benchmark item to record unavailability; downstream reviewers compare the recorded distribution against the declared target_ms, not against a boolean.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["class", "host_metadata", "benchmarks"],
+  "not": {
+    "description": "Fail-closed rule: a benchmark artifact MUST NOT carry a top-level 'pass' field. additionalProperties:false already rejects unknown top-level keys; this not-required clause is kept explicit so the prohibition is greppable and survives a future refactor that loosens additionalProperties.",
+    "required": ["pass"]
+  },
+  "properties": {
+    "class": {
+      "description": "Constant discriminator. Every benchmark evidence artifact sets this to 'benchmark' so downstream tooling can branch on lane without parsing the file name.",
+      "const": "benchmark"
+    },
+    "host_metadata": {
+      "description": "Snapshot of the host substrate at benchmark time. Required so every p50/p95/p99 is reproducible and reviewable: the same distribution on different hardware means different things. Capture as much as the host exposes; never lie about nested or cgroup-v2.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu",
+        "kernel",
+        "kvm_api_version",
+        "page_cache_state",
+        "memory_size_mib",
+        "vcpu_count",
+        "cgroup_v2",
+        "nested"
+      ],
+      "properties": {
+        "cpu": {
+          "description": "CPU model string as reported by /proc/cpuinfo 'model name' (or platform equivalent). Include enough detail to identify stepping and microarchitecture when possible.",
+          "type": "string",
+          "minLength": 1
+        },
+        "kernel": {
+          "description": "Kernel release string (uname -r).",
+          "type": "string",
+          "minLength": 1
+        },
+        "kvm_api_version": {
+          "description": "KVM_GET_API_VERSION at benchmark time. Stored as -1 when /dev/kvm was inaccessible so the field is always present.",
+          "type": "integer"
+        },
+        "page_cache_state": {
+          "description": "Page-cache state at the start of each measurement. 'cold' means caches were dropped between samples (drop_caches=3), 'warm' means caches were primed with the workload, 'mixed' means the bench described its own policy in artifacts. Per-sample state belongs in benchmark items.",
+          "type": "string",
+          "enum": ["cold", "warm", "mixed"]
+        },
+        "memory_size_mib": {
+          "description": "Total host RAM in MiB. Used to contextualize VM memory and to verify the bench respected host limits.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "vcpu_count": {
+          "description": "Logical CPU count available to the orchestrator (nproc). Used for parallel sample scheduling and for the scheduler determinism tests.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "cgroup_v2": {
+          "description": "True iff the host runs a unified cgroup-v2 hierarchy and the orchestrator parent exposes cpu+memory+pids. False disables any benchmark that depends on resource limits.",
+          "type": "boolean"
+        },
+        "nested": {
+          "description": "True iff nested virtualization is available. Required for the direct-KVM subset; documented for Firecracker comparisons.",
+          "type": "boolean"
+        }
+      }
+    },
+    "benchmarks": {
+      "description": "Per-benchmark distribution records. Each item is a single named measurement (e.g. 'snapshot_create', 'snapshot_restore', 'warm_http_first_call') with its declared target_ms, the unit of the percentiles, the cold/warm distribution, and a blocked_reason if the benchmark could not run. NEVER encode a boolean pass; reviewers compare the recorded distribution against target_ms.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "target_ms", "unit", "p50", "p95", "p99", "cold", "warm", "blocked_reason"],
+        "not": {
+          "description": "Fail-closed rule: a benchmark item MUST NOT carry a 'pass' field. Mirrors the top-level rule so the prohibition is greppable at every nesting level where a contributor might be tempted to add one.",
+          "required": ["pass"]
+        },
+        "properties": {
+          "name": {
+            "description": "Stable benchmark identifier (e.g. 'snapshot_create', 'snapshot_restore', 'warm_http_first_call', 'firecracker_boot_cold', 'docker_start_cold').",
+            "type": "string",
+            "minLength": 1
+          },
+          "target_ms": {
+            "description": "Reference target in the unit declared below. Treated as metadata, not a pass/fail threshold. The plan forbids claiming a universal '<200 ms' guarantee; targets are documented per workload and host.",
+            "type": "number",
+            "minimum": 0
+          },
+          "unit": {
+            "description": "Unit of the recorded percentiles and of target_ms. Typically 'ms' for latency or 'rps' for throughput. Reserved units are listed for tooling convenience.",
+            "type": "string",
+            "enum": ["ms", "us", "s", "rps", "B/s", "KiB/s", "MiB/s"]
+          },
+          "p50": {
+            "description": "50th percentile of the recorded samples in 'unit'. Nullable when the benchmark was blocked (see blocked_reason).",
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "p95": {
+            "description": "95th percentile of the recorded samples in 'unit'. Nullable when the benchmark was blocked.",
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "p99": {
+            "description": "99th percentile of the recorded samples in 'unit'. Nullable when the benchmark was blocked.",
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "cold": {
+            "description": "Cold-condition distribution. 'cold' means caches were dropped before each sample (or per the harness policy recorded in artifacts). Required even when the benchmark is blocked; in that case samples=0 and the percentiles are null.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["samples", "p50", "p95", "p99", "min_ms", "max_ms"],
+            "properties": {
+              "samples": {
+                "description": "Number of cold-condition samples collected. The plan requires N>=100 when the bench is unblocked; samples=0 indicates a blocked or skipped cold phase.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "p50": { "type": ["number", "null"], "minimum": 0 },
+              "p95": { "type": ["number", "null"], "minimum": 0 },
+              "p99": { "type": ["number", "null"], "minimum": 0 },
+              "min_ms": { "type": ["number", "null"], "minimum": 0 },
+              "max_ms": { "type": ["number", "null"], "minimum": 0 }
+            }
+          },
+          "warm": {
+            "description": "Warm-condition distribution. 'warm' means caches and any pre-loaded artifact are reused across samples; record samples>=100 when unblocked.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["samples", "p50", "p95", "p99", "min_ms", "max_ms"],
+            "properties": {
+              "samples": {
+                "description": "Number of warm-condition samples collected.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "p50": { "type": ["number", "null"], "minimum": 0 },
+              "p95": { "type": ["number", "null"], "minimum": 0 },
+              "p99": { "type": ["number", "null"], "minimum": 0 },
+              "min_ms": { "type": ["number", "null"], "minimum": 0 },
+              "max_ms": { "type": ["number", "null"], "minimum": 0 }
+            }
+          },
+          "blocked_reason": {
+            "description": "Stable token explaining why this benchmark could not produce real samples (e.g. 'kvm_unavailable', 'docker_missing', 'page_cache_drop_unsupported'), or null when the bench ran. Pair this with cold.samples=0 and warm.samples=0 when blocked; do not fabricate samples.",
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  }
+}

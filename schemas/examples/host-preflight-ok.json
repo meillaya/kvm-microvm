@@ -1,0 +1,54 @@
+{
+  "class": "host_preflight",
+  "host": {
+    "os": "CachyOS Linux (rolling)",
+    "arch": "x86_64",
+    "kernel": "7.1.3-2-cachyos",
+    "nix": "nix (Determinate Nix 3.21.7) 2.34.8"
+  },
+  "cpu": {
+    "vendor": "AuthenticAMD",
+    "virt": true,
+    "nested": false
+  },
+  "kvm": {
+    "device": "/dev/kvm",
+    "mode": "0660",
+    "uid": 0,
+    "gid": 992,
+    "accessible": true,
+    "api_version": 12
+  },
+  "tap": {
+    "device": "/dev/net/tun",
+    "accessible": true
+  },
+  "cgroup_v2": {
+    "unified": true,
+    "controllers": ["cpu", "memory", "pids", "io", "cpuset", "freezer"]
+  },
+  "tools": {
+    "firecracker": {
+      "version": "Firecracker v1.16.1",
+      "path": "/opt/firecracker/firecracker-v1.16.1-x86_64",
+      "sha256": "8c1f5b4a7d3e2f6a9b0c4d8e1f3a5b7c9d2e4f6a8b0c1d3e5f7a9b1c3d5e7f9a",
+      "accessible": true
+    },
+    "jailer": {
+      "version": "Firecracker v1.16.1",
+      "path": "/opt/firecracker/jailer-v1.16.1-x86_64",
+      "sha256": "2e4f6a8b0c1d3e5f7a9b1c3d5e7f9a8c1f5b4a7d3e2f6a9b0c4d8e1f3a5b7c9d",
+      "accessible": true
+    }
+  },
+  "mitigations": {
+    "spectre_v2": "mitigated",
+    "meltdown": "mitigated",
+    "mds": "mitigated",
+    "tsx_async_abort": "not affected",
+    "itlb_multihit": "not affected"
+  },
+  "blockers": [],
+  "warnings": ["nested_unavailable"],
+  "blocked_reason": null
+}

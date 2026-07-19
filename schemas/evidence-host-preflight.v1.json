@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kvm-microvm-orchestrator.local/schemas/evidence-host-preflight.v1.json",
+  "title": "host preflight (v1)",
+  "description": "Standalone host preflight artifact. Captures the read-only host capability snapshot (KVM device, TUN device, cgroup-v2 controllers, Firecracker/jailer binary provenance, CPU mitigations) used by the privileged lane to decide whether to run, block, or fail-closed. The preflight is also embedded as host_preflight inside every evidence-privileged.v1.json artifact so a reviewer can prove the result was produced by a real substrate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "class",
+    "host",
+    "cpu",
+    "kvm",
+    "tap",
+    "cgroup_v2",
+    "tools",
+    "mitigations",
+    "blockers",
+    "warnings",
+    "blocked_reason"
+  ],
+  "properties": {
+    "class": {
+      "description": "Constant discriminator. Every host-preflight artifact sets this to 'host_preflight' so downstream tooling can branch on lane without parsing the file name.",
+      "const": "host_preflight"
+    },
+    "host": {
+      "description": "Operating-system-level identity. Recorded once per preflight; immutable for the lifetime of the artifact.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "arch", "kernel", "nix"],
+      "properties": {
+        "os": { "description": "Distribution or OS identifier (e.g. 'CachyOS Linux (rolling)', 'NixOS 25.05', 'Debian GNU/Linux 12').", "type": "string", "minLength": 1 },
+        "arch": { "description": "Architecture string as reported by uname -m (e.g. 'x86_64', 'aarch64').", "type": "string", "minLength": 1 },
+        "kernel": { "description": "Kernel release string (uname -r).", "type": "string", "minLength": 1 },
+        "nix": { "description": "Nix tool version reported by `nix --version`, or 'unavailable' if Nix is not installed. Used to reproduce devenv inputs.", "type": "string", "minLength": 1 }
+      }
+    },
+    "cpu": {
+      "description": "CPU virtualization capabilities. Drives the kvm_ok and nested_ok preflight flags.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vendor", "virt", "nested"],
+      "properties": {
+        "vendor": { "description": "CPU vendor string (e.g. 'GenuineIntel', 'AuthenticAMD', 'Cavium', 'Apple').", "type": "string", "minLength": 1 },
+        "virt": { "description": "True iff hardware virtualization extensions are advertised by the CPU (SVM on AMD, VMX on Intel).", "type": "boolean" },
+        "nested": { "description": "True iff nested virtualization is available on the host (KVM_CAP_NESTED). Required for the direct-KVM educational subset.", "type": "boolean" }
+      }
+    },
+    "kvm": {
+      "description": "/dev/kvm device probe. accessible=false forces every privileged run that depends on KVM to be blocked.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device", "mode", "uid", "gid", "accessible", "api_version"],
+      "properties": {
+        "device": { "description": "Device path; always '/dev/kvm' on Linux.", "type": "string", "minLength": 1 },
+        "mode": { "description": "Device mode as an octal string (e.g. '0660'). Recorded for permission-drift detection; the 60s drift watcher compares this against the next tick.", "type": "string", "pattern": "^0[0-7]{3}$" },
+        "uid": { "description": "Owning user ID (stat.st_uid).", "type": "integer", "minimum": 0 },
+        "gid": { "description": "Owning group ID (stat.st_gid).", "type": "integer", "minimum": 0 },
+        "accessible": { "description": "True iff the runner can open the device (O_RDWR) and KVM_GET_API_VERSION returned a non-negative version.", "type": "boolean" },
+        "api_version": { "description": "KVM_GET_API_VERSION, or -1 when the device was inaccessible. Firecracker requires >= 12; preflight records the gap as a blocker when this is below threshold.", "type": "integer" }
+      }
+    },
+    "tap": {
+      "description": "/dev/net/tun device probe. accessible=false forces every networking test to be blocked.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device", "accessible"],
+      "properties": {
+        "device": { "description": "Device path; always '/dev/net/tun' on Linux.", "type": "string", "minLength": 1 },
+        "accessible": { "description": "True iff the runner can open the device.", "type": "boolean" }
+      }
+    },
+    "cgroup_v2": {
+      "description": "Cgroup-v2 hierarchy probe. Records whether the unified hierarchy is mounted and which controllers the parent exposes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unified", "controllers"],
+      "properties": {
+        "unified": { "description": "True iff a unified cgroup-v2 hierarchy is mounted (cgroup2 fs on /sys/fs/cgroup).", "type": "boolean" },
+        "controllers": {
+          "description": "Controllers exposed on the orchestrator parent cgroup (cgroup.controllers). The orchestrator requires at minimum 'cpu', 'memory', and 'pids'; missing controllers are recorded as blockers.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "tools": {
+      "description": "Binary provenance for Firecracker and jailer. Each entry records the version, path, sha256, and whether the binary is reachable. Provenance gaps are blockers (the privileged lane must not silently fall back to a non-pinned binary).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["firecracker", "jailer"],
+      "properties": {
+        "firecracker": { "$ref": "#/$defs/tool" },
+        "jailer": { "$ref": "#/$defs/tool" }
+      }
+    },
+    "mitigations": {
+      "description": "CPU mitigation status for vulnerabilities relevant to microVM isolation. The schema accepts any additional mitigation key the kernel exposes, so future CVEs do not require a schema revision.",
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "required": ["spectre_v2", "meltdown"],
+      "properties": {
+        "spectre_v2": { "description": "Status of Spectre v2 mitigation (e.g. 'mitigated', 'vulnerable', 'not affected').", "type": "string", "minLength": 1 },
+        "meltdown": { "description": "Status of Meltdown mitigation.", "type": "string", "minLength": 1 }
+      }
+    },
+    "blockers": {
+      "description": "Stable tokens describing every host gap that prevents the privileged lane from running (e.g. 'kvm_unavailable', 'tun_unavailable', 'cgroup_v2_missing', 'firecracker_binary_missing'). Empty array means no blocker: the lane may proceed. The blocked_reason field is the single-string summary; this array is the machine-readable breakdown.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "warnings": {
+      "description": "Stable tokens describing non-blocking advisories (e.g. 'nested_unavailable', 'mds_vulnerable'). The lane may proceed but reviewers should annotate the evidence.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "blocked_reason": {
+      "description": "Single human-readable reason the lane is blocked, or null when the lane may proceed. When blockers[] is non-empty, this field MUST be set; when blockers[] is empty, this field MUST be null.",
+      "type": ["string", "null"]
+    }
+  },
+  "$defs": {
+    "tool": {
+      "description": "Binary provenance record. version and path are required; sha256 and accessible provide the tamper-evidence gates.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "path", "sha256", "accessible"],
+      "properties": {
+        "version": { "description": "Tool-reported version (e.g. 'Firecracker v1.16.1').", "type": "string", "minLength": 1 },
+        "path": { "description": "Filesystem path to the binary on the host.", "type": "string", "minLength": 1 },
+        "sha256": { "description": "Lower-case hex SHA-256 of the binary. Set to 'unavailable' when the binary is missing so the field is always present.", "type": "string", "minLength": 1 },
+        "accessible": { "description": "True iff the runner can stat and read the binary.", "type": "boolean" }
+      }
+    }
+  }
+}
