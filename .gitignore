@@ -1,0 +1,20 @@
+# devenv / direnv caches
+.devenv/
+.direnv/
+
+# Rust build artifacts (task 2+ workspace output)
+target/
+**/target/
+
+# Preflight / evidence scratch produced outside the committed evidence tree
+.preflight/
+
+# Nix `nix build` / `nix run` symlink outputs
+result
+result-*
+
+# Local editor / OS metadata
+.idea/
+.vscode/
+*.swp
+.DS_Store

@@ -1,0 +1,24 @@
+# devenv.yaml — kvm-microvm-orchestrator
+# Pinned inputs, deterministic shell, strict_ports disabled for tooling compatibility.
+# See .omo/drafts/kvm-microvm-orchestrator.md and plan todo 1.
+
+inputs:
+  nixpkgs:
+    url: "github:cachix/devenv-nixpkgs/rolling"
+  git-hooks:
+    url: "github:cachix/git-hooks.nix"
+
+# Pin devenv itself to a 2.x line that exposes the modules used in devenv.nix.
+require_version: ">=2.1"
+
+# Bash as the default shell so scripts/preflight.sh runs consistently across hosts.
+shell: bash
+
+# strict_ports would break `devenv shell --strict-ports` when concurrent tooling
+# wants the same ports; leave disabled for this orchestrator toolchain.
+strict_ports: false
+
+# Convenience aliases so grep / docs can reference the canonical flake input names
+# without breaking devenv's YAML schema above:
+#   inputs.nixpkgs  -> cachix/devenv-nixpkgs/rolling
+#   inputs.git-hooks -> cachix/git-hooks.nix
