@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = []
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+
+[profile.release]
+
+[profile.dev]
+opt-level = 0
