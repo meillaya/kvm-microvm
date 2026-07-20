@@ -5,6 +5,7 @@ members = [
     "crates/microvm-errors",
     "crates/microvm-lifecycle",
     "crates/microvm-transport-contract",
+    "crates/microvm-artifacts",
 ]
 
 [workspace.package]
@@ -19,6 +20,9 @@ proptest = "1.11"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1", features = ["rt", "macros"] }
+sha2 = "0.10"
+libc = "0.2"
+tempfile = "3"
 
 [profile.release]
 
