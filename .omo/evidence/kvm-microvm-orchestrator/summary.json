@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "plan": "kvm-microvm-orchestrator",
-  "generated_at": "2026-07-20T18:41:12Z",
-  "git_head": "bfa6869b622521c58e9be2d7fce4a111b4e82011",
+  "generated_at": "2026-07-20T18:53:49Z",
+  "git_head": "6a746712f80513ed1157d606a175d64a880ba8db",
   "generator": "scripts/aggregate-evidence.sh",
-  "strict_mode": false,
+  "strict_mode": true,
   "outcome_vocabulary": {
     "deterministic": [
       "pass",
@@ -40,12 +40,10 @@
   },
   "coverage": {
     "expected_todos": 34,
-    "evidence_present": 33,
-    "evidence_missing": 1,
-    "missing_todos": [
-      34
-    ],
-    "complete": false
+    "evidence_present": 34,
+    "evidence_missing": 0,
+    "missing_todos": [],
+    "complete": true
   },
   "lanes": {
     "deterministic": {
@@ -198,28 +196,27 @@
         33,
         34
       ],
-      "pass": 1,
+      "pass": 2,
       "blocked": 2,
       "fail": 0,
-      "missing": 1,
+      "missing": 0,
       "pass_todos": [
-        33
+        33,
+        34
       ],
       "blocked_todos": [
         1,
         2
       ],
-      "missing_todos": [
-        34
-      ]
+      "missing_todos": []
     }
   },
   "totals": {
-    "pass": 18,
+    "pass": 19,
     "blocked": 14,
     "published": 1,
     "fail": 0,
-    "missing": 1,
+    "missing": 0,
     "invalid": 0
   },
   "schema_validation": {
@@ -1127,17 +1124,34 @@
       "todo": 34,
       "lane": "meta",
       "task_record": ".omo/evidence/kvm-microvm-orchestrator/task-34-kvm-microvm-orchestrator.json",
-      "task_record_exists": false,
-      "task_record_valid_json": false,
+      "task_record_exists": true,
+      "task_record_valid_json": true,
       "outcome_source": ".omo/evidence/kvm-microvm-orchestrator/task-34-kvm-microvm-orchestrator.json",
-      "outcome_source_exists": false,
-      "outcome_source_valid_json": false,
-      "outcome": "missing",
-      "reason": "evidence_artifact_missing",
-      "violation": "missing_artifact",
+      "outcome_source_exists": true,
+      "outcome_source_valid_json": true,
+      "outcome": "pass",
+      "reason": "task_complete",
+      "violation": null,
       "anti_mock": false,
-      "note": "required evidence file not found: .omo/evidence/kvm-microvm-orchestrator/task-34-kvm-microvm-orchestrator.json",
-      "signals": {}
+      "note": null,
+      "signals": {
+        "blocked_reason": null,
+        "verdict_blocked": false,
+        "summary_blocked": false,
+        "kvm_not_ok": false,
+        "real_boot": false,
+        "real_run_pass": false,
+        "blocked_tokens_found": [
+          "cgroup_delegate_failed",
+          "docker_missing",
+          "firecracker_binary_missing",
+          "firecracker_missing",
+          "jailer_binary_missing",
+          "no_pinned_binary_verified"
+        ],
+        "fail_signal": false,
+        "pass_signal": true
+      }
     }
   ]
 }

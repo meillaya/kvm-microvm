@@ -49,6 +49,7 @@ set respects them.
 | [runbooks/](runbooks/README.md) | Operational runbooks: preflight, snapshot, network, cleanup. |
 | [adr/](adr/README.md) | Architecture Decision Records for every locked decision and scope-out rule. |
 | [design/direct-kvm-subset.md](design/direct-kvm-subset.md) | Pinned contract for the educational direct-KVM subset (not a production VMM). |
+| [release-readiness.md](release-readiness.md) | Release-readiness integration matrix: deterministic/privileged/benchmark lanes, scope fidelity, and five-component status (plan todo 34). |
 
 Project-level references (source of truth for contracts):
 

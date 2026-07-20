@@ -359,7 +359,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo run --bin evidence-reduce -- --root .omo/evidence/kvm-microvm-orchestrator --out .omo/evidence/kvm-microvm-orchestrator/final.json`; failure delete one required artifact and assert reducer exits 1 with the task number and missing path. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-33-kvm-microvm-orchestrator.json`.
   Commit: Y | `chore(evidence): aggregate and classify verification results`
 
-- [~] 34. Run the release-readiness integration matrix and preserve clean scope boundaries
+- [x] 34. Run the release-readiness integration matrix and preserve clean scope boundaries
   What to do / Must NOT do: Execute all deterministic tests, run privileged lanes where preflight permits, run benchmarks/demo where dependencies exist, verify no forbidden files changed, and reconcile success criteria for all five components. Must not declare benchmark targets as release gates or erase blocked evidence.
   Parallelization: Wave 6 | Blocked by: 31-33 | Blocks: F1-F4
   References (executor has NO interview context - be exhaustive): Draft topology `.omo/drafts/kvm-microvm-orchestrator.md:12-19`; draft scope IN/OUT `.omo/drafts/kvm-microvm-orchestrator.md:63-79`; all prior todo evidence and dependency matrix.
