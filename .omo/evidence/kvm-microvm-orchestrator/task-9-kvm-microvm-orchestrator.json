@@ -1,0 +1,96 @@
+{
+  "task_id": 9,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Descriptor-relative artifact path validation and local SHA-256 digest store",
+  "status": "complete",
+  "commit": "f9ec737",
+  "commit_full": "f9ec7379cc81599e8e3f91e4a5e4bfc6bc0e735f",
+  "commit_message": "feat(artifacts): add descriptor-relative path and digest validation",
+  "timestamp": "2026-07-20T00:00:00Z",
+  "deliverables": [
+    {
+      "path": "crates/microvm-artifacts/src/path.rs",
+      "description": "PathResolver: per-tenant held dir fd; openat2(RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS|RESOLVE_NO_MAGICLINKS) via libc::syscall(SYS_openat2) with component-wise openat(O_NOFOLLOW) fallback; lexical rejection of '..', absolute paths, empty components, NUL, and remote URIs; fstat regular-file + world-writable guard"
+    },
+    {
+      "path": "crates/microvm-artifacts/src/digest.rs",
+      "description": "SHA-256 Digest newtype (hex serde), streaming compute_sha256 via sha2, constant-time verify_sha256 -> ErrorCode::DigestMismatch"
+    },
+    {
+      "path": "crates/microvm-artifacts/src/store.rs",
+      "description": "ArtifactStore (per-tenant roots <base>/<tenant>), open_artifact() with optional foreign-owner uid check, verify_manifest(); Artifact + ArtifactManifest/ManifestEntry types"
+    },
+    {
+      "path": "crates/microvm-artifacts/src/lib.rs",
+      "description": "Crate docs, module wiring, re-exports, end-to-end digest-addressed open+verify test"
+    }
+  ],
+  "verification": {
+    "cargo_test": {
+      "command": "cargo test -p microvm-artifacts",
+      "result": "pass",
+      "tests_passed": 37,
+      "tests_failed": 0,
+      "details": "10 digest + 13 path + 12 store + 1 lib end-to-end + 1 doc-test run; every path test runs in BOTH openat2 and forced-fallback modes via both_modes()"
+    },
+    "cargo_fmt": {
+      "command": "cargo fmt --all",
+      "result": "pass",
+      "details": "cargo fmt --all -- --check exit 0 (format_strings rustfmt option is nightly-only and pre-existing; harmless warning)"
+    },
+    "cargo_clippy": {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "pass",
+      "details": "clean across all workspace crates and targets"
+    },
+    "workspace_regression": {
+      "command": "cargo test --workspace",
+      "result": "pass",
+      "details": "all pre-existing crates (types, errors, lifecycle, transport-contract) still green; no regressions from workspace dep additions"
+    }
+  },
+  "security_fixtures": {
+    "valid_digest_addressed_file": "pass - opens through held fd, computed SHA-256 matches expected",
+    "dotdot_escape": "pass - ErrorCode::PathEscape (lexical pre-check + RESOLVE_BENEATH backstop)",
+    "symlink_escape_to_etc_passwd": "pass - ErrorCode::PathEscape (ELOOP via RESOLVE_NO_SYMLINKS / O_NOFOLLOW); asserts no file outside tenant root opened",
+    "symlinked_dir_component": "pass - ErrorCode::PathEscape (ENOTDIR mapped to PathEscape on this kernel)",
+    "symlinked_tenant_root": "pass - ErrorCode::PathEscape (O_NOFOLLOW|O_DIRECTORY on root)",
+    "absolute_path": "pass - ErrorCode::PathEscape",
+    "world_writable_file": "pass - ErrorCode::PermissionDenied (fstat S_IWOTH)",
+    "foreign_owner_file": "pass - ErrorCode::PermissionDenied (fstat st_uid vs expected uid)",
+    "remote_uri": "pass - ErrorCode::PathEscape for https://, oci://, docker://, s3://, file://",
+    "digest_mismatch": "pass - ErrorCode::DigestMismatch with expected/actual context",
+    "missing_artifact": "pass - ErrorCode::ArtifactNotFound (ENOENT)",
+    "cross_tenant_isolation": "pass - tenant-2 open fails closed with ArtifactNotFound, tenant-1 succeeds",
+    "magic_link": "guarded by RESOLVE_NO_MAGICLINKS (not materializable in a tempdir fixture; see not_tested)"
+  },
+  "qa_scenarios": {
+    "happy": "cargo test -p microvm-artifacts path::tests::valid_digest_addressed_file -> 1 passed",
+    "failure": "cargo test -p microvm-artifacts path::tests::rejects_symlink_escape -> 1 passed (no file outside tenant root opened)"
+  },
+  "error_contract": {
+    "PathEscape": ["..", "absolute path", "symlink", "magic link", "remote URI", "symlinked root", "ENOTDIR/ELOOP/EXDEV during resolution"],
+    "DigestMismatch": ["sha256 verification failure", "malformed hex digest input"],
+    "ArtifactNotFound": ["missing file/component (ENOENT)", "non-regular-file target", "missing tenant root"],
+    "PermissionDenied": ["world-writable file", "foreign owner uid", "EACCES/EPERM"]
+  },
+  "dependencies_added": {
+    "workspace": ["sha2 = 0.10", "libc = 0.2", "tempfile = 3"],
+    "crate_runtime": ["sha2", "libc", "serde", "microvm-types", "microvm-errors"],
+    "crate_dev": ["tempfile", "serde_json"]
+  },
+  "not_tested": [
+    "live /proc magic-link fixture (procfs-only; guarded by RESOLVE_NO_MAGICLINKS)",
+    "BLAKE3 manifest variant (plan mentions SHA-256/BLAKE3; SHA-256 implemented per task requirements)",
+    "real pre-5.6 ENOSYS kernel (fallback covered by forcing with_openat2_disabled, not a live ENOSYS host)"
+  ],
+  "files_changed": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates/microvm-artifacts/Cargo.toml",
+    "crates/microvm-artifacts/src/lib.rs",
+    "crates/microvm-artifacts/src/path.rs",
+    "crates/microvm-artifacts/src/digest.rs",
+    "crates/microvm-artifacts/src/store.rs"
+  ]
+}
