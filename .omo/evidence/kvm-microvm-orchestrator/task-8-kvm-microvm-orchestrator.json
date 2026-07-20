@@ -1,0 +1,59 @@
+{
+  "task_id": 8,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "REST OpenAPI and gRPC proto parity over Unix-socket-only transports",
+  "status": "complete",
+  "commit": "9156e02",
+  "commit_message": "feat(api): define REST and gRPC lifecycle contracts",
+  "timestamp": "2026-07-20T00:00:00Z",
+  "deliverables": [
+    {
+      "path": "api/openapi.yaml",
+      "description": "OpenAPI 3.1 spec with 7 lifecycle operations over unix:// server URL"
+    },
+    {
+      "path": "api/microvm/v1/service.proto",
+      "description": "proto3 MicrovmService with 7 RPCs matching OpenAPI operations"
+    },
+    {
+      "path": "crates/microvm-transport-contract",
+      "description": "Parity validation crate: OpenAPI/proto parsing, bidirectional parity check, TCP pattern scanner"
+    }
+  ],
+  "verification": {
+    "cargo_test": {
+      "command": "cargo test -p microvm-transport-contract --locked",
+      "result": "pass",
+      "tests_passed": 16,
+      "tests_failed": 0,
+      "details": "5 unit tests + 11 integration tests (parity, validity, TCP scan)"
+    },
+    "cargo_fmt": {
+      "command": "cargo fmt --all",
+      "result": "pass"
+    },
+    "cargo_clippy": {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "pass"
+    }
+  },
+  "parity_evidence": {
+    "openapi_operations": ["createVm", "getVmStatus", "startVm", "stopVm", "snapshotVm", "getVmMetrics", "restoreVm"],
+    "proto_rpcs": ["CreateVm", "GetVmStatus", "StartVm", "StopVm", "SnapshotVm", "GetVmMetrics", "RestoreVm"],
+    "mismatches": []
+  },
+  "transport_constraint": {
+    "server_url": "unix:///run/microvm/api.sock",
+    "tcp_patterns_scanned": ["0.0.0.0", "127.0.0.1", "tcp://", "[::]", "::1", "localhost:"],
+    "violations_found": 0
+  },
+  "files_changed": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "api/openapi.yaml",
+    "api/microvm/v1/service.proto",
+    "crates/microvm-transport-contract/Cargo.toml",
+    "crates/microvm-transport-contract/src/lib.rs",
+    "crates/microvm-transport-contract/tests/parity.rs"
+  ]
+}
