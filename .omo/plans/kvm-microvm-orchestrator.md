@@ -279,7 +279,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test -p microvm-metrics --test schema_and_counters`; failure remove cgroup/guest agent during sampling and assert an unavailable field plus bounded error metric, not zero or panic. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-23-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(metrics): add per-VM host and guest measurements`
 
-- [~] 24. Implement deterministic core-aware bin-packing scheduler and reconciliation inputs
+- [x] 24. Implement deterministic core-aware bin-packing scheduler and reconciliation inputs
   What to do / Must NOT do: Add pure first-fit-decreasing/admission logic over vCPU, memory, CPU topology/NUMA metadata, and tenant quotas; emit explicit unschedulable reasons and consume metrics without mutating resources in the pure scheduler. Must not overcommit hard limits or claim NUMA awareness without a preflight topology.
   Parallelization: Wave 4 | Blocked by: 7, 10, 13, 23 | Blocks: 27-30
   References (executor has NO interview context - be exhaustive): Draft scheduler scope `.omo/drafts/kvm-microvm-orchestrator.md:18,57,69`; cgroup CPU/memory docs; host topology `/sys/devices/system/node/node*/cpulist`.

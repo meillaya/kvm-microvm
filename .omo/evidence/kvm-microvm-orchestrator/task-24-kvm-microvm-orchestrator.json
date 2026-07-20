@@ -1,0 +1,58 @@
+{
+  "task": 24,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Implement deterministic core-aware bin-packing scheduler and reconciliation inputs",
+  "commit": "c2afb911c3d9f37c0fb5f819a73645940fc196a3",
+  "files_committed": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates/microvm-types/src/lib.rs",
+    "crates/microvm-scheduler/Cargo.toml",
+    "crates/microvm-scheduler/src/lib.rs",
+    "crates/microvm-scheduler/src/topology.rs",
+    "crates/microvm-scheduler/src/request.rs",
+    "crates/microvm-scheduler/src/placement.rs",
+    "crates/microvm-scheduler/src/unschedulable.rs",
+    "crates/microvm-scheduler/src/quota.rs",
+    "crates/microvm-scheduler/src/scheduler.rs",
+    "crates/microvm-scheduler/src/metrics.rs",
+    "crates/microvm-scheduler/tests/deterministic_placement.rs",
+    "crates/microvm-scheduler/tests/no_overcommit_proptest.rs"
+  ],
+  "test_results": {
+    "command": "cargo test -p microvm-scheduler",
+    "exit_code": 0,
+    "output_excerpt": "lib unit: 28 passed (topology 10, request 6, placement 2, unschedulable 5, quota 3, surface 1, scheduler 1) | deterministic_placement integration: 33 passed | no_overcommit_proptest: 4 passed (3 fixed-seed property + 1 fixed regression) | 65 total, 0 failed"
+  },
+  "verification": {
+    "cargo_fmt": "pass (cargo fmt --all --check exit 0)",
+    "cargo_clippy": "pass (cargo clippy --workspace --all-targets -- -D warnings exit 0)",
+    "cargo_test": "pass (cargo test -p microvm-scheduler: 65 tests, 0 failures; cargo test --workspace: 0 failures across all test binaries, confirming the additive microvm-types Ord change broke nothing)"
+  },
+  "acceptance_criteria": {
+    "fixed_seed_property_tests_prove_no_cpu_memory_overcommit": "no_overcommit_proptest.rs runs proptest (seed derived deterministically from the test name => reproducible/fixed-seed; failure_persistence disabled so no regression files are written). never_overcommits_cpu_or_memory generates arbitrary host sizes and request workloads, places everything that succeeds, and asserts: assigned CPUs are disjoint across placements, every assigned CPU is in range, total reserved vCPU <= host capacity, total reserved memory <= host capacity, assigned_cpus.len()==vcpu_count, and per-tenant usage <= quota. release_restores_capacity_exactly asserts release returns capacity to baseline. fixed_seed_regression_no_overcommit is a hand-built deterministic fill/overflow/release/refill scenario asserting the same invariants.",
+    "identical_input_produces_identical_placement": "deterministic_placement::identical_input_produces_identical_placement builds two fresh schedulers and asserts plan_batch is byte-identical regardless of submission order and across re-runs; placement_serialization_is_stable asserts stable JSON. Property test identical_input_produces_identical_placement asserts two schedulers produce identical outcome sequences and identical final ledgers for arbitrary workloads. Determinism is structural: bins ordered by NUMA node id, lowest-id-first CPU assignment, total FFD sort key (vcpu desc, memory desc, vm_id asc), and BTreeMap/BTreeSet throughout (no HashMap, randomness, or clock).",
+    "no_fit_returns_typed_unschedulable_reason": "Unschedulable{vm_id, reason: UnschedulableReason} with a stable snake_case tagged enum: insufficient_cpu, insufficient_memory, quota_exceeded, no_quota_for_tenant, numa_topology_unavailable, unknown_numa_node, unknown_cpus, affinity_unsatisfiable, duplicate_placement. Tests: no_fit_returns_typed_insufficient_cpu, no_fit_returns_typed_insufficient_memory, fragmented_capacity_reports_memory_when_cpu_exists, unschedulable::tests::unschedulable_serde_roundtrip.",
+    "scheduler_respects_tenant_quota": "Per-tenant quota (max_vcpus, max_memory_mib, max_vms) is checked before any placement against usage derived from the recorded ledger; missing quota fails closed (NoQuotaForTenant). Tests: quota_vcpu_enforced, quota_memory_enforced, quota_vm_count_enforced, quota_exact_boundary_is_allowed, quota_is_per_tenant, missing_quota_fails_closed.",
+    "scheduler_respects_cpu_affinity_when_requested": "CpuAffinity::None (first-fit), NumaNode{node} (restricted to that node's bin), and CpuSet{cpus} (pin exact CPUs; size must equal vcpu_count). Tests: numa_affinity_places_on_requested_node, numa_node_capacity_is_isolated, cpuset_affinity_pins_exact_cpus, cpuset_affinity_not_free_rejected, cpuset_affinity_unknown_cpus_rejected.",
+    "placement_recorded_before_lifecycle_mutation": "schedule()/plan_batch() are pure &self queries that compute a placement without mutating the ledger; record()/place() commit it. schedule_is_pure_until_recorded asserts schedule() leaves capacity and the ledger unchanged, record() then decreases capacity, and a subsequent decision sees the recorded reservation. record_rejects_a_stale_overcommitting_placement asserts record() re-validates fit so a stale placement cannot overcommit. record_rejects_duplicate_vm and place_is_schedule_plus_record cover the commit paths. The scheduler performs no I/O, so recording is the sole gate before lifecycle mutation.",
+    "must_not_overcommit_hard_limits": "A bin accepts a request only if it has enough FREE CPUs AND enough FREE memory; reservations are accounted in full up front and observed metrics never relax them. packing_never_overcommits_cpu_or_memory fills a host to exactly capacity and asserts the next request fails and assigned CPUs are disjoint and within capacity. Reinforced by the property tests above.",
+    "must_not_claim_numa_awareness_without_preflight_topology": "HostTopology.numa_nodes is Option; is_numa_aware() is false for a flat host. A NumaNode-affinity request on a flat host returns NumaTopologyUnavailable. Tests: numa_affinity_without_topology_is_rejected, topology::tests::valid_flat_topology/valid_numa_topology. Topology is validated at construction (unique node ids, disjoint in-range CPUs, non-empty cpu sets, positive memory).",
+    "consume_metrics_without_mutating_resources": "metrics.rs reads VmMetricsRecord by reference to build ReconciliationInput (reserved vs observed); it never mutates the record or any host resource, and observed usage never relaxes hard limits (admission is reservation-based). Unavailable metrics stay Unavailable (never zero-filled). Tests: metrics_are_consumed_without_mutation (asserts the record is unchanged and the ledger untouched), metrics_drift_is_flagged_not_hidden, unavailable_metrics_stay_unavailable, metrics_vm_mismatch_is_rejected.",
+    "pure_scheduler_over_vcpu_memory_topology_numa_quota": "The Scheduler is pure (no I/O; depends only on microvm-types/errors/metrics + serde). It packs over vCPU, memory, CPU topology/NUMA metadata, and tenant quotas. no_fit_leaves_scheduler_unchanged asserts a no-fit decision leaves capacity and the ledger unchanged (no side effects), which holds by construction since the crate has no cgroup/TAP/Firecracker dependency."
+  },
+  "qa_scenario": {
+    "happy": "cargo test -p microvm-scheduler --test deterministic_placement — ffd_places_largest_request_first submits a small request before a large one and asserts FFD places the 3-vCPU request first (cpus [0,1,2]) with the 1-vCPU request filling [3]; numa_affinity_places_on_requested_node and cpuset_affinity_pins_exact_cpus assert core-aware affinity; schedule_is_pure_until_recorded asserts the record-before-mutate contract.",
+    "failure": "deterministic_placement::no_fit_returns_typed_insufficient_cpu / no_fit_returns_typed_insufficient_memory feed requests exceeding the host and assert a typed Unschedulable{reason}; no_fit_leaves_scheduler_unchanged asserts the scheduler's available capacity and ledger are unchanged after the no-fit (no cgroup/TAP/Firecracker side effect exists anywhere in the crate, which depends only on microvm-types/errors/metrics + serde). plan_batch_is_all_or_nothing_and_pure asserts a batch that cannot fully fit returns an error and commits nothing."
+  },
+  "key_types": {
+    "HostTopology": "Preflight-supplied single-host description: host_id, cpu_count, memory_mib, and optional numa_nodes (Vec<NumaNode>). NUMA awareness is opt-in: is_numa_aware() is false when numa_nodes is None, and the scheduler makes no NUMA claim in that case. Validated at construction (positive cpu/memory; unique node ids; disjoint, in-range, non-empty CPU sets; positive node memory).",
+    "NumaNode": "A preflight NUMA node: id, cpus (BTreeSet<u32> local logical CPUs), memory_mib. Node bins are disjoint.",
+    "PlacementRequest": "A reservation: vm_id, vcpu_count, memory_mib, tenant_id, and CpuAffinity (None | NumaNode{node} | CpuSet{cpus}). Validated: positive vcpu/memory; CpuSet size must equal vcpu_count. Reservations are hard limits.",
+    "Placement": "The decision: vm_id, host_id, tenant_id, vcpu_count, memory_mib, assigned_cpus (exact disjoint logical CPUs), and numa_node (Some for NUMA-aware hosts, None for flat). Recorded in the ledger before lifecycle mutation.",
+    "Scheduler": "Pure FFD bin-packer with admission control. Bins are NUMA nodes (ordered by id) or one flat bin. schedule()/plan_batch() are pure &self queries; place()/record() commit to the ledger (record re-validates fit + quota); release() frees resources. Deterministic by construction (ordered bins, lowest-id-first CPUs, total FFD sort key, BTreeMap/BTreeSet).",
+    "Unschedulable": "Typed no-fit decision: vm_id + UnschedulableReason (insufficient_cpu, insufficient_memory, quota_exceeded, no_quota_for_tenant, numa_topology_unavailable, unknown_numa_node, unknown_cpus, affinity_unsatisfiable, duplicate_placement). Stable snake_case serde; implements std::error::Error.",
+    "TenantQuota / TenantUsage / QuotaPolicy": "Scheduler-native per-tenant quota (max_vcpus, max_memory_mib, max_vms), derived usage from the ledger, and a BTreeMap policy. Missing quota fails closed.",
+    "ReconciliationInput": "Pure pairing of a placement's reservations with observed metrics (availability-flagged observed_memory_mib / observed_cpu_usage_usec) plus observed_exceeds_reserved_memory(); built without mutating the record or any host resource."
+  }
+}
