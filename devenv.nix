@@ -58,6 +58,27 @@ lib.mkMerge [
       qemu              # fallback plain qemu when KVM is unavailable
       pciutils          # lspci for /dev/kvm host topology
       which             # locate firecracker/jailer in PATH inside scripts
+      docker            # Docker CLI + daemon for benchmark comparison
+
+      # Official Firecracker v1.16.1 static musl release (not the nixpkgs
+      # glibc build, which is dynamically linked and fails the binary
+      # provenance gate requiring static/musl ELF).
+      (pkgs.stdenv.mkDerivation {
+        pname = "firecracker-release";
+        version = "1.16.1";
+        src = pkgs.fetchurl {
+          url = "https://github.com/firecracker-microvm/firecracker/releases/download/v1.16.1/firecracker-v1.16.1-x86_64.tgz";
+          sha256 = "sha256-OCoCqGnk1tXLFMQFd/lUXoRYAh6osLLT/BDsFNnCQuY=";
+        };
+        nativeBuildInputs = [ pkgs.gnutar ];
+        unpackPhase = "tar xzf $src";
+        installPhase = ''
+          mkdir -p $out/bin
+          cp release-v1.16.1-x86_64/firecracker-v1.16.1-x86_64 $out/bin/firecracker
+          cp release-v1.16.1-x86_64/jailer-v1.16.1-x86_64 $out/bin/jailer
+          chmod +x $out/bin/firecracker $out/bin/jailer
+        '';
+      })
     ];
 
     # Rust toolchain pinned to the version the workspace will adopt in task 2.
