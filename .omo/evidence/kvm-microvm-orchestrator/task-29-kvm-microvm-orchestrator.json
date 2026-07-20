@@ -1,0 +1,48 @@
+{
+  "task_id": 29,
+  "title": "Direct KVM educational guest/device contract",
+  "status": "complete",
+  "commit": "0c980b2",
+  "deliverables": [
+    "docs/design/direct-kvm-subset.md",
+    "crates/microvm-backend-directkvm/Cargo.toml",
+    "crates/microvm-backend-directkvm/src/lib.rs"
+  ],
+  "verification": {
+    "cargo_test": {
+      "command": "cargo test -p microvm-backend-directkvm --no-default-features",
+      "result": "ok",
+      "tests_passed": 22,
+      "tests_failed": 0
+    },
+    "cargo_fmt": {
+      "command": "cargo fmt --all",
+      "result": "ok"
+    },
+    "cargo_clippy": {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "ok"
+    }
+  },
+  "contract_summary": {
+    "arch": "x86_64",
+    "vcpu_count": 1,
+    "memory_layout": {
+      "guest_phys_addr": "0x0",
+      "size_bytes": 16777216
+    },
+    "allowed_exits": ["KVM_EXIT_IO", "KVM_EXIT_HLT", "KVM_EXIT_FAIL_ENTRY", "KVM_EXIT_INTERNAL_ERROR"],
+    "stop_behavior": ["hlt", "host_stop", "failure"],
+    "label": "educational",
+    "feature_gate": "direct-kvm (off by default)"
+  },
+  "exclusions": [
+    "production Firecracker replacement",
+    "network devices",
+    "block devices",
+    "vsock",
+    "multi-vCPU",
+    "migration",
+    "broad device emulation"
+  ]
+}
