@@ -311,7 +311,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo run -p microvm-bench -- snapshot-restore --samples 100 --out .omo/evidence/kvm-microvm-orchestrator/task-27-benchmark.json`; failure run without Docker or `/dev/kvm` and assert `blocked_reason`, no fabricated samples, and exit 77 for the privileged lane. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-27-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(bench): add reproducible snapshot and Docker comparison`
 
-- [~] 28. Build the warm HTTP-function microVM demo with cold/warm evidence
+- [x] 28. Build the warm HTTP-function microVM demo with cold/warm evidence
   What to do / Must NOT do: Add one minimal static Rust HTTP function in a pinned local rootfs, snapshot after service readiness, restore through the orchestrator, and report cold first-call versus warm pool/request latency. Must not add autoscaling, multi-function routing, persistent external data, or another language runtime.
   Parallelization: Wave 5 | Blocked by: 20-23, 26-27 | Blocks: 31-34
   References (executor has NO interview context - be exhaustive): Draft warm/demo scope `.omo/drafts/kvm-microvm-orchestrator.md:18,53,58,70,76-79`; Firecracker snapshot restore contract; user “Lambda clone” requirement.
