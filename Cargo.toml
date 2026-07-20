@@ -11,6 +11,7 @@ members = [
     "crates/microvm-service",
     "crates/microvm-rest",
     "crates/microvm-grpc",
+    "crates/microvm-snapshots",
     "crates/microvm-contract-tests",
 ]
 

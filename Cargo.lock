@@ -708,6 +708,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-snapshots"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "microvm-artifacts",
+ "microvm-errors",
+ "microvm-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "microvm-transport-contract"
 version = "0.1.0"
 dependencies = [

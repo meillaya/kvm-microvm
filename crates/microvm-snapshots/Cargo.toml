@@ -1,0 +1,17 @@
+[package]
+name = "microvm-snapshots"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Versioned local snapshot integrity manifest and pre-restore compatibility gate"
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-artifacts = { path = "../microvm-artifacts" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

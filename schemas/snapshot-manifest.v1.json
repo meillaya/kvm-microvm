@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kvm-microvm-orchestrator.local/schemas/snapshot-manifest.v1.json",
+  "title": "snapshot manifest (v1)",
+  "description": "Versioned local integrity manifest for a Firecracker microVM snapshot. A manifest binds a snapshot to the exact Firecracker binary (version + SHA-256), the kernel/rootfs/block-device content hashes, the guest memory and VM-state hashes, the VM machine config, and the host compatibility envelope (CPU, KVM API version, cgroup version) under which the snapshot was taken, plus the owning tenant, the quota the restored VM will consume, and the immutable-memory requirement. The CompatibilityGate validates a manifest BEFORE any Firecracker process is spawned or /snapshot/load is issued. TRUST MODEL: the hashes here are the orchestrator's own SHA-256 content digests; Firecracker's internal snapshot CRC is only accidental-corruption detection and is NOT treated as authentication, and this manifest makes NO cross-host compatibility claim — snapshots are local, content-addressed, and owner-scoped. Cross-host transfer, signing, or encryption is out of scope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "snapshot_id",
+    "vm_id",
+    "owner",
+    "created_at",
+    "firecracker",
+    "vm_config",
+    "artifacts",
+    "state",
+    "host",
+    "quota",
+    "memory"
+  ],
+  "properties": {
+    "version": {
+      "description": "Manifest schema/format version. MUST equal 1 for this schema. The CompatibilityGate rejects any other value as an unsupported schema before Firecracker load; this is the field that makes 'unsupported schema' a typed, fail-closed rejection.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "snapshot_id": {
+      "description": "Unique identifier for this snapshot (typed SnapshotId). Validated by microvm-types: non-empty, <= 64 bytes, no '/', no '..', no uppercase, charset a-z 0-9 - _ .",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "vm_id": {
+      "description": "Identifier of the source VM this snapshot was taken from (typed VmId). Same validation rules as snapshot_id.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "owner": {
+      "description": "Owning tenant (typed TenantId). The CompatibilityGate requires this to EQUAL the caller's tenant; a foreign owner is rejected before Firecracker load. Ownership is enforced on typed identifiers, never on mutable path strings.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "created_at": {
+      "description": "RFC 3339 timestamp (UTC) when the snapshot was created. Informational; not part of the compatibility decision.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "firecracker": {
+      "description": "The exact Firecracker binary the snapshot was created with. Restore requires the SAME version AND the same binary SHA-256. NOTE: the sha256 here is the orchestrator's content hash of the pinned release/static binary (provenance); it is NOT Firecracker's internal snapshot CRC and is NOT an authentication primitive.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "sha256"],
+      "properties": {
+        "version": {
+          "description": "Firecracker semantic version string, e.g. '1.16.1'.",
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "description": "SHA-256 of the Firecracker binary, lowercase or uppercase hex (64 chars).",
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        }
+      }
+    },
+    "vm_config": {
+      "description": "The VM machine configuration the snapshot was taken under. The machine shape (vCPU count, memory) must be reproducible on restore.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vcpu_count", "mem_size_mib"],
+      "properties": {
+        "vcpu_count": {
+          "description": "Number of virtual CPUs. MUST be > 0.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "mem_size_mib": {
+          "description": "Guest memory size in MiB. MUST be > 0.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "artifacts": {
+      "description": "Content hashes of the boot artifacts and block devices the snapshot depends on. The CompatibilityGate / integrity check re-verifies the actual on-disk content against these hashes before Firecracker load; a single flipped byte is a typed integrity failure.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kernel_sha256", "rootfs_sha256", "block_devices"],
+      "properties": {
+        "kernel_sha256": {
+          "description": "SHA-256 of the guest kernel image.",
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "rootfs_sha256": {
+          "description": "SHA-256 of the root filesystem image.",
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "block_devices": {
+          "description": "Per-block-device content hashes, keyed by Firecracker drive id. The integrity check requires the same set of drive ids and a matching hash for each.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["drive_id", "sha256"],
+            "properties": {
+              "drive_id": {
+                "description": "Firecracker block-device drive id.",
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "description": "SHA-256 of the block-device backing file.",
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "state": {
+      "description": "Content hashes of the Firecracker snapshot state artifacts: the guest memory file and the VM-state file. These are the artifacts whose integrity MUST hold before /snapshot/load.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memory_sha256", "vmstate_sha256"],
+      "properties": {
+        "memory_sha256": {
+          "description": "SHA-256 of the guest memory file (mem_backend.backend_path target).",
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "vmstate_sha256": {
+          "description": "SHA-256 of the Firecracker VM-state file.",
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        }
+      }
+    },
+    "host": {
+      "description": "The host compatibility envelope recorded at snapshot time. Restore requires a compatible CPU, the SAME KVM API version, and a compatible cgroup version. This is a LOCAL same-host envelope, not a cross-host portability claim.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cpu", "kvm_api_version", "cgroup_version"],
+      "properties": {
+        "cpu": {
+          "description": "CPU compatibility descriptor.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arch", "model", "flags"],
+          "properties": {
+            "arch": {
+              "description": "CPU architecture, e.g. 'x86_64'. Must match exactly on restore.",
+              "type": "string",
+              "minLength": 1
+            },
+            "model": {
+              "description": "CPU model name (e.g. the /proc/cpuinfo 'model name'). Must match exactly on restore.",
+              "type": "string",
+              "minLength": 1
+            },
+            "flags": {
+              "description": "Sorted set of required CPU feature flags (e.g. 'svm', 'vmx'). The restore host must provide at least these flags.",
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            }
+          }
+        },
+        "kvm_api_version": {
+          "description": "KVM API version reported by KVM_GET_API_VERSION (stable value is 12). Must match exactly on restore.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "cgroup_version": {
+          "description": "cgroup hierarchy version the snapshot was taken under. The platform requires cgroup v2 ('v2'); the gate rejects a mismatch with the restore host.",
+          "type": "string",
+          "enum": ["v1", "v2"]
+        }
+      }
+    },
+    "quota": {
+      "description": "The resources the restored VM will consume. The CompatibilityGate checks these against the caller tenant's quota limits BEFORE Firecracker load; an overflow is a typed quota failure.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memory_mib", "disk_mib"],
+      "properties": {
+        "memory_mib": {
+          "description": "Memory the restored VM requires, in MiB.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "disk_mib": {
+          "description": "Disk/block storage the restored VM requires, in MiB.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "memory": {
+      "description": "Memory-file handling requirements. The memory file is REQUIRED to be immutable and MUST be retained for as long as the restored VM runs (Firecracker maps it for the life of the process); the gate rejects a manifest that does not declare immutable=true.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["immutable", "backend_path"],
+      "properties": {
+        "immutable": {
+          "description": "Whether the memory file is immutable. MUST be true; the gate rejects false.",
+          "type": "boolean"
+        },
+        "backend_path": {
+          "description": "Tenant-relative path to the memory file used as mem_backend.backend_path. Must be a relative path (no leading '/', no '..'); absolute paths and traversal are rejected by the artifact path rules.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
