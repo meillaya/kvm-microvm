@@ -287,7 +287,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test -p microvm-scheduler --test deterministic_placement`; failure feed a request exceeding all hosts and assert no cgroup/TAP/Firecracker side effect and `Unschedulable{reason}`. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-24-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(scheduler): add deterministic resource bin packing`
 
-- [~] 25. Implement the constrained local OCI-like importer and `microvm run` interface
+- [x] 25. Implement the constrained local OCI-like importer and `microvm run` interface
   What to do / Must NOT do: Add local OCI manifest/layer parsing, digest verification, platform selection, and translation to the typed kernel/rootfs/resource spec. Reject remote/tag-only references, host mounts, host network, privileged/capability additions, and arbitrary host process controls. Must not claim OCI runtime compatibility.
   Parallelization: Wave 5 | Blocked by: 8-9, 20-24 | Blocks: 26-30
   References (executor has NO interview context - be exhaustive): Draft OCI scope `.omo/drafts/kvm-microvm-orchestrator.md:27,53,64,67,76`; OCI image spec `https://github.com/opencontainers/image-spec`; OCI runtime spec `https://github.com/opencontainers/runtime-spec`.
