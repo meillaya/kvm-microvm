@@ -239,7 +239,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test -p microvm-contract-tests --test transport_parity`; failure mutate REST schema/status or gRPC code and assert parity test exits 1. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-18-kvm-microvm-orchestrator.json`.
   Commit: Y | `test(api): enforce transport parity and socket policy`
 
-- [~] 19. Add readiness, process, and cgroup/netns lifecycle integration tests
+- [x] 19. Add readiness, process, and cgroup/netns lifecycle integration tests
   What to do / Must NOT do: Add capable-host tests that prove a VM is not `Running` until guest readiness, child processes die with the supervisor, and all per-VM resources disappear on stop. Must not use QEMU TCG or mocks as KVM/Firecracker passes.
   Parallelization: Wave 3 | Blocked by: 10-15 | Blocks: 20-24, 27-30
   References (executor has NO interview context - be exhaustive): Draft readiness/cleanup findings `.omo/drafts/kvm-microvm-orchestrator.md:45-48,54,69-71`; Firecracker metrics/design docs; evidence schema todo 3.
