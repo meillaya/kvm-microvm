@@ -1,0 +1,43 @@
+{
+  "task": 21,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Define and enforce the local snapshot manifest and compatibility gate",
+  "commit": "6fb6b8c0bd77efd1657da6494d6cd3f12a8d2f94",
+  "files_committed": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates/microvm-snapshots/Cargo.toml",
+    "crates/microvm-snapshots/src/lib.rs",
+    "crates/microvm-snapshots/src/error.rs",
+    "crates/microvm-snapshots/src/manifest.rs",
+    "crates/microvm-snapshots/src/gate.rs",
+    "crates/microvm-snapshots/tests/manifest_compat.rs",
+    "schemas/snapshot-manifest.v1.json",
+    "schemas/examples/snapshot-manifest-ok.json"
+  ],
+  "test_results": {
+    "command": "cargo test -p microvm-snapshots",
+    "exit_code": 0,
+    "output_excerpt": "test result: ok. 28 passed (unit: error/manifest/gate) | ok. 19 passed (manifest_compat integration) \u2014 47 total, 0 failed"
+  },
+  "verification": {
+    "cargo_fmt": "pass (cargo fmt --all --check exit 0)",
+    "cargo_clippy": "pass (cargo clippy --workspace --all-targets -- -D warnings exit 0)",
+    "cargo_test": "pass (47 tests, 0 failures)"
+  },
+  "acceptance_criteria": {
+    "required_fields_cannot_be_omitted": "required_fields_cannot_be_omitted + builder_rejects_missing_fields: every top-level field is required; stripping any one fails deserialization, and the builder fails closed naming the missing field",
+    "manifest_owner_must_equal_caller_tenant": "foreign_owner_fails_before_load: ForeignOwner -> ErrorCode::PermissionDenied before load",
+    "hash_mismatch_fails_before_load": "flipping_one_byte_in_{memory,state,block_device}_is_typed_integrity_error: SnapshotError::Integrity -> ErrorCode::DigestMismatch, pure check before any child process",
+    "unsupported_schema_fails_before_load": "unsupported_schema_fails_before_load: UnsupportedSchema -> ErrorCode::SnapshotIncompatible",
+    "cpu_kvm_api_binary_incompatibility_fail_before_load": "cpu/kvm_api/binary/cgroup_incompatibility_fails_before_load: each -> ErrorCode::SnapshotIncompatible",
+    "quota_overflow_fails_before_load": "quota_overflow_fails_before_load: QuotaOverflow -> ErrorCode::QuotaExceeded",
+    "memory_required_immutable": "non_immutable_memory_fails_before_load: MemoryNotImmutable -> ErrorCode::SnapshotIncompatible; retention-while-running documented as a lifecycle contract",
+    "crc_not_authentication_no_cross_host": "lib.rs/manifest.rs/gate.rs trust-model docs: SHA-256 is orchestrator-owned; Firecracker CRC never treated as authentication; host envelope is a same-host record with no cross-host claim",
+    "schema_type_example_drift_guard": "rust_manifest_matches_json_schema_contract + schema_example_fixture_is_a_valid_manifest: Rust keys == schema required == schema properties; fixture deserializes into a valid manifest"
+  },
+  "qa_scenario": {
+    "happy": "cargo test -p microvm-snapshots --test manifest_compat",
+    "failure": "flip one byte in memory/state/block device -> typed SnapshotError::Integrity (SnapshotIntegrityError) with ErrorCode::DigestMismatch before a child process is spawned"
+  }
+}

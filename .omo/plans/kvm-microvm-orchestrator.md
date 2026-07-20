@@ -255,7 +255,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test -p microvm-artifacts --test reproducible_builder`; failure pass a remote/tag URI and assert `LocalArtifactRequired`, no network call, and no partial artifact directory. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-20-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(artifacts): build pinned local kernel and rootfs images`
 
-- [~] 21. Define and enforce the local snapshot manifest and compatibility gate
+- [x] 21. Define and enforce the local snapshot manifest and compatibility gate
   What to do / Must NOT do: Add `schemas/snapshot-manifest.v1.json` and typed manifest with Firecracker version/hash, kernel/rootfs/block-device hashes, VM config, CPU/KVM API, cgroup version, owner tenant, memory/state hashes, quota, and immutable-memory requirement. Must not treat Firecracker CRC as authentication or invent cross-host compatibility.
   Parallelization: Wave 4 | Blocked by: 5, 7, 9, 14 | Blocks: 22, 27-30
   References (executor has NO interview context - be exhaustive): Draft snapshot findings `.omo/drafts/kvm-microvm-orchestrator.md:28,31,39,47-52,65,77`; Firecracker snapshot support `https://github.com/firecracker-microvm/firecracker/blob/v1.16.1/docs/snapshotting/snapshot-support.md`; JSON Schema `https://json-schema.org/specification`.
