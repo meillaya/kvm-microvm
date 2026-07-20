@@ -1,0 +1,112 @@
+{
+  "task_id": 30,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Implement and verify the feature-gated direct-KVM subset",
+  "status": "complete",
+  "commit": "3fda135166ca4bfc24e6571310761a5e214f3b9d",
+  "commit_subject": "feat(vmm): add feature-gated direct KVM subset",
+  "deliverables": [
+    "crates/microvm-backend-directkvm/Cargo.toml",
+    "crates/microvm-backend-directkvm/src/lib.rs",
+    "crates/microvm-backend-directkvm/src/serial.rs",
+    "crates/microvm-backend-directkvm/src/outcome.rs",
+    "crates/microvm-backend-directkvm/src/dispatch.rs",
+    "crates/microvm-backend-directkvm/src/probe.rs",
+    "crates/microvm-backend-directkvm/src/guest.rs",
+    "crates/microvm-backend-directkvm/src/runner.rs",
+    "crates/microvm-backend-directkvm/tests/privileged_boot.rs",
+    "Cargo.lock"
+  ],
+  "verification": {
+    "cargo_test_no_default_features": {
+      "command": "cargo test -p microvm-backend-directkvm --no-default-features",
+      "result": "ok",
+      "tests_passed": 50,
+      "tests_failed": 0,
+      "note": "Deterministic lane: contract validation, probe validation, exit dispatch, serial capture, guest code/page-table layout, feature gate. No /dev/kvm required."
+    },
+    "cargo_test_privileged": {
+      "command": "cargo test -p microvm-backend-directkvm --features direct-kvm,privileged",
+      "result": "ok",
+      "lib_tests_passed": 50,
+      "privileged_integration_tests_passed": 3,
+      "tests_failed": 0
+    },
+    "cargo_fmt": {
+      "command": "cargo fmt --all",
+      "result": "ok",
+      "check": "cargo fmt --all -- --check exit 0"
+    },
+    "cargo_clippy_workspace": {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "ok"
+    },
+    "cargo_clippy_feature_gated": {
+      "command": "cargo clippy -p microvm-backend-directkvm --features direct-kvm,privileged --all-targets -- -D warnings",
+      "result": "ok"
+    },
+    "cargo_build_workspace": {
+      "command": "cargo build --workspace",
+      "result": "ok"
+    }
+  },
+  "privileged_boot_evidence": {
+    "host": {
+      "arch": "x86_64",
+      "kernel": "7.1.3-2-cachyos",
+      "kvm_device": "/dev/kvm (crw-rw-rw-)",
+      "nested_kvm": true,
+      "kvm_api_version": 12,
+      "user_memory_cap": true
+    },
+    "real_boot_outcome": {
+      "outcome": "completed",
+      "serial": { "bytes": [75] },
+      "stop": "hlt",
+      "interpretation": "byte 75 == 0x4B == 'K': the marker guest booted in 64-bit long mode on real KVM, wrote the marker to I/O port 0x3F8, and halted."
+    },
+    "probe_report": { "api_version": 12, "user_memory": true, "device_path": "/dev/kvm" },
+    "missing_device_outcome": {
+      "outcome": "blocked",
+      "reason": "kvm_unavailable",
+      "detail": "open /dev/definitely-not-kvm-microvm-subset: errno 2",
+      "interpretation": "A missing /dev/kvm produces a structured Blocked outcome, never Completed and never a fallback (deterministic; independent of host KVM)."
+    }
+  },
+  "acceptance_criteria": {
+    "capability_probe_requires_api_version_12": "probe::validate_api_version accepts only 12 (KVM_API_VERSION); any other value (0,11,13,-1,i32::MAX) yields ProbeError::BadApiVersion -> BlockedReason::BadApiVersion. open_and_probe calls Kvm::get_api_version() and check_extension(Cap::UserMemory). Verified on host: api_version=12, user_memory=true.",
+    "direct_subset_boots_documented_guest_and_observes_serial_marker": "runner::run_subset_boot() boots the pinned marker guest (mov eax,0x4B; mov edx,0x3F8; out dx,al; hlt) in 64-bit long mode (identity page tables + GDT + CR0/CR3/CR4/EFER via KVM_SET_SREGS/KVM_SET_REGS) and the privileged test observed serial bytes [75] then stop=hlt on a capable nested-KVM x86_64 host.",
+    "missing_dev_kvm_produces_blocked_not_pass": "A nonexistent device path returns RunOutcome::Blocked{reason:kvm_unavailable}; the outcome enum has no fallback variant (compile-time const _: () = assert!(!RunOutcome::HAS_FALLBACK)) and RunOutcome::HAS_FALLBACK==false. probe_blocked_outcome maps any failed probe to Blocked. No Firecracker/QEMU/TCG fallback exists anywhere in the crate.",
+    "default_build_does_not_link_or_launch_direct_kvm": "direct-kvm feature is off by default; kvm-ioctls/kvm-bindings/libc are optional deps activated only by direct-kvm. `cargo tree -p microvm-backend-directkvm` (default) contains none of them; with --features direct-kvm they appear. No other workspace crate depends on or wires this backend (grep across crates/* confirms zero references), so it is never the default backend.",
+    "vcpu_operations_remain_on_creating_thread": "VmRunner captures thread::current().id() at construction and run() asserts the caller is that thread; GuestMemory holds a raw mmap pointer making VmRunner !Send/!Sync, so the type system also prevents moving the runner (and its vCPU) to another thread. The vCPU is created and KVM_RUN-driven entirely within run() on the constructing thread; no thread is spawned.",
+    "tcg_never_reported_as_kvm_evidence": "The crate performs only real KVM ioctls behind direct-kvm; it contains no QEMU/TCG path and no fallback. A blocked or failed boot is never Converted into Completed."
+  },
+  "key_types": {
+    "KvmProbe": "probe.rs: pure validate_api_version (==12) + validate_capabilities (user_memory) + ProbeError->BlockedReason mapping + probe_blocked_outcome classifier (all deterministic, no /dev/kvm). Behind direct-kvm: open_and_probe(device) opens /dev/kvm exactly once via Kvm::new_with_path, checks get_api_version()==12 and Cap::UserMemory, returns (Kvm, ProbeReport).",
+    "VmRunner": "runner.rs (direct-kvm): owns Kvm + VmFd + GuestMemory (16 MiB mmap MAP_ANONYMOUS|MAP_PRIVATE) + ProbeReport + creating_thread + stop flag. new() probes, KVM_CREATE_VM, lays out the guest, registers one identity-mapped slot (KVM_SET_USER_MEMORY_REGION, slot 0, 16 MiB at GPA 0). run() asserts thread identity, KVM_CREATE_VCPU(0), KVM_SET_CPUID2 (supported CPUID), programs long mode (KVM_SET_SREGS/KVM_SET_REGS), runs the bounded KVM_RUN loop, and Drop deregisters the slot (memory_size=0) before munmap.",
+    "ExitDispatcher": "dispatch.rs: pure state machine over backend-neutral GuestExit {IoOut,Hlt,FailEntry,InternalError,Unexpected}. dispatch() returns DispatchAction {Continue, Stop(StopReason), Fail(FailureReason, detail)}; records serial bytes for port 0x3F8; honors a host-stop flag between iterations. The privileged runner maps kvm_ioctls::VcpuExit -> GuestExit (owned, borrow released before reading kvm_run for suberror/raw reason).",
+    "SerialOutput": "serial.rs: append-only capture of bytes written to I/O port 0x3F8; record(port,byte) ignores non-serial ports; contains_marker() checks for 0x4B. Pure and Serialize/Deserialize.",
+    "RunOutcome": "outcome.rs: Completed{serial,stop} | Blocked{reason,detail} | Failed{reason,detail,serial}. No fallback variant; HAS_FALLBACK==false enforced at compile time. BlockedReason {KvmUnavailable,BadApiVersion,MissingCapability} with stable snake_case tokens for evidence.",
+    "guest": "guest.rs (public module): pure guest_code() (the 12-byte marker program) and write_boot_layout() (identity page tables with 2 MiB pages, GDT with a 64-bit code segment, code at GPA 0) plus the long-mode boot constants (CR0/CR3/CR4/EFER bits, GDT descriptors, GPAs). Deterministic and unit-tested without KVM."
+  },
+  "deterministic_tests": [
+    "probe validation: api_version 12 accepted; 0/11/13/-1/MAX rejected -> BadApiVersion",
+    "capability validation: user_memory required",
+    "probe error -> blocked classification (DeviceMissing->kvm_unavailable, BadApiVersion, MissingCapability)",
+    "exit dispatch: serial-write-then-HLT completes with marker; FailEntry/InternalError/Unexpected fail with reasons; host-stop honored between iterations; non-serial port ignored",
+    "serial output: records only port 0x3F8; captures marker in order; round-trips",
+    "guest code bytes are exactly B8 4B 00 00 00 BA F8 03 00 00 EE F4; boot layout writes code/page-tables/GDT; long-mode control bits consistent; code descriptor has L=1,D/B=0",
+    "feature gate: off by default (no-feature lane) / on when enabled (feature lane)",
+    "outcome: blocked is not completed, has no fallback, serializes with stable tag+reason"
+  ],
+  "privileged_tests": [
+    "direct_kvm_subset_boot_observes_serial_marker_or_blocks: real boot -> Completed{serial:[75],stop:hlt} on capable host; Blocked (not pass) when KVM absent",
+    "missing_device_is_blocked_not_pass_and_has_no_fallback: nonexistent path -> Blocked{kvm_unavailable}, never Completed/Failed, no fallback",
+    "probe_real_device_api_version_is_12_or_blocked: real probe -> api_version 12 + user_memory; blocked with structured evidence when absent"
+  ],
+  "exclusions_honored": [
+    "not the default backend (feature off by default; no crate wires it)",
+    "no TCG/QEMU/Firecracker fallback; TCG never reported as KVM evidence",
+    "no network/block/vsock devices, no multi-vCPU, no migration (pinned subset unchanged)"
+  ]
+}

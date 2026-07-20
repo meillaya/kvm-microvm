@@ -327,7 +327,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test -p microvm-backend-directkvm --no-default-features`; failure enable an unsupported device fixture and assert compile/test guard rejects it or returns `UnsupportedDevice`. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-29-kvm-microvm-orchestrator.json`.
   Commit: Y | `docs(vmm): pin direct KVM educational contract`
 
-- [~] 30. Implement and verify the feature-gated direct-KVM subset
+- [x] 30. Implement and verify the feature-gated direct-KVM subset
   What to do / Must NOT do: Add `kvm-ioctls`-backed API-version/capability probe, VM memory slot, one vCPU `KVM_RUN` loop, serial/exit dispatcher, and clean shutdown behind `direct-kvm`. Must not make it the default backend or report TCG as KVM evidence.
   Parallelization: Wave 5 | Blocked by: 4-6, 29 | Blocks: 31-34
   References (executor has NO interview context - be exhaustive): KVM API fd/thread restrictions `https://docs.kernel.org/virt/kvm/api.html`; `kvm-ioctls` 0.25.x docs; Draft KVM subset guardrails `.omo/drafts/kvm-microvm-orchestrator.md:38,44-48,66`.
