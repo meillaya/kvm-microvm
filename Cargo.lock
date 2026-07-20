@@ -737,6 +737,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-demo"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "clap",
+ "microvm-artifacts",
+ "microvm-bench",
+ "microvm-errors",
+ "microvm-metrics",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "microvm-errors"
 version = "0.1.0"
 dependencies = [
