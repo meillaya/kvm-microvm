@@ -33,6 +33,7 @@
 //! [`ErrorCode::CgroupUnavailable`]: microvm_errors::ErrorCode::CgroupUnavailable
 //! [`ErrorCode::InvalidResourceSpec`]: microvm_errors::ErrorCode::InvalidResourceSpec
 
+pub mod firecracker;
 pub mod manager;
 pub mod net;
 pub mod spec;
@@ -49,6 +50,14 @@ pub use spec::{
     check_required_controllers, parse_controllers, validate_no_children,
     validate_subtree_control_empty, CgroupSpec, CgroupSpecBuilder, Controller, IoMax,
     DEFAULT_CPU_PERIOD_US, DEFAULT_MEMORY_SWAP_MAX_BYTES,
+};
+
+pub use firecracker::{
+    binary_contains_version, parse_elf_form, parse_seccomp_mode, pinned_firecracker, pinned_jailer,
+    sha256_hex, verify_seccomp_status, BinaryManifest, BinaryVerifier, ElfForm, ElfMachine,
+    JailerArgv, JailerArgvBuilder, ResourceKind, SeccompVerifier, VerifiedBinary,
+    DEFAULT_FSIZE_BYTES, DEFAULT_NO_FILE, DEFAULT_PROC_ROOT, MAX_FSIZE_BYTES, MAX_NO_FILE,
+    PINNED_VERSION, SECCOMP_MODE_FILTER,
 };
 
 #[cfg(test)]
