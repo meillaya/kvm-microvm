@@ -10,6 +10,11 @@
 //! - [`VmStatus`] / [`VmMetrics`] — read-only views returned by the service.
 //!
 //! **No REST, gRPC, or Firecracker-specific JSON lives here.**
+//!
+//! # Policy
+//! - [`policy`] — tenant authorization, ownership, quotas, and audit events.
+
+pub mod policy;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
