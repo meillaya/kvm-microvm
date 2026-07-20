@@ -1,0 +1,98 @@
+{
+  "task": 14,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Firecracker boot/configure/start/stop adapter",
+  "status": "complete",
+  "commit": "eb5c098",
+  "commit_message": "feat(lifecycle): integrate Firecracker boot adapter",
+  "timestamp": "2026-07-20T04:30:00Z",
+  "crate": "microvm-firecracker",
+  "files_changed": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates/microvm-firecracker/Cargo.toml",
+    "crates/microvm-firecracker/src/lib.rs",
+    "crates/microvm-firecracker/src/config.rs",
+    "crates/microvm-firecracker/src/phase.rs",
+    "crates/microvm-firecracker/src/api.rs",
+    "crates/microvm-firecracker/src/process.rs",
+    "crates/microvm-firecracker/src/readiness.rs",
+    "crates/microvm-firecracker/src/prereq.rs",
+    "crates/microvm-firecracker/src/backend.rs",
+    "crates/microvm-firecracker/src/testing.rs",
+    "crates/microvm-firecracker/tests/common/mod.rs",
+    "crates/microvm-firecracker/tests/backend_replay.rs",
+    "crates/microvm-firecracker/tests/boot_config.rs",
+    "crates/microvm-firecracker/tests/error_mapping.rs",
+    "crates/microvm-firecracker/tests/prerequisites.rs",
+    "crates/microvm-firecracker/tests/phase_timestamps.rs",
+    "crates/microvm-firecracker/tests/firecracker_boot.rs"
+  ],
+  "deliverables": {
+    "firecracker_backend": "FirecrackerBackend implements microvm-lifecycle LifecycleService (create/start/stop/snapshot/restore/status/metrics) using Firecracker; one process per VM configured over a per-VM UDS API; builder-injected trait objects for launcher/api-factory/readiness-probe/prereq/cleanup so orchestration is deterministic-testable; snapshot/restore return a typed unsupported error (todo 22)",
+    "vm_process": "VmProcess{vm_id,pid,socket_path,phases} tracks the child process, its API socket, and accumulated PhaseTimestamps; LaunchSpec{vm_id,argv,socket_path,env} describes the spawn",
+    "boot_config": "BootConfig{kernel_path,kernel_sha256,rootfs_path,rootfs_sha256,vcpu_count,mem_size_mib,boot_args,network} validated at construction; kernel/rootfs paths are relative and lexically validated via microvm-artifacts validate_relative_path (rejects absolute, .., symlinks, URIs); digests bind each path to expected content verified at boot",
+    "phase_timestamps": "PhaseTimestamps records spawn/socket_ready/configured/guest_ready/stopped; enforces ordering (predecessor required), uniqueness (once per phase), and monotonic non-decreasing timestamps; pure given the supplied clock",
+    "uds_api_client": "FirecrackerApi trait (put_machine_config/put_boot_source/put_drive/put_network_interface/start_instance/send_ctrl_alt_del/instance_info) with typed v1.16.1 request/response bodies; UdsApiClient is a minimal HTTP/1.1-over-Unix-socket transport (per-request connection, Content-Length and read-to-close bodies, fault_message extraction); non-2xx maps to TransportError",
+    "guest_readiness": "GuestReadinessProbe trait distinguishes guest readiness from process/socket readiness; TcpHealthProbe polls a guest TCP endpoint until success or timeout; ReadinessContext carries vm_id/guest_ip/timeout",
+    "prerequisites": "PrerequisiteCheck trait + HostPrerequisiteChecker verify KVM device, TUN device (when networked), Firecracker/jailer binary presence and (optionally) pinned provenance via microvm-isolation BinaryVerifier, and cgroup-v2 root availability — all synchronously and fail-fast before any child is created",
+    "process_launcher": "ProcessLauncher trait (spawn/wait_exit/kill/is_alive); TokioLauncher is the real tokio::process backend tracking children by PID with kill_on_drop; ScriptedLauncher scripts spawn/exit/kill for tests",
+    "isolation_integration": "Uses microvm-isolation CgroupManager (create_parent + apply_spec leaf with cpu/memory/pids limits), NetManager (setup_netns + TAP NetConfig + teardown), BinaryVerifier (pinned provenance in prereq), and CleanupManager (reverse-order idempotent teardown of process/socket/nft/tap/netns/cgroup/chroot); jailer argv built via validated JailerArgv for networked VMs, direct firecracker --api-sock argv otherwise",
+    "audit_integration": "Optional AuditLog records exactly one AuditEvent per mutating operation (create/start/stop) with Success/Denied/Error result; permission failures audit Denied, other failures Error",
+    "testing_doubles": "Public testing module: ScriptedLauncher (auto/fixed/fail pids, optional socket creation on spawn), RecordingApi + ScriptedApiFactory (records ordered ApiCall sequence, configurable FailPoint), ScriptedProbe (ready/not_ready), ScriptedPrereq (ok/fail); reusable by downstream lifecycle service (todo 15)"
+  },
+  "verification": {
+    "cargo_test": {
+      "command": "cargo test -p microvm-firecracker",
+      "result": "pass",
+      "tests_total": 97,
+      "tests_passed": 97,
+      "breakdown": {
+        "lib_unit": 62,
+        "backend_replay": 11,
+        "error_mapping": 9,
+        "boot_config": 6,
+        "prerequisites": 5,
+        "phase_timestamps": 4
+      }
+    },
+    "cargo_test_privileged_compile": {
+      "command": "cargo test -p microvm-firecracker --features privileged --no-run",
+      "result": "pass",
+      "note": "firecracker_boot.rs compiles under the privileged feature; runtime is gated and reports blocked on hosts without KVM/binaries/artifacts"
+    },
+    "cargo_fmt": {
+      "command": "cargo fmt --all",
+      "result": "pass"
+    },
+    "cargo_clippy": {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "pass",
+      "warnings": 0
+    }
+  },
+  "test_coverage": {
+    "boot_config_validation": "valid config binds paths to digests; absolute/.. /symlink/URI paths rejected with PathEscape; zero vcpu/memory rejected; boot_args length bounded; network None policy rejected; serde roundtrip preserves digests",
+    "phase_timestamp_recording": "full boot+stop sequence records in order; ordering/uniqueness/monotonicity enforced; stopped requires only spawn; equal timestamps allowed; serde roundtrip; latest() tracks highest ordinal",
+    "error_mapping": "spawn failure -> ProcessSpawnError + Failed; API config failure -> TransportError + Failed + cleanup; InstanceStart failure -> Failed (no guest_ready); guest-not-ready -> InternalError + Failed after InstanceStart; digest mismatch -> DigestMismatch + Failed with NO spawn and NO InstanceStart; missing boot config -> InvalidResourceSpec, stays Created, no spawn; prereq failure -> stays Created, no spawn; stop-from-Created -> InvalidTransition; snapshot/restore -> InternalError unsupported",
+    "prerequisite_checks": "checker passes when all present; missing KVM fails first (before binary checks); missing binary -> BinaryProvenanceError; missing cgroup root -> CgroupUnavailable; TUN required only when networked; backend runs prereq before spawning any child (real HostPrerequisiteChecker with missing KVM -> no launcher invocation)",
+    "orchestration_replay": "happy boot reaches Running with all four phases monotonic; API calls issued in order machine-config->boot-source->drive->network-interface->InstanceStart; machine config reflects boot config; kernel/rootfs host paths are the digest-verified tenant-root paths; networked VM uses validated jailer argv (--cgroup-version=2, parent-cgroup leaf, --netns); non-networked VM uses direct --api-sock argv with no network interface; start idempotent when already running; cross-tenant start denied + audited",
+    "audit_and_socket": "audit log records create/start/stop success and denial; serialized VmStatus/VmMetrics never contain the API socket path or any 'socket' key (tenant non-exposure)",
+    "stop_and_cleanup": "stop transitions Running->Stopped, records stopped phase, attempts graceful SendCtrlAltDel, invokes cleanup backend, audits success"
+  },
+  "guardrails": {
+    "no_unauthenticated_socket_exposure": "API socket lives under a host-only socket_root; VmStatus/VmMetrics carry only vm_id/state/created_at/resource_spec; test asserts the serialized tenant-facing responses contain no socket path or 'socket' key",
+    "digest_validated_paths": "kernel/rootfs opened relative to the tenant root via microvm-artifacts (RESOLVE_BENEATH/no-symlink) and SHA-256 verified before configuration; a mismatch fails closed before any child is created and never reaches InstanceStart",
+    "prereq_before_spawn": "KVM/TUN/binary/cgroup prerequisites are checked synchronously and fail-fast before the launcher is invoked; verified by asserting launcher.spawned() is empty on prerequisite failure",
+    "guest_readiness_not_process_readiness": "VmState::Running is reached only after the GuestReadinessProbe succeeds; socket_ready and guest_ready are distinct recorded phases",
+    "typed_error_to_failed": "process spawn and API errors drive the VM to VmState::Failed and trigger reverse-order cleanup; permission failures are denied (not Failed); host-capability prereq failures stay Created (retryable)",
+    "firecracker_first": "No QEMU or alternate runtime is introduced; Firecracker is the sole backend, pinned to v1.16.1 provenance via microvm-isolation"
+  },
+  "design_notes": {
+    "determinism": "All side-effecting boundaries (ProcessLauncher, ApiFactory/FirecrackerApi, GuestReadinessProbe, PrerequisiteCheck, CleanupBackend) are injected trait objects; the testing module provides scripted doubles so the entire boot/stop orchestration runs against tempdir artifacts and a simulated cgroup hierarchy with no capable host; PhaseTimestamps is pure given the supplied timestamp",
+    "boot_config_via_trait": "LifecycleService::create only carries a ResourceSpec, so the kernel/rootfs boot configuration is attached via the inherent set_boot_config (or a backend-wide default) before start; start resolves the effective config and digest-validates it",
+    "launch_argv": "Networked VMs launch via a validated microvm-isolation JailerArgv (--cgroup-version=2, pre-created leaf parent-cgroup, --netns, bounded resource limits, non-root uid/gid); VMs without network launch firecracker directly with an explicit --api-sock",
+    "audit_model": "Each mutating operation records exactly one AuditEvent; the trait wrapper maps the outcome to Success/Denied/Error so denial (PermissionDenied) is distinguished from operational failure",
+    "privileged_lane": "tests/firecracker_boot.rs is gated behind the privileged feature and follows the platform pass/blocked/failed model: it boots a real VM (create/configure/start/guest-ready/stop/clean) on a capable host with pinned binaries and staged artifacts, and reports a stable blocked token when KVM, binaries, cgroup-v2, or artifacts are absent"
+  }
+}
