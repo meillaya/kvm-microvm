@@ -1,0 +1,392 @@
+openapi: "3.1.0"
+info:
+  title: MicroVM Lifecycle API
+  description: >
+    REST lifecycle API for the kvm-microvm-orchestrator platform.
+    Served exclusively over a Unix domain socket. No TCP listener is
+    permitted by the platform security model.
+  version: "1.0.0"
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+
+servers:
+  - url: "unix:///run/microvm/api.sock"
+    description: Unix domain socket (no TCP)
+
+paths:
+  /vms:
+    post:
+      operationId: createVm
+      summary: Create a new virtual machine
+      description: >
+        Creates a VM record from a resource specification. The VM starts
+        in the "created" state. The owner principal is derived from Unix
+        socket peer credentials.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVmRequest"
+      responses:
+        "201":
+          description: VM created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateVmResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /vms/{vm_id}:
+    get:
+      operationId: getVmStatus
+      summary: Get VM status
+      description: Returns the current lifecycle status of a VM.
+      parameters:
+        - $ref: "#/components/parameters/VmId"
+      responses:
+        "200":
+          description: Current VM status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /vms/{vm_id}/start:
+    post:
+      operationId: startVm
+      summary: Start or resume a VM
+      description: >
+        Transitions a VM to the running state. Legal from configured
+        (first start) or paused (resume).
+      parameters:
+        - $ref: "#/components/parameters/VmId"
+      responses:
+        "204":
+          description: VM started successfully
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /vms/{vm_id}/stop:
+    post:
+      operationId: stopVm
+      summary: Stop a VM
+      description: >
+        Stops a running or paused VM, releasing its resources.
+      parameters:
+        - $ref: "#/components/parameters/VmId"
+      responses:
+        "204":
+          description: VM stopped successfully
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /vms/{vm_id}/snapshot:
+    post:
+      operationId: snapshotVm
+      summary: Snapshot a VM
+      description: >
+        Creates a point-in-time snapshot of a running or paused VM.
+        Returns the snapshot identifier.
+      parameters:
+        - $ref: "#/components/parameters/VmId"
+      responses:
+        "201":
+          description: Snapshot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SnapshotVmResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /vms/{vm_id}/metrics:
+    get:
+      operationId: getVmMetrics
+      summary: Get VM metrics
+      description: Returns per-VM metrics for the specified VM.
+      parameters:
+        - $ref: "#/components/parameters/VmId"
+      responses:
+        "200":
+          description: VM metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmMetricsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /snapshots/{snapshot_id}/restore:
+    post:
+      operationId: restoreVm
+      summary: Restore a VM from a snapshot
+      description: >
+        Creates a new VM from an existing snapshot. Returns the new VM
+        identifier.
+      parameters:
+        - $ref: "#/components/parameters/SnapshotId"
+      responses:
+        "201":
+          description: VM restored from snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestoreVmResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  parameters:
+    VmId:
+      name: vm_id
+      in: path
+      required: true
+      description: Unique VM identifier (lowercase alphanumeric, hyphens, underscores, dots)
+      schema:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9._-]{0,63}$"
+        maxLength: 64
+
+    SnapshotId:
+      name: snapshot_id
+      in: path
+      required: true
+      description: Unique snapshot identifier
+      schema:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9._-]{0,63}$"
+        maxLength: 64
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Permission denied or cross-tenant access
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Conflict:
+      description: Invalid state transition or quota exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    CreateVmRequest:
+      type: object
+      required:
+        - vcpu_count
+        - memory_mib
+        - disk_mib
+      properties:
+        vcpu_count:
+          type: integer
+          format: uint32
+          minimum: 1
+          description: Number of virtual CPUs
+        memory_mib:
+          type: integer
+          format: uint64
+          minimum: 1
+          description: Memory allocation in MiB
+        disk_mib:
+          type: integer
+          format: uint64
+          minimum: 1
+          description: Disk allocation in MiB
+        network_policy:
+          $ref: "#/components/schemas/NetworkPolicy"
+
+    CreateVmResponse:
+      type: object
+      required:
+        - vm_id
+      properties:
+        vm_id:
+          type: string
+          description: Assigned VM identifier
+
+    VmStatusResponse:
+      type: object
+      required:
+        - vm_id
+        - state
+        - created_at
+        - resource_spec
+      properties:
+        vm_id:
+          type: string
+          description: VM identifier
+        state:
+          $ref: "#/components/schemas/VmState"
+        created_at:
+          type: string
+          format: date-time
+          description: RFC 3339 timestamp of VM creation
+        resource_spec:
+          $ref: "#/components/schemas/ResourceSpec"
+
+    VmMetricsResponse:
+      type: object
+      required:
+        - vm_id
+        - state
+      properties:
+        vm_id:
+          type: string
+          description: VM identifier
+        state:
+          $ref: "#/components/schemas/VmState"
+
+    SnapshotVmResponse:
+      type: object
+      required:
+        - snapshot_id
+      properties:
+        snapshot_id:
+          type: string
+          description: Identifier of the created snapshot
+
+    RestoreVmResponse:
+      type: object
+      required:
+        - vm_id
+      properties:
+        vm_id:
+          type: string
+          description: Identifier of the newly restored VM
+
+    ResourceSpec:
+      type: object
+      required:
+        - vcpu_count
+        - memory_mib
+        - disk_mib
+        - network_policy
+      properties:
+        vcpu_count:
+          type: integer
+          format: uint32
+          minimum: 1
+        memory_mib:
+          type: integer
+          format: uint64
+          minimum: 1
+        disk_mib:
+          type: integer
+          format: uint64
+          minimum: 1
+        network_policy:
+          $ref: "#/components/schemas/NetworkPolicy"
+
+    NetworkPolicy:
+      type: string
+      enum:
+        - none
+        - nat_only
+        - full_egress
+      description: Network egress policy for the VM
+
+    VmState:
+      type: string
+      enum:
+        - created
+        - configured
+        - running
+        - paused
+        - snapshotting
+        - restoring
+        - stopped
+        - failed
+      description: VM lifecycle state
+
+    ErrorResponse:
+      type: object
+      required:
+        - error_code
+        - message
+      properties:
+        error_code:
+          type: string
+          description: Stable machine-readable error code (snake_case)
+          examples:
+            - invalid_id
+            - invalid_resource_spec
+            - invalid_transition
+            - permission_denied
+            - quota_exceeded
+            - artifact_not_found
+            - internal_error
+        message:
+          type: string
+          description: Human-readable error message
+        context:
+          type: object
+          additionalProperties:
+            type: string
+          description: Optional structured key-value context

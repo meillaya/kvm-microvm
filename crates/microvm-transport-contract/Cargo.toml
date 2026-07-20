@@ -1,0 +1,12 @@
+[package]
+name = "microvm-transport-contract"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_yaml = "0.9"
+
+[dev-dependencies]
+serde_json = { workspace = true }

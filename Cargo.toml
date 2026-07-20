@@ -4,6 +4,7 @@ members = [
     "crates/microvm-types",
     "crates/microvm-errors",
     "crates/microvm-lifecycle",
+    "crates/microvm-transport-contract",
 ]
 
 [workspace.package]

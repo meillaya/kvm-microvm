@@ -1,0 +1,194 @@
+// MicroVM Lifecycle gRPC service definition.
+//
+// This service is served exclusively over a Unix domain socket.
+// No TCP listener is permitted by the platform security model.
+
+syntax = "proto3";
+
+package microvm.v1;
+
+option go_package = "microvm/v1;microvmv1";
+
+// MicrovmService provides lifecycle management for microVMs.
+// Transport: Unix domain socket only (unix:///run/microvm/api.sock).
+service MicrovmService {
+  // Create a new virtual machine from a resource specification.
+  // The VM starts in the "created" state.
+  rpc CreateVm(CreateVmRequest) returns (CreateVmResponse);
+
+  // Start or resume a VM.
+  // Legal from configured (first start) or paused (resume).
+  rpc StartVm(StartVmRequest) returns (StartVmResponse);
+
+  // Stop a running or paused VM, releasing its resources.
+  rpc StopVm(StopVmRequest) returns (StopVmResponse);
+
+  // Create a point-in-time snapshot of a running or paused VM.
+  rpc SnapshotVm(SnapshotVmRequest) returns (SnapshotVmResponse);
+
+  // Restore a VM from an existing snapshot, creating a new VM.
+  rpc RestoreVm(RestoreVmRequest) returns (RestoreVmResponse);
+
+  // Query the current lifecycle status of a VM.
+  rpc GetVmStatus(GetVmStatusRequest) returns (GetVmStatusResponse);
+
+  // Query per-VM metrics.
+  rpc GetVmMetrics(GetVmMetricsRequest) returns (GetVmMetricsResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+// VM lifecycle state.
+enum VmState {
+  VM_STATE_UNSPECIFIED = 0;
+  VM_STATE_CREATED = 1;
+  VM_STATE_CONFIGURED = 2;
+  VM_STATE_RUNNING = 3;
+  VM_STATE_PAUSED = 4;
+  VM_STATE_SNAPSHOTTING = 5;
+  VM_STATE_RESTORING = 6;
+  VM_STATE_STOPPED = 7;
+  VM_STATE_FAILED = 8;
+}
+
+// Network egress policy for a VM.
+enum NetworkPolicy {
+  NETWORK_POLICY_UNSPECIFIED = 0;
+  NETWORK_POLICY_NONE = 1;
+  NETWORK_POLICY_NAT_ONLY = 2;
+  NETWORK_POLICY_FULL_EGRESS = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Shared messages
+// ---------------------------------------------------------------------------
+
+// Resource allocation specification for a VM.
+message ResourceSpec {
+  // Number of virtual CPUs (must be >= 1).
+  uint32 vcpu_count = 1;
+  // Memory allocation in MiB (must be >= 1).
+  uint64 memory_mib = 2;
+  // Disk allocation in MiB (must be >= 1).
+  uint64 disk_mib = 3;
+  // Network egress policy.
+  NetworkPolicy network_policy = 4;
+}
+
+// Structured error response matching the platform error model.
+message ErrorResponse {
+  // Stable machine-readable error code (snake_case string).
+  string error_code = 1;
+  // Human-readable error message.
+  string message = 2;
+  // Optional structured key-value context.
+  map<string, string> context = 3;
+}
+
+// ---------------------------------------------------------------------------
+// CreateVm
+// ---------------------------------------------------------------------------
+
+message CreateVmRequest {
+  // Number of virtual CPUs (must be >= 1).
+  uint32 vcpu_count = 1;
+  // Memory allocation in MiB (must be >= 1).
+  uint64 memory_mib = 2;
+  // Disk allocation in MiB (must be >= 1).
+  uint64 disk_mib = 3;
+  // Network egress policy (defaults to NONE).
+  NetworkPolicy network_policy = 4;
+}
+
+message CreateVmResponse {
+  // Assigned VM identifier.
+  string vm_id = 1;
+}
+
+// ---------------------------------------------------------------------------
+// StartVm
+// ---------------------------------------------------------------------------
+
+message StartVmRequest {
+  // Target VM identifier.
+  string vm_id = 1;
+}
+
+message StartVmResponse {}
+
+// ---------------------------------------------------------------------------
+// StopVm
+// ---------------------------------------------------------------------------
+
+message StopVmRequest {
+  // Target VM identifier.
+  string vm_id = 1;
+}
+
+message StopVmResponse {}
+
+// ---------------------------------------------------------------------------
+// SnapshotVm
+// ---------------------------------------------------------------------------
+
+message SnapshotVmRequest {
+  // Target VM identifier.
+  string vm_id = 1;
+}
+
+message SnapshotVmResponse {
+  // Identifier of the created snapshot.
+  string snapshot_id = 1;
+}
+
+// ---------------------------------------------------------------------------
+// RestoreVm
+// ---------------------------------------------------------------------------
+
+message RestoreVmRequest {
+  // Snapshot to restore from.
+  string snapshot_id = 1;
+}
+
+message RestoreVmResponse {
+  // Identifier of the newly restored VM.
+  string vm_id = 1;
+}
+
+// ---------------------------------------------------------------------------
+// GetVmStatus
+// ---------------------------------------------------------------------------
+
+message GetVmStatusRequest {
+  // Target VM identifier.
+  string vm_id = 1;
+}
+
+message GetVmStatusResponse {
+  // VM identifier.
+  string vm_id = 1;
+  // Current lifecycle state.
+  VmState state = 2;
+  // RFC 3339 timestamp of VM creation.
+  string created_at = 3;
+  // Resource allocation for this VM.
+  ResourceSpec resource_spec = 4;
+}
+
+// ---------------------------------------------------------------------------
+// GetVmMetrics
+// ---------------------------------------------------------------------------
+
+message GetVmMetricsRequest {
+  // Target VM identifier.
+  string vm_id = 1;
+}
+
+message GetVmMetricsResponse {
+  // VM identifier.
+  string vm_id = 1;
+  // Current lifecycle state at time of collection.
+  VmState state = 2;
+}
