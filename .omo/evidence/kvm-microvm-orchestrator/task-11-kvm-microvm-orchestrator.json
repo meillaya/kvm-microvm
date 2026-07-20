@@ -1,0 +1,34 @@
+{
+  "task": 11,
+  "title": "Per-VM netns TAP and nftables NAT",
+  "status": "complete",
+  "commit": "d252b6b",
+  "files_changed": [
+    "crates/microvm-isolation/src/net.rs",
+    "crates/microvm-isolation/src/lib.rs"
+  ],
+  "public_api": [
+    "NetConfig",
+    "AddressAllocator",
+    "nft_ruleset",
+    "NetManager",
+    "netns_name",
+    "IFNAMSIZ",
+    "DEFAULT_SUBNET_OCTETS",
+    "DEFAULT_PREFIX_LEN",
+    "DEFAULT_NETNS_ROOT",
+    "NFT_TABLE",
+    "MAX_SLOTS"
+  ],
+  "verification": {
+    "cargo_test": "85 passed; 0 failed (cargo test -p microvm-isolation)",
+    "cargo_fmt": "clean",
+    "cargo_clippy": "clean (--workspace --all-targets -- -D warnings)"
+  },
+  "design_notes": {
+    "determinism": "NetConfig validation, AddressAllocator slot arithmetic, and nft_ruleset generation are pure (no I/O). NetManager filesystem ops take configurable root for unprivileged tests.",
+    "address_scheme": "172.30.0.0/24 default; gateway .1; VMs .2-.254; slot = last_octet - 2",
+    "nft_model": "inet table microvm_nat with postrouting (masquerade) and forward (default-drop, explicit accept) chains. NatOnly restricts masquerade to host subnet; EgressAllowed masquerades to all.",
+    "error_contract": "NetworkSetupError for allocation/namespace failures; InvalidResourceSpec for config validation failures"
+  }
+}
