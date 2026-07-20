@@ -4,6 +4,14 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+# Privileged tests drive a real Firecracker/jailer through the composed
+# [`VmLifecycleService`] on a capable host (KVM, cgroup-v2, TAP/netns). They are
+# excluded from the default (deterministic) test run so CI can run without root,
+# /dev/kvm, or a pinned binary. Enabling this feature enables the privileged
+# lanes of the runtime and isolation crates it composes.
+privileged = ["microvm-firecracker/privileged", "microvm-isolation/privileged"]
+
 [dependencies]
 microvm-types = { path = "../microvm-types" }
 microvm-errors = { path = "../microvm-errors" }
