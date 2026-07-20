@@ -16,6 +16,7 @@ members = [
     "crates/microvm-metrics",
     "crates/microvm-scheduler",
     "crates/microvm-contract-tests",
+    "crates/microvm-cli",
 ]
 
 [workspace.package]

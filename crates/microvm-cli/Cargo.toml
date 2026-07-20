@@ -1,0 +1,29 @@
+[package]
+name = "microvm-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "microvm"
+path = "src/main.rs"
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-oci = { path = "../microvm-oci" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["net", "rt", "macros", "sync", "time", "io-util"] }
+clap = { version = "4", features = ["derive"] }
+libc = { workspace = true }
+
+[dev-dependencies]
+microvm-rest = { path = "../microvm-rest" }
+microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-metrics = { path = "../microvm-metrics" }
+microvm-artifacts = { path = "../microvm-artifacts" }
+async-trait = { workspace = true }
+tempfile = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"] }
