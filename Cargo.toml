@@ -20,6 +20,7 @@ members = [
     "crates/microvm-bench",
     "crates/microvm-demo",
     "crates/microvm-backend-directkvm",
+    "crates/microvm-security-tests",
 ]
 
 [workspace.package]

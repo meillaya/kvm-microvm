@@ -1,0 +1,43 @@
+[package]
+name = "microvm-security-tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Adversarial boundary tests: path/auth/cgroup/network/snapshot/OCI/binary security traps"
+
+# This is a test-only crate: it ships no production code. Every dependency is a
+# dev-dependency consumed by the integration tests under `tests/`. The suites
+# exercise the platform's real security boundaries (artifact path resolver,
+# binary provenance gate, cgroup-v2 hierarchy, peer-credential auth, snapshot
+# integrity/compatibility gate, constrained OCI importer) and assert the typed
+# error each trap produces. No check here is grep-only: every probe drives the
+# production code path and observes its structured rejection.
+[dependencies]
+
+[features]
+# Privileged probes exercise real kernel boundaries (a unified cgroup-v2
+# hierarchy, real network-namespace/nftables inter-VM denial, and a real
+# jailer binary path-symlink rejection). They are excluded from the default
+# (deterministic) test run so CI runs without root, /dev/kvm, /dev/net/tun, a
+# writable /sys/fs/cgroup, or a pinned Firecracker/jailer install.
+privileged = []
+
+[dev-dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-artifacts = { path = "../microvm-artifacts" }
+microvm-isolation = { path = "../microvm-isolation" }
+microvm-snapshots = { path = "../microvm-snapshots" }
+microvm-oci = { path = "../microvm-oci" }
+microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-firecracker = { path = "../microvm-firecracker" }
+microvm-rest = { path = "../microvm-rest" }
+microvm-grpc = { path = "../microvm-grpc" }
+microvm-cli = { path = "../microvm-cli" }
+clap = { version = "4", features = ["derive"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+proptest = { workspace = true }
+tempfile = { workspace = true }
+libc = { workspace = true }
+chrono = { workspace = true }

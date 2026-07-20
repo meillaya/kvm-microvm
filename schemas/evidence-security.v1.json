@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kvm-microvm-orchestrator.local/schemas/evidence-security.v1.json",
+  "title": "security evidence (v1)",
+  "description": "Outcome vocabulary for the adversarial security lane (microvm-security-tests, plan todo 31). Each artifact records one security domain's adversarial probes. A probe drives a real production security boundary (artifact path resolver, binary provenance gate, cgroup-v2 hierarchy, peer-credential auth, snapshot integrity/compatibility gate, constrained OCI importer, or scope-fidelity surface) against a hostile input and records the typed ErrorCode the boundary produced. These artifacts are deterministic (no /dev/kvm, root, or pinned binary required) and are NOT grep-only: every item is the structured rejection a real code path returned. This schema is a security-specific extension of evidence-deterministic.v1.json: it adds per-probe typed-error fields (expected_code/actual_code/trap) so a reviewer can see exactly which rejection each trap produced. `actual_code` is the literal string 'bypass' when the hostile operation unexpectedly succeeded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["class", "schema", "domain", "items", "summary"],
+  "properties": {
+    "class": {
+      "description": "Lane discriminator. Security probes are deterministic.",
+      "const": "security"
+    },
+    "schema": {
+      "description": "Schema identifier embedded by the emitter.",
+      "const": "microvm-security-tests/evidence/v1"
+    },
+    "domain": {
+      "description": "The security domain this artifact covers (e.g. path_security, binary_security, cgroup_security, auth_security, network_security, snapshot_security, oci_security, scope_fidelity, adversarial).",
+      "type": "string",
+      "minLength": 1
+    },
+    "items": {
+      "description": "Per-probe outcomes.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "trap", "expected_code", "actual_code", "pass", "duration_ms"],
+        "properties": {
+          "name": { "description": "Stable probe identifier.", "type": "string", "minLength": 1 },
+          "trap": { "description": "The trap class exercised (e.g. path:symlink_escape, binary:dynamic_binary).", "type": "string", "minLength": 1 },
+          "expected_code": { "description": "The stable ErrorCode the boundary must produce to be secure.", "type": "string", "minLength": 1 },
+          "actual_code": { "description": "The stable ErrorCode actually produced, or the literal 'bypass' when the hostile operation succeeded.", "type": "string", "minLength": 1 },
+          "pass": { "description": "True iff actual_code == expected_code.", "type": "boolean" },
+          "duration_ms": { "description": "Wall-clock duration of the probe in milliseconds.", "type": "integer", "minimum": 0 },
+          "detail": { "description": "Optional free-form evidence detail.", "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "description": "Aggregate counts. total == items.length; pass + fail == total.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "pass", "fail"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

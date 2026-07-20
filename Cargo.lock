@@ -927,6 +927,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-security-tests"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "libc",
+ "microvm-artifacts",
+ "microvm-cli",
+ "microvm-errors",
+ "microvm-firecracker",
+ "microvm-grpc",
+ "microvm-isolation",
+ "microvm-lifecycle",
+ "microvm-oci",
+ "microvm-rest",
+ "microvm-snapshots",
+ "microvm-types",
+ "proptest",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "microvm-service"
 version = "0.1.0"
 dependencies = [
