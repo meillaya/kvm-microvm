@@ -1,0 +1,11 @@
+{
+  // Prose-friendly markdownlint config for operator docs, runbooks, and ADRs.
+  "default": true,
+  // Long prose lines wrap naturally; do not enforce a hard line length.
+  "MD013": false,
+  // ADRs and runbooks legitimately reuse headings like "Context"/"Consequences";
+  // only flag duplicate *sibling* headings.
+  "MD024": { "siblings_only": true },
+  // Allow the occasional inline HTML comment / anchor in prose.
+  "MD033": false
+}

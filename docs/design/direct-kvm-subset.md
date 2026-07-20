@@ -21,7 +21,7 @@ behind the `direct-kvm` Cargo feature (off by default) and is labelled
 ## Supported Host Architecture
 
 | Property | Value |
-|----------|-------|
+| ---------- | ------- |
 | Architecture | `x86_64` only |
 | KVM API version | 12 (stable ABI) |
 | Host page size | 4 KiB |
@@ -35,7 +35,7 @@ within this subset.
 ## vCPU Configuration
 
 | Property | Value |
-|----------|-------|
+| ---------- | ------- |
 | vCPU count | Exactly **1** |
 | Initial RIP | `0x0000_0000_0000_0000` (real-mode reset vector) |
 | Initial RFLAGS | `0x0000_0000_0000_0002` (bit 1 always set) |
@@ -50,7 +50,7 @@ Multi-vCPU is explicitly excluded.
 One contiguous memory slot, identity-mapped:
 
 | Region | Guest Physical Address | Size | Purpose |
-|--------|----------------------|------|---------|
+| -------- | ---------------------- | ------ | --------- |
 | RAM | `0x0000_0000_0000_0000` | 16 MiB | Guest code + data |
 | Serial MMIO | `0x0000_0000_03F8` | 1 byte (port I/O) | 16550 UART data register |
 
@@ -73,7 +73,7 @@ guest workload used for validation.
 The backend handles exactly these exit reasons and no others:
 
 | KVM Exit Reason | Handling |
-|-----------------|----------|
+| ----------------- | ---------- |
 | `KVM_EXIT_IO` (port `0x3F8`, direction OUT, size 1) | Record the byte as serial output; inject nothing; resume. |
 | `KVM_EXIT_HLT` | Stop the vCPU loop; transition to `Stopped`. |
 | `KVM_EXIT_FAIL_ENTRY` | Record `hardware_entry_failure_reason`; transition to `Failed`. |
@@ -88,7 +88,7 @@ beyond the single serial port is performed.
 ## Stop Behavior
 
 | Trigger | Action |
-|---------|--------|
+| --------- | -------- |
 | Guest executes `HLT` | vCPU loop exits; state → `Stopped`. |
 | Host calls `stop()` | Sets a stop flag checked between KVM_RUN iterations; state → `Stopped`. |
 | Unexpected exit / entry failure | vCPU loop exits; state → `Failed`. |
