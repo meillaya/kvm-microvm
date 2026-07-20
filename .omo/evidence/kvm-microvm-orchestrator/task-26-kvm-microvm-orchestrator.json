@@ -1,0 +1,51 @@
+{
+  "task": 26,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Add the microvm CLI and client-side lifecycle commands",
+  "commit": "86f4858d7d13345161f03a0e2ded06d394f83763",
+  "files_committed": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates/microvm-cli/Cargo.toml",
+    "crates/microvm-cli/src/main.rs",
+    "crates/microvm-cli/src/lib.rs",
+    "crates/microvm-cli/src/cli.rs",
+    "crates/microvm-cli/src/exit_code.rs",
+    "crates/microvm-cli/src/client.rs",
+    "crates/microvm-cli/src/error.rs",
+    "crates/microvm-cli/src/run.rs",
+    "crates/microvm-cli/tests/cli_tests.rs",
+    "crates/microvm-cli/tests/lifecycle.rs"
+  ],
+  "test_results": {
+    "command": "cargo test -p microvm-cli",
+    "exit_code": 0,
+    "output_excerpt": "lib unit: 45 passed (exit_code 5, error 9, client 12, cli 13, run 5, lib 1) | cli_tests integration: 17 passed | lifecycle integration: 7 passed | 69 total, 0 failed"
+  },
+  "verification": {
+    "cargo_fmt": "pass (cargo fmt --all --check exit 0)",
+    "cargo_clippy": "pass (cargo clippy --workspace --all-targets -- -D warnings exit 0)",
+    "cargo_test": "pass (cargo test -p microvm-cli: 69 tests, 0 failures; cargo test --workspace: 0 failures across all test binaries, confirming the additive workspace member broke nothing)"
+  },
+  "acceptance_criteria": {
+    "every_command_maps_to_a_service_operation_and_returns_documented_exit_codes": "cli.rs Command enum has create/start/stop/snapshot/restore/status/metrics/run; lib.rs execute() maps each to one or more client.rs REST calls (POST /vms, POST /vms/{id}/start, POST /vms/{id}/stop, POST /vms/{id}/snapshot, POST /snapshots/{id}/restore, GET /vms/{id}, GET /vms/{id}/metrics) and returns (ExitCode, output). ExitCode::from_error_code maps all 16 platform ErrorCodes to the six stable codes: invalid_id/invalid_resource_spec->2 (usage), permission_denied->5, artifact_not_found->3, local_artifact_required->4, everything else->1 (general). Tests: exit_code::specific_error_code_mappings, exit_code::all_error_codes_map_to_an_exit_code, lifecycle::mocked_complete_lifecycle_succeeds drives create->start->status->snapshot->restore->metrics->stop and asserts exit 0 at each step.",
+    "no_tcp_rootless_mount_capability_flags_exist": "cli.rs exposes only --socket (global), --image, --vcpu, --memory-mib, --disk-mib, --network-policy, --vm-id, --snapshot-id. tests/cli_tests.rs::no_forbidden_flags_in_top_level_help and no_forbidden_flags_in_any_subcommand_help scan every rendered --help for --tcp/--rootless/--mount/--cap-add/--registry/--pull/--host and assert absence; forbidden_flags_are_rejected_at_parse_time and create_has_no_mount_or_cap_add_flag assert supplying those flags is a parse error (exit 2). Manual scan of all subcommand --help output confirms NO FORBIDDEN FLAGS.",
+    "wrong_owner_and_missing_artifact_errors_surfaced_without_leaking_host_paths": "client.rs validate_socket() stats the socket and compares owner UID to getuid(); a mismatch returns CliError::wrong_owner(expected,actual) whose message contains only UIDs, never the path. A missing socket returns CliError::socket_not_found() with a generic message. error.rs sanitize_message() redacts absolute Unix paths (/<component>/...) from any service error message to <path>. Tests: error::cli_error_wrong_owner_does_not_leak_path, error::cli_error_socket_not_found_does_not_leak_path, error::cli_error_from_microvm_error_sanitizes, error::sanitize_redacts_absolute_paths/multiple_paths, client::client_validate_socket_missing_returns_not_found, lifecycle::client_to_missing_socket_is_not_found_exit_3 (asserts message does not contain the /tmp path). Manual run: status against a missing socket prints '[artifact_not_found] service socket not found; is the microvm daemon running?' with no path.",
+    "cli_can_execute_a_mocked_complete_lifecycle": "tests/lifecycle.rs spins up a real microvm_rest::RestServer over a temp Unix socket backed by an in-memory MockService implementing LifecycleService, then drives microvm_cli::execute through create->start->status(running)->snapshot->restore->metrics->stop->status(stopped), asserting ExitCode::Success and the expected output at each step (mocked_complete_lifecycle_succeeds). run_local_layout_imports_and_runs builds a real local OCI-like layout and runs `microvm run` end-to-end through the constrained importer + mock service. No /dev/kvm, no Firecracker, no TCP, no network egress.",
+    "microvm_run_uses_constrained_import_not_oci_runtime": "cli.rs Run subcommand sets long_about = microvm_oci::RUN_LONG_ABOUT (the canonical constrained-import help from todo 25). run.rs execute_run validates the local reference and imports via microvm_oci::OciImporter before any socket contact; remote/tag-only references fail with local_artifact_required (exit 4) before I/O. Tests: cli_tests::run_help_describes_constrained_import, run_help_disclaims_oci_runtime_compatibility (asserts 'not an oci runtime' present and no affirmative OCI-runtime claim), run_help_documents_rejected_inputs, run_help_matches_oci_help_source_of_truth; run::run_rejects_remote_reference_without_io (nginx:latest), run_rejects_https/docker/digest-registry references. Manual run: `microvm run --image nginx:latest` exits 4 with [local_artifact_required] and no network activity."
+  },
+  "qa_scenario": {
+    "happy": "lifecycle::mocked_complete_lifecycle_succeeds drives `create --image sha256:<64hex> --socket <sock> --vcpu 2 --memory-mib 512` (mirrors the plan's `cargo run -p microvm-cli -- create --image sha256:<digest> --socket runtime/api/rest.sock`) against a real RestServer+MockService and asserts exit 0 and 'created vm <id>'; the lifecycle then proceeds through start/status/snapshot/restore/metrics/stop, all exit 0. run_local_layout_imports_and_runs confirms `run --image <local-layout>` imports a digest-pinned layout and creates+starts a VM (exit 0).",
+    "failure": "lifecycle::run_with_remote_tag_is_local_artifact_required_exit_4_no_network runs `microvm run --image nginx:latest` and asserts ExitCode::LocalArtifactRequired (4) with 'local_artifact_required' in the output; the reference is rejected by microvm_oci reference validation before any socket contact, so no network activity occurs. create_with_remote_image_is_local_artifact_required_exit_4 confirms `create --image docker://nginx:latest` also exits 4. status_of_missing_vm_is_not_found_exit_3 and stop_of_missing_vm_is_not_found_exit_3 confirm exit 3 for absent VMs; client_to_missing_socket_is_not_found_exit_3 confirms exit 3 (no path leak) for an absent socket. Manual binary run reproduces: run --image nginx:latest -> EXIT=4, status with missing socket -> EXIT=3."
+  },
+  "key_types": {
+    "Cli": "clap derive Parser: global --socket <PATH> (default /run/microvm/api/rest.sock) plus a Command subcommand. Exposes create/start/stop/snapshot/restore/status/metrics/run and no forbidden flags. The Run subcommand's long_about is sourced from microvm_oci::RUN_LONG_ABOUT. try_parse errors map to exit code 2 (usage).",
+    "Command": "clap Subcommand enum: Create{image,vcpu,memory_mib,disk_mib,network_policy}, Start/Stop/Snapshot/Status/Metrics{vm_id}, Restore{snapshot_id}, Run{image}. Each variant maps to one or more REST service operations in lib.rs::execute.",
+    "ExitCode": "Stable #[repr(i32)] enum: Success=0, GeneralError=1, UsageError=2, NotFound=3, LocalArtifactRequired=4, PermissionDenied=5. from_error_code maps every platform ErrorCode deterministically (invalid_id/invalid_resource_spec->2, permission_denied->5, artifact_not_found->3, local_artifact_required->4, all others->1). to_process_exit_code converts to std::process::ExitCode. Numeric values are a stable contract.",
+    "Client": "REST/JSON client over a filesystem Unix socket (tokio UnixStream + hand-rolled HTTP/1.1, Connection: close, one request per call). No TCP. validate_socket() stats the socket and refuses a wrong-owner (UID != getuid) or missing socket before connecting. Methods create_vm/start_vm/stop_vm/snapshot_vm/restore_vm/get_status/get_metrics map 1:1 to the OpenAPI routes; non-2xx responses are decoded from the platform ErrorResponse body into a CliError with the matching exit code and a sanitized message.",
+    "CliError": "CLI error carrying a stable ExitCode, an optional platform ErrorCode, and a host-path-sanitized message. from_microvm_error maps a MicrovmError to the right exit code and sanitizes paths; wrong_owner/socket_not_found/local_artifact_required constructors never include host paths. Implements Display + std::error::Error.",
+    "sanitize_message": "Redacts absolute Unix paths (/<component>/...) in service error messages to <path>, preventing host-path leakage in CLI output while preserving non-path slashes and plain text.",
+    "validate_create_image": "Validates a `create --image` reference: accepts only sha256:<64 hex>; rejects remote URIs/tag-only/registry-digest refs with local_artifact_required (exit 4) and malformed sha256 digests with usage (exit 2).",
+    "run::execute_run": "Constrained `run` pipeline: import_local_image validates the local reference and imports via microvm_oci::OciImporter (verifying every layer digest, refusing forbidden knobs) with no network I/O, then creates and starts a VM through the Client. Remote/tag-only references fail with exit 4 before any socket contact."
+  }
+}

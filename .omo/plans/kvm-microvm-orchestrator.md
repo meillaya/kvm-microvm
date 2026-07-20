@@ -295,7 +295,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test -p microvm-oci --test local_import`; failure import a manifest containing `mounts`, `capabilities`, `privileged`, or `https://` and assert rejection with no artifact/VM side effect. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-25-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(interfaces): add constrained local OCI importer`
 
-- [~] 26. Add the `microvm` CLI and client-side lifecycle commands
+- [x] 26. Add the `microvm` CLI and client-side lifecycle commands
   What to do / Must NOT do: Add `microvm create/start/stop/snapshot/restore/status/metrics/run` commands using the REST or gRPC Unix sockets and stable exit codes. Must not add `--tcp`, `--rootless`, `--mount`, `--cap-add`, or remote registry convenience flags.
   Parallelization: Wave 5 | Blocked by: 8, 15-18, 25 | Blocks: 27-30
   References (executor has NO interview context - be exhaustive): Draft scope `.omo/drafts/kvm-microvm-orchestrator.md:52-71,74-79`; OpenAPI/proto todo 8; CLI local OCI todo 25.
