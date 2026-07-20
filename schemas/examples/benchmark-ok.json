@@ -10,6 +10,17 @@
     "cgroup_v2": true,
     "nested": false
   },
+  "workload": {
+    "name": "snapshot-restore",
+    "payload_sha256": "deb7bcf55d07e26d52bf0d6fd8b562401dfd6022e66d1e5ec5001dc916f10888",
+    "kernel_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "rootfs_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "image_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "runtime_versions": {
+    "firecracker": "1.16.1",
+    "docker": "27.0.0"
+  },
   "benchmarks": [
     {
       "name": "snapshot_restore",
@@ -24,7 +35,8 @@
         "p95": 192.1,
         "p99": 207.6,
         "min_ms": 152.4,
-        "max_ms": 211.8
+        "max_ms": 211.8,
+        "failures": 0
       },
       "warm": {
         "samples": 100,
@@ -32,7 +44,8 @@
         "p95": 22.4,
         "p99": 28.9,
         "min_ms": 11.2,
-        "max_ms": 31.5
+        "max_ms": 31.5,
+        "failures": 0
       },
       "blocked_reason": null
     },
@@ -49,7 +62,8 @@
         "p95": 1184.7,
         "p99": 1322.5,
         "min_ms": 871.0,
-        "max_ms": 1341.9
+        "max_ms": 1341.9,
+        "failures": 0
       },
       "warm": {
         "samples": 0,
@@ -57,7 +71,8 @@
         "p95": null,
         "p99": null,
         "min_ms": null,
-        "max_ms": null
+        "max_ms": null,
+        "failures": 0
       },
       "blocked_reason": null
     }

@@ -1,0 +1,36 @@
+[package]
+name = "microvm-bench"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Reproducible snapshot/boot benchmark harness and Docker comparison with distribution evidence (never a pass/fail gate)"
+
+[[bin]]
+name = "microvm-bench"
+path = "src/main.rs"
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-artifacts = { path = "../microvm-artifacts" }
+microvm-metrics = { path = "../microvm-metrics" }
+microvm-firecracker = { path = "../microvm-firecracker" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "net", "time", "io-util"] }
+async-trait = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+libc = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+
+[features]
+# Gates privileged integration tests that require /dev/kvm, a running Docker
+# daemon, and installed firecracker/jailer binaries. The runtime code itself is
+# always compiled; it fails closed (blocked lane, exit 77) when prerequisites
+# are absent, so the deterministic test suite never needs this feature.
+privileged = []

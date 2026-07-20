@@ -5,10 +5,18 @@
   "description": "Outcome vocabulary for the benchmark lane. Benchmark artifacts publish p50/p95/p99 distributions under cold and warm conditions with full host metadata. Benchmark results are NEVER a binary pass/fail gate: a 'pass' field on a benchmark would encode a hidden SLA and obscure the actual distribution. This schema forbids any 'pass' field at every level via additionalProperties:false and an explicit not-required rule. Use blocked_reason on the benchmark item to record unavailability; downstream reviewers compare the recorded distribution against the declared target_ms, not against a boolean.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["class", "host_metadata", "benchmarks"],
+  "required": [
+    "class",
+    "host_metadata",
+    "benchmarks",
+    "workload",
+    "runtime_versions"
+  ],
   "not": {
     "description": "Fail-closed rule: a benchmark artifact MUST NOT carry a top-level 'pass' field. additionalProperties:false already rejects unknown top-level keys; this not-required clause is kept explicit so the prohibition is greppable and survives a future refactor that loosens additionalProperties.",
-    "required": ["pass"]
+    "required": [
+      "pass"
+    ]
   },
   "properties": {
     "class": {
@@ -47,7 +55,11 @@
         "page_cache_state": {
           "description": "Page-cache state at the start of each measurement. 'cold' means caches were dropped between samples (drop_caches=3), 'warm' means caches were primed with the workload, 'mixed' means the bench described its own policy in artifacts. Per-sample state belongs in benchmark items.",
           "type": "string",
-          "enum": ["cold", "warm", "mixed"]
+          "enum": [
+            "cold",
+            "warm",
+            "mixed"
+          ]
         },
         "memory_size_mib": {
           "description": "Total host RAM in MiB. Used to contextualize VM memory and to verify the bench respected host limits.",
@@ -75,10 +87,22 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "target_ms", "unit", "p50", "p95", "p99", "cold", "warm", "blocked_reason"],
+        "required": [
+          "name",
+          "target_ms",
+          "unit",
+          "p50",
+          "p95",
+          "p99",
+          "cold",
+          "warm",
+          "blocked_reason"
+        ],
         "not": {
           "description": "Fail-closed rule: a benchmark item MUST NOT carry a 'pass' field. Mirrors the top-level rule so the prohibition is greppable at every nesting level where a contributor might be tempted to add one.",
-          "required": ["pass"]
+          "required": [
+            "pass"
+          ]
         },
         "properties": {
           "name": {
@@ -94,63 +118,220 @@
           "unit": {
             "description": "Unit of the recorded percentiles and of target_ms. Typically 'ms' for latency or 'rps' for throughput. Reserved units are listed for tooling convenience.",
             "type": "string",
-            "enum": ["ms", "us", "s", "rps", "B/s", "KiB/s", "MiB/s"]
+            "enum": [
+              "ms",
+              "us",
+              "s",
+              "rps",
+              "B/s",
+              "KiB/s",
+              "MiB/s"
+            ]
           },
           "p50": {
             "description": "50th percentile of the recorded samples in 'unit'. Nullable when the benchmark was blocked (see blocked_reason).",
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0
           },
           "p95": {
             "description": "95th percentile of the recorded samples in 'unit'. Nullable when the benchmark was blocked.",
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0
           },
           "p99": {
             "description": "99th percentile of the recorded samples in 'unit'. Nullable when the benchmark was blocked.",
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0
           },
           "cold": {
             "description": "Cold-condition distribution. 'cold' means caches were dropped before each sample (or per the harness policy recorded in artifacts). Required even when the benchmark is blocked; in that case samples=0 and the percentiles are null.",
             "type": "object",
             "additionalProperties": false,
-            "required": ["samples", "p50", "p95", "p99", "min_ms", "max_ms"],
+            "required": [
+              "samples",
+              "p50",
+              "p95",
+              "p99",
+              "min_ms",
+              "max_ms"
+            ],
             "properties": {
               "samples": {
                 "description": "Number of cold-condition samples collected. The plan requires N>=100 when the bench is unblocked; samples=0 indicates a blocked or skipped cold phase.",
                 "type": "integer",
                 "minimum": 0
               },
-              "p50": { "type": ["number", "null"], "minimum": 0 },
-              "p95": { "type": ["number", "null"], "minimum": 0 },
-              "p99": { "type": ["number", "null"], "minimum": 0 },
-              "min_ms": { "type": ["number", "null"], "minimum": 0 },
-              "max_ms": { "type": ["number", "null"], "minimum": 0 }
+              "p50": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "p95": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "p99": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "min_ms": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "max_ms": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "failures": {
+                "description": "Number of failed sample attempts that were discarded from the statistics (requirement 6). Failed attempts are recorded here and NEVER counted in `samples` or the percentiles \u2014 a failure is visible, not silently dropped or zero-filled. Optional for backward compatibility with artifacts that predate failure accounting.",
+                "type": "integer",
+                "minimum": 0
+              }
             }
           },
           "warm": {
             "description": "Warm-condition distribution. 'warm' means caches and any pre-loaded artifact are reused across samples; record samples>=100 when unblocked.",
             "type": "object",
             "additionalProperties": false,
-            "required": ["samples", "p50", "p95", "p99", "min_ms", "max_ms"],
+            "required": [
+              "samples",
+              "p50",
+              "p95",
+              "p99",
+              "min_ms",
+              "max_ms"
+            ],
             "properties": {
               "samples": {
                 "description": "Number of warm-condition samples collected.",
                 "type": "integer",
                 "minimum": 0
               },
-              "p50": { "type": ["number", "null"], "minimum": 0 },
-              "p95": { "type": ["number", "null"], "minimum": 0 },
-              "p99": { "type": ["number", "null"], "minimum": 0 },
-              "min_ms": { "type": ["number", "null"], "minimum": 0 },
-              "max_ms": { "type": ["number", "null"], "minimum": 0 }
+              "p50": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "p95": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "p99": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "min_ms": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "max_ms": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "failures": {
+                "description": "Number of failed sample attempts that were discarded from the statistics (requirement 6). Failed attempts are recorded here and NEVER counted in `samples` or the percentiles \u2014 a failure is visible, not silently dropped or zero-filled. Optional for backward compatibility with artifacts that predate failure accounting.",
+                "type": "integer",
+                "minimum": 0
+              }
             }
           },
           "blocked_reason": {
             "description": "Stable token explaining why this benchmark could not produce real samples (e.g. 'kvm_unavailable', 'docker_missing', 'page_cache_drop_unsupported'), or null when the bench ran. Pair this with cold.samples=0 and warm.samples=0 when blocked; do not fabricate samples.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
+        }
+      }
+    },
+    "workload": {
+      "description": "The single pinned workload both lanes measure (requirements 1, 7, 9). `payload_sha256` is the ONE content hash the Firecracker and Docker lanes share, so the comparison is always between identical artifact content; comparing different images is explicitly not proof of superiority. Optional kernel/rootfs/image hashes further pin the VM- and Docker-side artifacts so a reviewer can reproduce the exact bytes measured.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "payload_sha256"
+      ],
+      "properties": {
+        "name": {
+          "description": "Stable workload identifier (e.g. 'snapshot-restore', 'warm-http').",
+          "type": "string",
+          "minLength": 1
+        },
+        "payload_sha256": {
+          "description": "The pinned payload hash shared by the Docker and VM lanes.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "kernel_sha256": {
+          "description": "Guest kernel image hash (VM lane), when applicable.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "rootfs_sha256": {
+          "description": "Root filesystem image hash (VM lane), when applicable.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "image_sha256": {
+          "description": "Container/OCI image hash (Docker lane), when applicable. Must be derived from the same `payload_sha256` content as the VM rootfs.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "runtime_versions": {
+      "description": "Firecracker and Docker Engine versions at benchmark time (requirement 8). The host kernel version is `host_metadata.kernel`; together these give the full kernel/Firecracker/Docker version set. A field is omitted when that runtime is unavailable (e.g. a blocked lane), so an empty object is valid when both lanes are blocked.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "firecracker": {
+          "description": "Firecracker VMM version (`firecracker --version`); omitted if absent.",
+          "type": "string",
+          "minLength": 1
+        },
+        "docker": {
+          "description": "Docker Engine version (`docker version`); omitted if the daemon is down.",
+          "type": "string",
+          "minLength": 1
         }
       }
     }
