@@ -351,7 +351,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `devenv shell -- markdownlint-cli2 README.md docs/**/*.md`; failure inject a broken source link or unresolved decision marker and assert the docs gate exits 1. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-32-kvm-microvm-orchestrator.json`.
   Commit: Y | `docs(project): add architecture and operator runbooks`
 
-- [~] 33. Aggregate evidence and enforce deterministic/privileged/benchmark outcome semantics
+- [x] 33. Aggregate evidence and enforce deterministic/privileged/benchmark outcome semantics
   What to do / Must NOT do: Add the evidence reducer that reads all task artifacts, validates schemas, counts deterministic failures, reports privileged blocks separately, and publishes benchmark distributions without boolean pass/fail. Must not promote blocked host tests to pass or fail solely because a target was missed.
   Parallelization: Wave 6 | Blocked by: 3, 4, 19, 21-24, 27-32 | Blocks: 34
   References (executor has NO interview context - be exhaustive): Evidence schema todo 3; Draft evidence/benchmark requirements `.omo/drafts/kvm-microvm-orchestrator.md:25,28,48,71,77`; JSON Schema spec.
