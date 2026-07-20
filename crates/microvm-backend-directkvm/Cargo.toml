@@ -8,10 +8,19 @@ description = "Educational direct-KVM microvm backend contract types (NOT produc
 [features]
 # Off by default. Gates the real KVM ioctl path so the workspace builds
 # without /dev/kvm. Contract types and validation are always available.
-direct-kvm = []
+direct-kvm = ["dep:kvm-ioctls", "dep:kvm-bindings", "dep:libc"]
+# Gates privileged integration tests that require a real /dev/kvm on a
+# capable x86_64 host. Implies direct-kvm. Never enabled in the default
+# workspace build or in CI without host KVM access.
+privileged = ["direct-kvm"]
 
 [dependencies]
 serde = { workspace = true }
+# Optional: only linked when the direct-kvm feature is enabled. The default
+# build never compiles or links the KVM ioctl path.
+kvm-ioctls = { version = "=0.25.0", optional = true }
+kvm-bindings = { version = "0.14", optional = true }
+libc = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

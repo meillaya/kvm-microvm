@@ -15,7 +15,12 @@
 //!
 //! The `direct-kvm` Cargo feature is **off by default**. Contract types and
 //! validation are always available without the feature. The feature gates the
-//! real KVM ioctl path (not implemented in this educational subset crate).
+//! real KVM ioctl path implemented in the [`runner`] module: an API-version /
+//! capability probe, one identity-mapped 16 MiB memory slot, one vCPU programmed
+//! into 64-bit long mode, a bounded `KVM_RUN` loop feeding the pure exit
+//! dispatcher, and clean shutdown. The default workspace build never compiles,
+//! links, or launches this path, and it is never presented as a production VMM
+//! or reported using TCG/QEMU/Firecracker as KVM evidence.
 //!
 //! # Determinism
 //!
@@ -29,6 +34,42 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+// ---------------------------------------------------------------------------
+// Subset implementation modules
+// ---------------------------------------------------------------------------
+//
+// The pure modules (serial, outcome, dispatch, probe validation, guest layout)
+// are always compiled and deterministically tested without `/dev/kvm`. The
+// `runner` module is the sole KVM-ioctl surface and is gated behind the
+// `direct-kvm` feature so the default build never links it.
+
+mod dispatch;
+mod outcome;
+mod probe;
+mod serial;
+
+/// The tiny marker guest and its x86_64 long-mode boot layout.
+pub mod guest;
+
+#[cfg(feature = "direct-kvm")]
+pub mod runner;
+
+pub use dispatch::{DispatchAction, ExitDispatcher, GuestExit};
+pub use guest::{guest_code, write_boot_layout};
+pub use outcome::{BlockedReason, FailureReason, RunOutcome, StopReason};
+pub use probe::{
+    probe_blocked_outcome, validate_api_version, validate_capabilities, ProbeError, ProbeReport,
+    DEFAULT_KVM_DEVICE,
+};
+pub use serial::SerialOutput;
+
+#[cfg(feature = "direct-kvm")]
+pub use probe::open_and_probe;
+#[cfg(feature = "direct-kvm")]
+pub use runner::{
+    blocked_reason_for_device, run_subset_boot, run_subset_boot_at, VmRunner, MAX_RUN_ITERATIONS,
+};
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -570,10 +611,19 @@ mod tests {
 
     // -- Feature gate -------------------------------------------------------
 
+    // The default build (no features) must not enable the KVM ioctl path.
     #[test]
+    #[cfg(not(feature = "direct-kvm"))]
     fn feature_gate_is_off_by_default() {
         // In the default test run (--no-default-features), the feature must be off.
         assert!(!direct_kvm_feature_enabled());
+    }
+
+    // When the feature is explicitly enabled, the marker reflects that.
+    #[test]
+    #[cfg(feature = "direct-kvm")]
+    fn feature_gate_is_on_when_enabled() {
+        assert!(direct_kvm_feature_enabled());
     }
 
     // -- Educational label --------------------------------------------------
