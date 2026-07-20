@@ -33,6 +33,7 @@
 //! [`ErrorCode::CgroupUnavailable`]: microvm_errors::ErrorCode::CgroupUnavailable
 //! [`ErrorCode::InvalidResourceSpec`]: microvm_errors::ErrorCode::InvalidResourceSpec
 
+pub mod cleanup;
 pub mod firecracker;
 pub mod manager;
 pub mod net;
@@ -52,6 +53,11 @@ pub use spec::{
     DEFAULT_CPU_PERIOD_US, DEFAULT_MEMORY_SWAP_MAX_BYTES,
 };
 
+pub use cleanup::{
+    CleanupAction, CleanupBackend, CleanupManager, CleanupOutcome, CleanupResourceKind, LeakRecord,
+    OrphanReconciler, OrphanRecord, RealCleanupBackend, ReconcileOutcome, RecordingCleanupBackend,
+    ResourceRecord, DEFAULT_QUARANTINE_DIR, DEFAULT_STATE_DIR, NETNS_PREFIX, NFT_TABLE_PREFIX,
+};
 pub use firecracker::{
     binary_contains_version, parse_elf_form, parse_seccomp_mode, pinned_firecracker, pinned_jailer,
     sha256_hex, verify_seccomp_status, BinaryManifest, BinaryVerifier, ElfForm, ElfMachine,
