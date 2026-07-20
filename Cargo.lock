@@ -707,6 +707,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-scheduler"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "microvm-errors",
+ "microvm-metrics",
+ "microvm-types",
+ "proptest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "microvm-service"
 version = "0.1.0"
 dependencies = [

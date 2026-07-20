@@ -90,7 +90,7 @@ macro_rules! define_id {
         $name:ident
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+        #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         #[serde(try_from = "String", into = "String")]
         pub struct $name(String);
 
@@ -361,6 +361,21 @@ mod tests {
         let id = VmId::new("vm-001").unwrap();
         assert_eq!(id.as_str(), "vm-001");
         assert_eq!(id.to_string(), "vm-001");
+    }
+
+    #[test]
+    fn ids_are_orderable_and_key_ordered_maps() {
+        // IDs derive Ord so they can key deterministic ordered collections
+        // (e.g. the scheduler's placement ledger). Ordering is lexicographic
+        // over the validated string form.
+        let a = VmId::new("vm-a").unwrap();
+        let b = VmId::new("vm-b").unwrap();
+        assert!(a < b);
+        let mut map = std::collections::BTreeMap::new();
+        map.insert(b.clone(), 2);
+        map.insert(a.clone(), 1);
+        let keys: Vec<&VmId> = map.keys().collect();
+        assert_eq!(keys, vec![&a, &b]);
     }
 
     // -- ResourceSpec tests -------------------------------------------------

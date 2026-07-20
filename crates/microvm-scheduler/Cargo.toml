@@ -1,0 +1,17 @@
+[package]
+name = "microvm-scheduler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Deterministic core-aware first-fit-decreasing bin-packing scheduler with admission control"
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-metrics = { path = "../microvm-metrics" }
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+proptest = { workspace = true }
+chrono = { workspace = true }
