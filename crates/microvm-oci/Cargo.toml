@@ -1,0 +1,19 @@
+[package]
+name = "microvm-oci"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-artifacts = { path = "../microvm-artifacts" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-artifacts = { path = "../microvm-artifacts" }
+serde_json = { workspace = true }
+tempfile = { workspace = true }

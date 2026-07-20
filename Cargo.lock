@@ -686,6 +686,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-oci"
+version = "0.1.0"
+dependencies = [
+ "microvm-artifacts",
+ "microvm-errors",
+ "microvm-types",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "microvm-rest"
 version = "0.1.0"
 dependencies = [

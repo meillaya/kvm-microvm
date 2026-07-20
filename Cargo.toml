@@ -6,6 +6,7 @@ members = [
     "crates/microvm-lifecycle",
     "crates/microvm-transport-contract",
     "crates/microvm-artifacts",
+    "crates/microvm-oci",
     "crates/microvm-isolation",
     "crates/microvm-firecracker",
     "crates/microvm-service",
