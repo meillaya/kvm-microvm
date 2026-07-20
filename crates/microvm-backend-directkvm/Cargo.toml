@@ -1,0 +1,17 @@
+[package]
+name = "microvm-backend-directkvm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Educational direct-KVM microvm backend contract types (NOT production)"
+
+[features]
+# Off by default. Gates the real KVM ioctl path so the workspace builds
+# without /dev/kvm. Contract types and validation are always available.
+direct-kvm = []
+
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

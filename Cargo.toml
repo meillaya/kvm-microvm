@@ -19,6 +19,7 @@ members = [
     "crates/microvm-cli",
     "crates/microvm-bench",
     "crates/microvm-demo",
+    "crates/microvm-backend-directkvm",
 ]
 
 [workspace.package]

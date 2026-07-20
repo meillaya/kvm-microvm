@@ -675,6 +675,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-backend-directkvm"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "microvm-bench"
 version = "0.1.0"
 dependencies = [
