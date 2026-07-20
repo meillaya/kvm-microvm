@@ -32,10 +32,15 @@
 
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+pub mod builder;
 pub mod digest;
 pub mod path;
 pub mod store;
 
+pub use builder::{
+    ArtifactRecord, BuildOutput, GuestArch, ImageBuilder, ImageManifest, MediaKind, SourceKind,
+    SourceProvenance, IMAGE_MANIFEST_VERSION, KERNEL_RELPATH, MANIFEST_RELPATH, ROOTFS_RELPATH,
+};
 pub use digest::{compute_sha256, verify_sha256, Digest};
 pub use path::{validate_relative_path, PathResolver};
 pub use store::{Artifact, ArtifactManifest, ArtifactStore, ManifestEntry};

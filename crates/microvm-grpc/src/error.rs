@@ -106,6 +106,7 @@ pub fn error_code_to_grpc(code: ErrorCode) -> Code {
         ErrorCode::DigestMismatch => Code::InvalidArgument,
         ErrorCode::PathEscape => Code::InvalidArgument,
         ErrorCode::BinaryProvenanceError => Code::InvalidArgument,
+        ErrorCode::LocalArtifactRequired => Code::InvalidArgument,
         ErrorCode::CgroupUnavailable => Code::Internal,
         ErrorCode::NetworkSetupError => Code::Internal,
         ErrorCode::ProcessSpawnError => Code::Internal,
@@ -175,7 +176,7 @@ mod tests {
         for code in ErrorCode::all() {
             let _ = error_code_to_grpc(*code);
         }
-        assert_eq!(ErrorCode::all().len(), 15);
+        assert_eq!(ErrorCode::all().len(), 16);
     }
 
     #[test]

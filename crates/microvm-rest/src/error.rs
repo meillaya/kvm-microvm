@@ -120,6 +120,7 @@ impl ErrorBody {
 /// | `digest_mismatch` | 400 |
 /// | `path_escape` | 400 |
 /// | `binary_provenance_error` | 400 |
+/// | `local_artifact_required` | 400 |
 /// | `cgroup_unavailable` | 500 |
 /// | `network_setup_error` | 500 |
 /// | `process_spawn_error` | 500 |
@@ -137,6 +138,7 @@ pub fn error_to_http_status(code: ErrorCode) -> HttpStatus {
         ErrorCode::DigestMismatch => HttpStatus::BadRequest,
         ErrorCode::PathEscape => HttpStatus::BadRequest,
         ErrorCode::BinaryProvenanceError => HttpStatus::BadRequest,
+        ErrorCode::LocalArtifactRequired => HttpStatus::BadRequest,
         ErrorCode::CgroupUnavailable => HttpStatus::InternalError,
         ErrorCode::NetworkSetupError => HttpStatus::InternalError,
         ErrorCode::ProcessSpawnError => HttpStatus::InternalError,

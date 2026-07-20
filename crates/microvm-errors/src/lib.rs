@@ -38,6 +38,9 @@ pub enum ErrorCode {
     PathEscape,
     /// A binary failed provenance verification.
     BinaryProvenanceError,
+    /// A non-local artifact source was supplied where only a local
+    /// `file://` URI or local digest/path source is permitted.
+    LocalArtifactRequired,
     /// The required cgroup v2 hierarchy is unavailable.
     CgroupUnavailable,
     /// Network namespace or TAP setup failed.
@@ -65,6 +68,7 @@ impl ErrorCode {
             Self::DigestMismatch => "digest_mismatch",
             Self::PathEscape => "path_escape",
             Self::BinaryProvenanceError => "binary_provenance_error",
+            Self::LocalArtifactRequired => "local_artifact_required",
             Self::CgroupUnavailable => "cgroup_unavailable",
             Self::NetworkSetupError => "network_setup_error",
             Self::ProcessSpawnError => "process_spawn_error",
@@ -86,6 +90,7 @@ impl ErrorCode {
             Self::DigestMismatch,
             Self::PathEscape,
             Self::BinaryProvenanceError,
+            Self::LocalArtifactRequired,
             Self::CgroupUnavailable,
             Self::NetworkSetupError,
             Self::ProcessSpawnError,
@@ -177,7 +182,7 @@ mod tests {
             );
         }
         // Also verify we have the expected count.
-        assert_eq!(all.len(), 15, "expected 15 error codes");
+        assert_eq!(all.len(), 16, "expected 16 error codes");
     }
 
     #[test]

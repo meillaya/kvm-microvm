@@ -427,6 +427,7 @@ fn all_error_codes_have_deterministic_grpc_mapping() {
         (ErrorCode::DigestMismatch, Code::InvalidArgument),
         (ErrorCode::PathEscape, Code::InvalidArgument),
         (ErrorCode::BinaryProvenanceError, Code::InvalidArgument),
+        (ErrorCode::LocalArtifactRequired, Code::InvalidArgument),
         (ErrorCode::CgroupUnavailable, Code::Internal),
         (ErrorCode::NetworkSetupError, Code::Internal),
         (ErrorCode::ProcessSpawnError, Code::Internal),

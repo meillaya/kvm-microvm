@@ -460,6 +460,7 @@ fn all_error_codes_have_deterministic_mapping() {
         (ErrorCode::DigestMismatch, 400),
         (ErrorCode::PathEscape, 400),
         (ErrorCode::BinaryProvenanceError, 400),
+        (ErrorCode::LocalArtifactRequired, 400),
         (ErrorCode::CgroupUnavailable, 500),
         (ErrorCode::NetworkSetupError, 500),
         (ErrorCode::ProcessSpawnError, 500),
