@@ -343,7 +343,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo nextest run --workspace --test adversarial --locked`; failure run the mutation corpus with one deliberate bypass fixture and assert the suite fails before any privileged side effect. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-31-kvm-microvm-orchestrator.json`.
   Commit: Y | `test(security): add adversarial boundary coverage`
 
-- [~] 32. Add operator documentation, runbooks, and architecture decision records
+- [x] 32. Add operator documentation, runbooks, and architecture decision records
   What to do / Must NOT do: Document setup, preflight meanings, Unix-socket auth, tenant ownership, cgroup-v2 requirements, network policy, snapshot compatibility, benchmark interpretation, and direct-KVM scope. Must not claim production readiness, universal latency, general OCI compatibility, or host security beyond the stated TCB.
   Parallelization: Wave 6 | Blocked by: 1-31 | Blocks: 33-34
   References (executor has NO interview context - be exhaustive): Draft findings/decisions/scope `.omo/drafts/kvm-microvm-orchestrator.md:29-54,56-79`; Firecracker design/jailer/snapshot docs; devenv docs; plan Must NOT have.
