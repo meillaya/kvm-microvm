@@ -3,11 +3,9 @@
 # NOTE: there is NO KVM/QEMU daemon module in devenv 2.x — those would error at
 # evaluation. The orchestrator manages the VM host stack through its own
 # host-side scripts and Rust crates, not devenv-managed services.
-{
-  pkgs,
-  lib,
-  config,
-  ...
+{ pkgs
+, lib
+, ...
 }:
 
 lib.mkMerge [
@@ -49,16 +47,16 @@ lib.mkMerge [
   (lib.mkIf pkgs.stdenv.isLinux {
     packages = with pkgs; [
       # VM hosting stack — used by orchestrator + dev loops on Linux.
-      qemu_kvm          # /usr/bin/qemu-system-x86_64 with KVM accelerator
-      nftables          # nft CLI for tenant network policy
-      cpio              # initrd assembly for microvm guest payloads
-      util-linux        # nsenter, unshare, lscpu, lsblk — host introspection
-      kmod              # modprobe/lsmod for kvm_intel / kvm_amd / tun
-      e2fsprogs         # mkfs.ext4 for guest rootfs
-      qemu              # fallback plain qemu when KVM is unavailable
-      pciutils          # lspci for /dev/kvm host topology
-      which             # locate firecracker/jailer in PATH inside scripts
-      docker            # Docker CLI + daemon for benchmark comparison
+      qemu_kvm # /usr/bin/qemu-system-x86_64 with KVM accelerator
+      nftables # nft CLI for tenant network policy
+      cpio # initrd assembly for microvm guest payloads
+      util-linux # nsenter, unshare, lscpu, lsblk — host introspection
+      kmod # modprobe/lsmod for kvm_intel / kvm_amd / tun
+      e2fsprogs # mkfs.ext4 for guest rootfs
+      qemu # fallback plain qemu when KVM is unavailable
+      pciutils # lspci for /dev/kvm host topology
+      which # locate firecracker/jailer in PATH inside scripts
+      docker # Docker CLI + daemon for benchmark comparison
 
       # Official Firecracker v1.16.1 static musl release (not the nixpkgs
       # glibc build, which is dynamically linked and fails the binary
@@ -70,12 +68,14 @@ lib.mkMerge [
           url = "https://github.com/firecracker-microvm/firecracker/releases/download/v1.16.1/firecracker-v1.16.1-x86_64.tgz";
           sha256 = "sha256-OCoCqGnk1tXLFMQFd/lUXoRYAh6osLLT/BDsFNnCQuY=";
         };
-        nativeBuildInputs = [ pkgs.gnutar ];
-        unpackPhase = "tar xzf $src";
+        dontUnpack = true;
+        dontFixup = true;
+        nativeBuildInputs = [ pkgs.gnutar pkgs.gzip ];
         installPhase = ''
           mkdir -p $out/bin
-          cp release-v1.16.1-x86_64/firecracker-v1.16.1-x86_64 $out/bin/firecracker
-          cp release-v1.16.1-x86_64/jailer-v1.16.1-x86_64 $out/bin/jailer
+          tar xzf $src -C $out/bin --strip-components=1 --wildcards '*/firecracker-*' '*/jailer-*'
+          mv $out/bin/firecracker-v1.16.1-x86_64 $out/bin/firecracker
+          mv $out/bin/jailer-v1.16.1-x86_64 $out/bin/jailer
           chmod +x $out/bin/firecracker $out/bin/jailer
         '';
       })
@@ -87,7 +87,6 @@ lib.mkMerge [
     languages.rust = {
       enable = true;
       channel = "stable";
-      toolchain = "1.95.0";
       components = [
         "rustc"
         "cargo"
@@ -96,7 +95,6 @@ lib.mkMerge [
         "rust-analyzer"
         "rust-src"
       ];
-      # Locked to the system toolchain target triple.
       targets = [ "x86_64-unknown-linux-gnu" ];
     };
 
