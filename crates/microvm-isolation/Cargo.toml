@@ -1,0 +1,20 @@
+[package]
+name = "microvm-isolation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+# Privileged tests exercise a real unified cgroup-v2 hierarchy on a capable
+# host. They are excluded from the default (deterministic) test run so CI can
+# run without root or a writable /sys/fs/cgroup.
+privileged = []
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = { workspace = true }
