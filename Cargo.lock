@@ -371,6 +371,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-service"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "microvm-artifacts",
+ "microvm-errors",
+ "microvm-firecracker",
+ "microvm-isolation",
+ "microvm-lifecycle",
+ "microvm-types",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "microvm-transport-contract"
 version = "0.1.0"
 dependencies = [
