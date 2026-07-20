@@ -34,11 +34,16 @@
 //! [`ErrorCode::InvalidResourceSpec`]: microvm_errors::ErrorCode::InvalidResourceSpec
 
 pub mod manager;
+pub mod net;
 pub mod spec;
 
 pub use manager::{
     AppliedLimits, CgroupManager, JailerCommand, CGROUP_VERSION, DEFAULT_CGROUP_ROOT,
     DEFAULT_PARENT_NAME,
+};
+pub use net::{
+    nft_ruleset, AddressAllocator, NetConfig, NetManager, DEFAULT_NETNS_ROOT, DEFAULT_PREFIX_LEN,
+    DEFAULT_SUBNET_OCTETS, IFNAMSIZ, MAX_SLOTS, NFT_TABLE,
 };
 pub use spec::{
     check_required_controllers, parse_controllers, validate_no_children,
