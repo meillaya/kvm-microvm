@@ -247,7 +247,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test --features privileged --test lifecycle_cleanup`; failure kill daemon during boot and assert `preflight`/reconciler marks blocked or cleans all owned resources within 5 seconds. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-19-kvm-microvm-orchestrator.json`.
   Commit: Y | `test(lifecycle): verify readiness and resource lifecycle`
 
-- [~] 20. Build local kernel/rootfs images and digest-addressed artifact manifests
+- [x] 20. Build local kernel/rootfs images and digest-addressed artifact manifests
   What to do / Must NOT do: Add a deterministic builder from local kernel/rootfs inputs to uncompressed kernel and ext4/rootfs artifacts, with manifest version, SHA-256, sizes, guest arch, boot args, and source provenance. Must not download remote registries or accept tag-only input.
   Parallelization: Wave 4 | Blocked by: 5, 9, 14 | Blocks: 21, 25-30
   References (executor has NO interview context - be exhaustive): Draft image scope `.omo/drafts/kvm-microvm-orchestrator.md:53,61,67,76`; Firecracker getting started `https://github.com/firecracker-microvm/firecracker/blob/v1.16.1/docs/getting-started.md`; OCI image spec `https://github.com/opencontainers/image-spec`.

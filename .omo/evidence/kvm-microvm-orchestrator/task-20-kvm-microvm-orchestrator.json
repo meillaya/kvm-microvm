@@ -1,0 +1,158 @@
+{
+  "task_id": 20,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Deterministic local kernel/rootfs image builder and digest-addressed artifact manifests",
+  "class": "deterministic",
+  "status": "complete",
+  "commit": "5ffdf93",
+  "commit_full": "5ffdf934e9e9b5380e9cd51cc293cb07cd727a89",
+  "commit_message": "feat(artifacts): build pinned local kernel and rootfs images",
+  "timestamp": "2026-07-20T07:37:39Z",
+  "deliverables": [
+    {
+      "path": "crates/microvm-artifacts/src/builder.rs",
+      "description": "ImageBuilder + ImageManifest + BuildOutput. Verbatim, streaming copy-and-hash of local kernel/rootfs inputs into uncompressed kernel (images/vmlinux) and ext4/rootfs (images/rootfs.ext4) artifacts plus a deterministic image-manifest.json (version, guest_arch, boot_args, per-file SHA-256+size, normalized file:// SourceProvenance). Source gate accepts only local file:// URIs (empty/localhost host) or local paths; remote registries, tag-only refs (nginx:latest, repo/img:tag), digest refs (img@sha256:..), and file://remote-host are rejected with ErrorCode::LocalArtifactRequired. Malformed sources (empty/NUL locator, missing file, directory, symlink, empty file) are rejected with InvalidResourceSpec/ArtifactNotFound. All sources validated before any output is written; no network I/O by construction. Output perms pinned 0o644 (never world-writable) so artifacts pass the PathResolver guard."
+    },
+    {
+      "path": "crates/microvm-artifacts/tests/reproducible_builder.rs",
+      "description": "QA happy-path integration suite (cargo test -p microvm-artifacts --test reproducible_builder): reproducible builds (identical manifest+file hashes from identical inputs), SHA-256+size coverage for every file incl. the manifest itself, provenance/arch/boot-args/version recording + JSON roundtrip, artifacts open ONLY through the todo-9 PathResolver with digest verification + tamper fail-closed, resolver escape/symlink rejection within the build tree, remote/tag source rejection with LocalArtifactRequired and NO partial output dir, malformed source rejection before any output (incl. valid-kernel/malformed-rootfs leaves no partial kernel), and file:// local-source acceptance with origin normalization."
+    },
+    {
+      "path": "crates/microvm-artifacts/src/lib.rs",
+      "description": "Wired `pub mod builder;` and re-exported ImageBuilder, ImageManifest, BuildOutput, ArtifactRecord, SourceProvenance, GuestArch, MediaKind, SourceKind, IMAGE_MANIFEST_VERSION, KERNEL_RELPATH, ROOTFS_RELPATH, MANIFEST_RELPATH."
+    },
+    {
+      "path": "crates/microvm-artifacts/Cargo.toml",
+      "description": "Promoted serde_json from dev-dependency to runtime dependency (manifest serialization); already a workspace dependency, no new external crate."
+    },
+    {
+      "path": "crates/microvm-errors/src/lib.rs",
+      "description": "Added ErrorCode::LocalArtifactRequired (stable string 'local_artifact_required') to the enum, as_str(), and all(); bumped the count assertion 15 -> 16."
+    },
+    {
+      "path": "crates/microvm-rest/src/error.rs",
+      "description": "Mapped ErrorCode::LocalArtifactRequired -> HTTP 400 BadRequest (client-supplied non-local source; same class as path_escape/binary_provenance_error); updated the deterministic mapping doc table."
+    },
+    {
+      "path": "crates/microvm-grpc/src/error.rs",
+      "description": "Mapped ErrorCode::LocalArtifactRequired -> gRPC InvalidArgument; bumped the total-mapping count assertion 15 -> 16."
+    },
+    {
+      "path": "crates/microvm-rest/tests/rest_contract.rs",
+      "description": "Added (LocalArtifactRequired, 400) to the exhaustive deterministic-mapping vector (asserts coverage of all 16 codes)."
+    },
+    {
+      "path": "crates/microvm-grpc/tests/grpc_contract.rs",
+      "description": "Added (LocalArtifactRequired, InvalidArgument) to the exhaustive deterministic-mapping vector (asserts coverage of all 16 codes)."
+    }
+  ],
+  "verification": {
+    "cargo_test": {
+      "command": "cargo test -p microvm-artifacts",
+      "result": "pass",
+      "tests_passed": 53,
+      "tests_failed": 0,
+      "details": "43 lib tests (10 digest + 13 path + 12 store + 1 lib end-to-end + 6 new builder unit + 1 builder serde) + 10 reproducible_builder integration tests; 0 failed."
+    },
+    "cargo_fmt": {
+      "command": "cargo fmt --all",
+      "result": "pass",
+      "details": "cargo fmt --all -- --check exit 0 (the 'format_strings = true' rustfmt option is nightly-only and pre-existing; harmless warning, same as prior tasks)."
+    },
+    "cargo_clippy": {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "pass",
+      "details": "clean across all workspace crates and targets (msrv 1.95.0, cognitive-complexity-threshold 30 respected)."
+    },
+    "workspace_regression": {
+      "command": "cargo test --workspace",
+      "result": "pass",
+      "details": "all crates green (exit 0): microvm-errors 9+5 (count==16), microvm-rest 45+33 (LocalArtifactRequired->400 vector), microvm-grpc 31+27 (LocalArtifactRequired->InvalidArgument vector, count==16), microvm-artifacts 43+10, plus lifecycle/firecracker/isolation/service/transport-contract/types/contract-tests; no regressions from the new ErrorCode variant or the serde_json runtime dep."
+    }
+  },
+  "acceptance_criteria": {
+    "two_builds_identical_manifest_and_file_hashes": "reproducible_builds_produce_identical_manifest_and_file_hashes builds the same local inputs into two output dirs and asserts identical manifest_sha256, identical serialized manifest bytes, identical kernel/rootfs file hashes across builds, and that every artifact hash equals its source content hash (verbatim copy); rebuilding_into_the_same_directory_is_stable asserts idempotent rebuild into the same dir.",
+    "all_files_have_sha256_and_size": "all_files_have_sha256_and_size asserts the kernel and rootfs records carry SHA-256+size matching the on-disk bytes, the provenance digests equal the artifact digests, and the manifest file itself has a matching SHA-256+size in BuildOutput.",
+    "non_file_local_digest_source_rejected": "remote_and_tag_sources_are_rejected_with_no_output asserts https/http/oci/docker/registry/s3/gs/ftp/ssh/git URIs, registry.local/kernel:latest, nginx:latest, ubuntu:22.04, bare 'fedora', repo/img@sha256:.., and file://remote-host all fail with ErrorCode::LocalArtifactRequired and create NO output directory; the builder performs no network I/O by construction.",
+    "malformed_path_rejected_before_output": "malformed_sources_are_rejected_before_output asserts missing path (ArtifactNotFound), directory/empty-file/symlink/empty-locator (InvalidResourceSpec) all fail with NO output dir; malformed_rootfs_is_rejected_before_any_kernel_output asserts a valid kernel is NOT written when the rootfs source is malformed (all sources validated before any output).",
+    "generated_artifact_opens_only_through_todo_9": "generated_artifacts_open_only_through_path_resolver opens images/vmlinux, images/rootfs.ext4, and image-manifest.json via PathResolver::open_root(out).open(rel) and verifies each digest (tamper fails closed with DigestMismatch); resolver_rejects_escape_and_symlink_within_build_tree proves absolute paths, '..' traversal, and a planted symlink are refused (PathEscape), so the artifacts are reachable only through the descriptor-relative resolver.",
+    "no_remote_registry_or_tag_only": "the source gate has no network code path; tag-only and digest refs are rejected lexically before any I/O. file_uri_local_sources_build_successfully confirms file:// and file://localhost local sources are accepted and normalize to the same origin."
+  },
+  "security_fixtures": {
+    "remote_uri_rejected": "pass - https://, http://, oci://, docker://, registry://, s3://, gs://, ftp://, ssh://, git:// -> ErrorCode::LocalArtifactRequired, no output dir",
+    "tag_only_rejected": "pass - nginx:latest, ubuntu:22.04, bare 'fedora', registry.local/kernel:latest, quay.io/img:tag -> LocalArtifactRequired",
+    "digest_ref_rejected": "pass - repo/img@sha256:<64hex> -> LocalArtifactRequired ('@' is a registry digest separator)",
+    "file_remote_host_rejected": "pass - file://remote-host/export/vmlinux -> LocalArtifactRequired (only empty/localhost host accepted)",
+    "malformed_missing": "pass - missing path-shaped source -> ArtifactNotFound, no output",
+    "malformed_directory": "pass - directory source -> InvalidResourceSpec, no output",
+    "malformed_symlink": "pass - symlink source -> InvalidResourceSpec, no output (defense in depth; mirrors PathResolver no-symlink stance)",
+    "malformed_empty_file": "pass - zero-byte source -> InvalidResourceSpec, no output",
+    "malformed_empty_locator": "pass - '' and NUL-bearing locator -> InvalidResourceSpec, no output",
+    "no_partial_output_on_mixed_failure": "pass - valid kernel + malformed rootfs leaves neither an output dir nor a partial kernel artifact",
+    "artifact_digest_tamper": "pass - one-bit-flipped expectation -> DigestMismatch via the PathResolver-opened artifact",
+    "resolver_escape_in_build_tree": "pass - absolute path, '..' traversal, and planted symlink in images/ -> PathEscape"
+  },
+  "qa_scenarios": {
+    "happy": "cargo test -p microvm-artifacts --test reproducible_builder -> 10 passed",
+    "failure": "cargo test -p microvm-artifacts --test reproducible_builder remote_and_tag_sources_are_rejected_with_no_output -> 1 passed (remote/tag URI asserts LocalArtifactRequired, no network call by construction, and no partial artifact directory)"
+  },
+  "error_contract": {
+    "LocalArtifactRequired": [
+      "remote registry URI (https/oci/docker/registry/s3/gs/ftp/ssh/git)",
+      "tag-only reference (nginx:latest, bare name)",
+      "digest reference (img@sha256:..)",
+      "file:// with non-local host",
+      "bare remote scheme prefix"
+    ],
+    "InvalidResourceSpec": [
+      "empty locator",
+      "NUL byte in locator",
+      "directory source",
+      "symlink source",
+      "empty (zero-byte) source",
+      "NUL in boot args"
+    ],
+    "ArtifactNotFound": [
+      "missing local source file (ENOENT)",
+      "failed source open during copy"
+    ],
+    "DigestMismatch": [
+      "tampered artifact expectation on verify through the PathResolver"
+    ],
+    "PathEscape": [
+      "absolute path / '..' / symlink escape when opening a built artifact through the resolver (todo 9)"
+    ],
+    "InternalError": [
+      "output write/sync/permission failures",
+      "manifest serialization failure"
+    ]
+  },
+  "http_grpc_mapping": {
+    "LocalArtifactRequired": {
+      "http": 400,
+      "grpc": "InvalidArgument"
+    }
+  },
+  "dependencies_added": {
+    "workspace": [],
+    "crate_runtime": [
+      "serde_json (promoted from dev-dependency; already a workspace dep)"
+    ],
+    "crate_dev": [],
+    "note": "no new external crates; serde_json was already in [workspace.dependencies] and used by this crate's tests."
+  },
+  "design_notes": {
+    "verbatim_copy_for_determinism": "kernel and rootfs bytes are copied verbatim (streaming copy-and-hash). The builder never regenerates an ext4 filesystem or recompresses a kernel, so artifact bytes - and therefore their SHA-256 digests - are a pure function of the input bytes. The rootfs input is treated as an opaque, ready ext4 image.",
+    "manifest_is_content_addressed": "the manifest carries no wall-clock timestamps and only declared (version, guest_arch, boot_args) or content-derived (per-file SHA-256/size, normalized file:// provenance origin) fields; struct field order fixes serialization order, so identical inputs yield byte-identical manifests.",
+    "provenance_origin_normalization": "both a bare local path and a file:// URI (empty or localhost host) normalize to the same file://<abspath> origin. Reproducibility is defined for identical local inputs (same files); the normalized absolute source path is part of provenance, so manifests are not expected to be byte-identical when only the source path differs.",
+    "validate_before_output": "ImageBuilder::build resolves and validates BOTH sources (metadata-only, no output) before creating the output tree or copying any bytes, so any rejected source leaves no partial artifact directory. The builder has no network code path.",
+    "opens_only_through_resolver": "artifacts are written at stable relative paths that pass validate_relative_path and are opened exclusively via the todo-9 PathResolver (openat2 RESOLVE_BENEATH|NO_SYMLINKS|NO_MAGICLINKS with openat(O_NOFOLLOW) fallback); output perms are pinned 0o644 so they clear the resolver's world-writable guard regardless of umask.",
+    "new_error_code": "ErrorCode::LocalArtifactRequired was added (rather than overloading PathEscape) because source-provenance locality is a distinct semantic from path escape; this required updating the exhaustive rest/grpc mappings and the two contract vectors plus the 15->16 count assertions."
+  },
+  "not_tested": [
+    "a real mkfs.ext4-produced rootfs image (the builder treats the rootfs as an opaque ext4 blob and copies it verbatim; filesystem contents are irrelevant to determinism)",
+    "a live remote-registry pull (rejected by construction - the builder has no network code path; rejection is asserted lexically with no output dir)",
+    "pre-5.6 openat2 ENOSYS / EOPNOTSUPP fallback for the opened artifacts (covered by the todo-9 PathResolver both_modes tests, not re-exercised here)",
+    "non-Linux hosts (the crate is Unix/openat2-specific by design, same as todo 9)"
+  ]
+}
