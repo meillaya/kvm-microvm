@@ -1,0 +1,99 @@
+{
+  "task_id": 31,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Add adversarial security tests for paths, auth, cgroups, snapshots, OCI input, and isolation",
+  "status": "complete",
+  "commit": "3482d4bdfeb86469ea2d7cd39a37bf607e2bd6f8",
+  "commit_subject": "test(security): add adversarial boundary coverage",
+  "deliverables": [
+    "crates/microvm-security-tests/Cargo.toml",
+    "crates/microvm-security-tests/src/lib.rs",
+    "crates/microvm-security-tests/tests/common/mod.rs",
+    "crates/microvm-security-tests/tests/adversarial.rs",
+    "crates/microvm-security-tests/tests/path_security.rs",
+    "crates/microvm-security-tests/tests/binary_security.rs",
+    "crates/microvm-security-tests/tests/cgroup_security.rs",
+    "crates/microvm-security-tests/tests/auth_security.rs",
+    "crates/microvm-security-tests/tests/network_security.rs",
+    "crates/microvm-security-tests/tests/snapshot_security.rs",
+    "crates/microvm-security-tests/tests/oci_security.rs",
+    "crates/microvm-security-tests/tests/scope_fidelity.rs",
+    "schemas/evidence-security.v1.json",
+    "Cargo.toml",
+    "Cargo.lock"
+  ],
+  "verification": {
+    "cargo_test": {
+      "command": "cargo test -p microvm-security-tests",
+      "result": "ok",
+      "tests_passed": 136,
+      "tests_failed": 0,
+      "test_targets": 9,
+      "note": "Deterministic lane: 9 integration targets (adversarial, path_security, binary_security, cgroup_security, auth_security, network_security, snapshot_security, oci_security, scope_fidelity). No root, /dev/kvm, /dev/net/tun, writable cgroupfs, or pinned binary required."
+    },
+    "cargo_test_privileged": {
+      "command": "cargo test -p microvm-security-tests --features privileged",
+      "result": "ok",
+      "note": "Privileged-gated tests (real-kernel cgroup no-internal-process EBUSY; real nft ruleset load) compile and skip gracefully on a non-root host."
+    },
+    "cargo_fmt": {
+      "command": "cargo fmt --all",
+      "result": "ok",
+      "check": "cargo fmt --all -- --check exit 0"
+    },
+    "cargo_clippy_workspace": {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "ok"
+    },
+    "cargo_clippy_privileged": {
+      "command": "cargo clippy -p microvm-security-tests --features privileged --all-targets -- -D warnings",
+      "result": "ok"
+    },
+    "evidence_artifacts": {
+      "dir": "target/security-evidence/",
+      "schema": "schemas/evidence-security.v1.json",
+      "domains": 9,
+      "battery_probes_total": 134,
+      "battery_probes_pass": 134,
+      "battery_probes_fail": 0,
+      "note": "Each domain battery writes a per-domain artifact (class=security) recording, per probe, the expected and actual typed ErrorCode and pass/fail. All 9 artifacts validate against schemas/evidence-security.v1.json and their summaries reconcile (total==items.length, pass+fail==total)."
+    }
+  },
+  "methodology": {
+    "not_grep_only": "Every probe drives the production code path (open the real PathResolver, verify a real synthetic binary, build the real jailer argv, run the real CompatibilityGate, import a real on-disk OCI layout, parse the real clap CLI, parse the generated nftables ruleset into a reachability model) and observes the typed ErrorCode returned. Source-text scans appear ONLY in scope_fidelity.rs as a secondary, comment-aware layer, each paired with a behavioral proof (clap flag rejection, serialized config-surface key absence, exhaustive NetworkPolicy match).",
+    "typed_error_per_failure": "Each probe records expected_code and actual_code; a hostile input that unexpectedly succeeds is recorded as actual_code='bypass' and fails the battery. The harness canary (path_security::harness_canary..., adversarial::scan_detector_catches_a_planted_violation) proves a successful bypass flips the probe to fail.",
+    "evidence_before_assert": "run_battery() writes the artifact to disk before the caller asserts no bypass, so a detected bypass still leaves an evidence artifact behind.",
+    "pre_spawn": "All exercised boundaries are pure, pre-spawn functions (validate_*, verify_bytes, JailerArgv::build, CompatibilityGate::validate, validate_local_reference, scan_forbidden); no probe spawns a process or mutates host policy, so the suite fails on a bypass before any privileged side effect.",
+    "disposable_namespace": "No host policy is modified. Filesystem probes use tempfile tempdirs; cgroup probes use a simulated hierarchy in a tempdir; the only real-kernel mutations (cgroup no-internal-process, nft load) are behind the `privileged` feature, create a disposable test cgroup/table, clean up after themselves, and skip without root."
+  },
+  "acceptance_criteria": {
+    "cgroup_version_2": "cgroup_security: CGROUP_VERSION==2; jailer_command argv and JailerArgv always contain --cgroup-version=2 and never =1. Probe: cgroup_security/jailer_root_uid etc.",
+    "release_static_binary_hash": "binary_security: BinaryVerifier recomputes SHA-256 and requires an exact match against the pinned manifest; hash_mismatch, dynamic_binary (PT_INTERP), debug_build (.debug_*), machine_mismatch, version_mismatch, not_pinned, non-ELF/ELF32/ET_REL all rejected with BinaryProvenanceError. adversarial: every single-byte mutation of a genuine binary is caught (hash gate).",
+    "jailer_path_symlink_rejection": "path_security: a clean-named symlink to /etc/passwd or /etc/shadow, a symlinked directory component, a magic-link (/proc/self/fd) target, and a symlinked tenant root are all refused with PathEscape by the real openat2/O_NOFOLLOW resolver; the fallback walk is independently safe. adversarial: bypass_clean_named_symlink canary.",
+    "peer_credential_denial": "auth_security: get_peer_credentials extracts real SO_PEERCRED creds over a Unix socketpair; StaticAuthenticator/RootOnlyAuthenticator return None (denial) for a wrong/non-root UID; end-to-end peer->principal denial. Probes: peer_cred_wrong_uid_denied, root_only_non_root_denied.",
+    "cgroup_no_internal_process": "cgroup_security: the parent delegates controllers (non-empty subtree_control => kernel no-internal-process domain) while the leaf is a true leaf (empty subtree_control, no children); verify_leaf rejects a leaf that gains a child or a delegated controller (InvalidResourceSpec). privileged: real-kernel EBUSY on cgroup.procs of a delegating parent (gated).",
+    "inter_vm_network_denial": "network_security: the generated nftables script is parsed into a forward-chain reachability model; default policy is drop and no guest can reach another guest's address (only its own gateway), while NatOnly masquerade is destination-scoped to the host subnet. AddressAllocator gives distinct, non-overlapping per-VM addresses; double-allocation is rejected. privileged: real nft load (gated).",
+    "snapshot_tamper_compatibility": "snapshot_security: verify_artifacts detects tampering of any content hash (kernel/rootfs/memory/vmstate/block-device) and missing/extra block devices (DigestMismatch); CompatibilityGate rejects foreign owner (PermissionDenied), unsupported schema, binary version/hash mismatch, CPU arch/model/flag mismatch, KVM API mismatch, cgroup-v1 manifest, non-immutable memory (SnapshotIncompatible), and quota overflow (QuotaExceeded) -- all before any Firecracker load.",
+    "local_only_oci": "oci_security: validate_local_reference and OciImporter::open_reference reject remote/tag-only/digest-pinned references and file://remote-host (LocalArtifactRequired) before I/O; remote descriptor urls rejected; layer/config digest+size mismatch (DigestMismatch); missing blob (ArtifactNotFound); unsupported/mismatched platform; missing/duplicate media; malformed digest; invalid manifest shape.",
+    "no_tcp_rootless_vfio_live_migration_flags": "scope_fidelity: the real clap parser rejects --tcp/--rootless/--vfio/--live-migration/--mount/--cap-add/--privileged/--host-network/--pid/--ipc on create/run/global positions while accepting legitimate flags; serialized BootConfig/NetworkBootConfig/ResourceSpec/MicroVmSpec carry no forbidden keys; NetworkPolicy is exhaustively {None,NatOnly,EgressAllowed}; comment-aware source scan finds no TCP-listener type in control-plane crates and no rootless/vfio/live-migration identifier in product code.",
+    "typed_error_and_evidence_per_failure": "Every probe records expected_code/actual_code into a per-domain security-evidence artifact (schemas/evidence-security.v1.json); 134 battery probes across 9 domains, all pass, 0 bypasses."
+  },
+  "test_areas": {
+    "path_security": { "tests": 17, "battery_probes": 17, "traps": ["symlink_escape", "symlink_dir_component", "magic_link", "dotdot_traversal", "absolute_path", "nul_byte", "remote_uri", "empty_component", "symlinked_root", "missing_root", "world_writable", "non_regular_file", "fallback_walk_independence"] },
+    "binary_security": { "tests": 20, "battery_probes": 15, "traps": ["hash_mismatch", "dynamic_binary", "debug_build", "machine_mismatch", "version_mismatch", "not_pinned", "non_elf", "elf32_class", "et_rel", "on_disk_tamper", "jailer_root_uid_gid", "jailer_no_netns", "jailer_no_limits", "jailer_unbounded_limit", "jailer_unsafe_id", "seccomp_not_filter", "seccomp_missing"] },
+    "cgroup_security": { "tests": 16, "battery_probes": 10, "traps": ["cgroup_version_2_pin", "no_internal_process_leaf_contract", "leaf_with_children", "leaf_subtree_control_nonempty", "missing_controller", "apply_spec_fail_closed", "missing_root", "invalid_spec_zero_fields", "deserialized_spec_not_trusted", "jailer_root_uid"] },
+    "auth_security": { "tests": 12, "battery_probes": 10, "traps": ["peer_credential_denial", "root_only_non_root", "cross_tenant", "role_escalation_viewer", "role_escalation_operator", "insecure_socket_mode", "wrong_owner_socket_rest", "wrong_owner_socket_grpc", "non_socket_file"] },
+    "network_security": { "tests": 9, "battery_probes": 8, "traps": ["inter_vm_denial_structural", "forward_default_drop", "nat_only_masquerade_scoped", "address_isolation", "double_allocation", "netconfig_same_ip", "netconfig_bad_prefix", "netconfig_policy_none", "netconfig_long_tap"] },
+    "snapshot_security": { "tests": 15, "battery_probes": 15, "traps": ["memory_tamper", "kernel_tamper", "rootfs_tamper", "vmstate_tamper", "blockdev_tamper", "blockdev_missing", "blockdev_extra", "foreign_owner", "unsupported_schema", "binary_version", "binary_hash", "cpu_arch", "cpu_model", "cpu_flags", "kvm_api", "cgroup_v1", "memory_not_immutable", "quota_overflow", "mem_backend_path_escape"] },
+    "oci_security": { "tests": 17, "battery_probes": 12, "traps": ["remote_reference", "tag_reference", "digest_reference", "remote_descriptor_urls", "layer_digest_mismatch", "layer_size_mismatch", "missing_blob", "unsupported_platform", "platform_mismatch", "missing_media", "duplicate_media", "malformed_digest", "invalid_manifest", "forbidden_mounts", "forbidden_capabilities", "forbidden_privileged", "forbidden_host_network", "forbidden_host_pid", "forbidden_host_ipc", "forbidden_host_process_control"] },
+    "scope_fidelity": { "tests": 13, "battery_probes": 12, "traps": ["cli_forbidden_flags_create", "cli_forbidden_flags_run", "cli_forbidden_global_flags", "boot_config_surface", "network_boot_config_policy_only", "resource_spec_surface", "oci_spec_surface", "network_policy_exhaustive", "scan_no_tcp_listener", "scan_no_rootless_vfio_migration", "scan_detector_canary"] },
+    "adversarial": { "tests": 17, "battery_probes": 35, "traps": ["proptest_dotdot", "proptest_absolute", "proptest_remote_uri", "proptest_id_injection", "proptest_id_uppercase", "proptest_id_overlong", "proptest_cgroup_zero", "proptest_non_elf", "single_byte_binary_mutation", "elf_form_mutations", "bypass_clean_symlink", "bypass_dot_slash_dotdot", "bypass_nested_forbidden_key", "bypass_wrong_version_binary", "bypass_file_uri_remote_host", "pre_spawn_pure_functions"] }
+  },
+  "exclusions_honored": [
+    "no grep-only checks as the sole security proof (source scans are secondary, comment-aware, and paired with behavioral proofs)",
+    "no host-policy modification without a disposable test namespace (real-kernel probes are privileged-gated, use a disposable test cgroup/table, clean up, and skip without root)",
+    "deterministic default run requires no root, /dev/kvm, /dev/net/tun, writable cgroupfs, or pinned Firecracker/jailer binary",
+    "no production code added (test-only crate; [dependencies] empty)",
+    "no .codegraph/ or .omo/run-continuation/ files modified"
+  ]
+}

@@ -335,7 +335,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test -p microvm-backend-directkvm --features direct-kvm,privileged`; failure run on a host without KVM and assert structured `blocked_reason` plus no fallback to Firecracker/QEMU for the subset test. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-30-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(vmm): add feature-gated direct KVM subset`
 
-- [~] 31. Add adversarial security tests for paths, auth, cgroups, snapshots, OCI input, and isolation
+- [x] 31. Add adversarial security tests for paths, auth, cgroups, snapshots, OCI input, and isolation
   What to do / Must NOT do: Add deterministic mutation/property suites and privileged isolation probes covering every known Firecracker/jailer/cgroup/network/snapshot trap. Must not use grep-only checks as the sole security proof or modify host policy without a disposable test namespace.
   Parallelization: Wave 6 | Blocked by: 1-30 | Blocks: 32-34
   References (executor has NO interview context - be exhaustive): Metis review findings; Draft corrections `.omo/drafts/kvm-microvm-orchestrator.md:49-54,73-79`; Firecracker jailer/seccomp/snapshot docs; cgroup v2 docs; OCI specs.

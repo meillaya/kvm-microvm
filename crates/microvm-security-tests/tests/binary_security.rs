@@ -23,8 +23,7 @@ use microvm_errors::ErrorCode;
 use microvm_isolation::{
     binary_contains_version, parse_elf_form, parse_seccomp_mode, pinned_firecracker, sha256_hex,
     verify_seccomp_status, BinaryManifest, BinaryVerifier, ElfMachine, JailerArgv, ResourceKind,
-    SeccompVerifier, MAX_FSIZE_BYTES, MAX_NO_FILE,
-    PINNED_VERSION, SECCOMP_MODE_FILTER,
+    SeccompVerifier, MAX_FSIZE_BYTES, MAX_NO_FILE, PINNED_VERSION, SECCOMP_MODE_FILTER,
 };
 
 /// A manifest whose SHA-256 matches `bytes` (so the hash check passes and any
