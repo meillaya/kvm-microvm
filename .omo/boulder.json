@@ -6,9 +6,9 @@
       "work_id": "kvm-microvm-orchestrator-21806520",
       "active_plan": "/home/mei/projects/kernels/kernel-v4/.omo/plans/kvm-microvm-orchestrator.md",
       "plan_name": "kvm-microvm-orchestrator",
-      "status": "active",
+      "status": "completed",
       "started_at": "2026-07-19T17:16:21.660Z",
-      "updated_at": "2026-07-19T17:16:21.660Z",
+      "updated_at": "2026-07-19T21:35:14.415Z",
       "session_ids": [
         "opencode:ses_08873ff94ffexutIFprE5jL7Lx"
       ],
@@ -16,13 +16,55 @@
         "opencode:ses_08873ff94ffexutIFprE5jL7Lx": "direct"
       },
       "agent": "atlas",
-      "task_sessions": {}
+      "task_sessions": {
+        "todo:1": {
+          "task_key": "todo:1",
+          "task_label": "1",
+          "task_title": "Bootstrap `devenv.yaml`, `devenv.nix`, and committed lockfiles for a reproducible Rust/Linux environment",
+          "session_id": "opencode:ses_0849b1ffcffess7kIvuCZCi4x6",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "updated_at": "2026-07-19T17:24:59.647Z",
+          "started_at": "2026-07-19T17:24:16.490Z",
+          "status": "completed",
+          "ended_at": "2026-07-19T17:24:59.647Z",
+          "elapsed_ms": 43157
+        },
+        "todo:2": {
+          "task_key": "todo:2",
+          "task_label": "2",
+          "task_title": "Create the Rust workspace, toolchain pin, formatting, lint, and dependency policy",
+          "session_id": "opencode:ses_084966ed4ffeqfIMOQjjLMxa47",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "started_at": "2026-07-19T17:32:47.050Z",
+          "status": "completed",
+          "updated_at": "2026-07-19T17:38:17.979Z",
+          "ended_at": "2026-07-19T17:38:17.979Z",
+          "elapsed_ms": 330929
+        },
+        "todo:4": {
+          "task_key": "todo:4",
+          "task_label": "4",
+          "task_title": "Implement host preflight and deterministic/privileged CI lane separation",
+          "session_id": "opencode:ses_0848a74aaffe2fx84d613lNBYj",
+          "agent": "Sisyphus-Junior",
+          "category": "unspecified-high",
+          "started_at": "2026-07-19T17:43:29.421Z",
+          "status": "completed",
+          "updated_at": "2026-07-19T18:15:29.918Z",
+          "ended_at": "2026-07-19T18:15:29.918Z",
+          "elapsed_ms": 1920497
+        }
+      },
+      "ended_at": "2026-07-19T21:35:14.415Z",
+      "elapsed_ms": 15532755
     }
   },
   "active_plan": "/home/mei/projects/kernels/kernel-v4/.omo/plans/kvm-microvm-orchestrator.md",
   "started_at": "2026-07-19T17:16:21.660Z",
-  "status": "active",
-  "updated_at": "2026-07-19T17:16:21.660Z",
+  "status": "completed",
+  "updated_at": "2026-07-19T21:35:14.415Z",
   "session_ids": [
     "opencode:ses_08873ff94ffexutIFprE5jL7Lx"
   ],
@@ -30,6 +72,48 @@
     "opencode:ses_08873ff94ffexutIFprE5jL7Lx": "direct"
   },
   "plan_name": "kvm-microvm-orchestrator",
-  "task_sessions": {},
-  "agent": "atlas"
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Bootstrap `devenv.yaml`, `devenv.nix`, and committed lockfiles for a reproducible Rust/Linux environment",
+      "session_id": "opencode:ses_0849b1ffcffess7kIvuCZCi4x6",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-07-19T17:24:59.647Z",
+      "started_at": "2026-07-19T17:24:16.490Z",
+      "status": "completed",
+      "ended_at": "2026-07-19T17:24:59.647Z",
+      "elapsed_ms": 43157
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "Create the Rust workspace, toolchain pin, formatting, lint, and dependency policy",
+      "session_id": "opencode:ses_084966ed4ffeqfIMOQjjLMxa47",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "started_at": "2026-07-19T17:32:47.050Z",
+      "status": "completed",
+      "updated_at": "2026-07-19T17:38:17.979Z",
+      "ended_at": "2026-07-19T17:38:17.979Z",
+      "elapsed_ms": 330929
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "Implement host preflight and deterministic/privileged CI lane separation",
+      "session_id": "opencode:ses_0848a74aaffe2fx84d613lNBYj",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "started_at": "2026-07-19T17:43:29.421Z",
+      "status": "completed",
+      "updated_at": "2026-07-19T18:15:29.918Z",
+      "ended_at": "2026-07-19T18:15:29.918Z",
+      "elapsed_ms": 1920497
+    }
+  },
+  "agent": "atlas",
+  "ended_at": "2026-07-19T21:35:14.415Z",
+  "elapsed_ms": 15532755
 }
