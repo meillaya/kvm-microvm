@@ -263,7 +263,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo test -p microvm-snapshots --test manifest_compat`; failure flip one byte in memory/state/block device and assert typed `SnapshotIntegrityError` before a child process is spawned. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-21-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(snapshot): add versioned local integrity manifest`
 
-- [~] 22. Implement Firecracker snapshot create/load ordering and restore rebinding
+- [x] 22. Implement Firecracker snapshot create/load ordering and restore rebinding
   What to do / Must NOT do: Add pause → full snapshot create and fresh-process snapshot load using `mem_backend.backend_path`, network/vsock overrides, local resource rebinding, and explicit resume. Must not configure boot source/drives as if restore were fresh, use deprecated `mem_file_path`, or claim network/vsock connection continuity.
   Parallelization: Wave 4 | Blocked by: 14-15, 21 | Blocks: 27-30
   References (executor has NO interview context - be exhaustive): Draft QA correction `.omo/drafts/kvm-microvm-orchestrator.md:49-52`; Firecracker snapshot API `https://github.com/firecracker-microvm/firecracker/blob/v1.16.1/docs/snapshotting/snapshot-support.md`; swagger snapshot routes `https://github.com/firecracker-microvm/firecracker/blob/v1.16.1/src/firecracker/swagger/firecracker.yaml`.

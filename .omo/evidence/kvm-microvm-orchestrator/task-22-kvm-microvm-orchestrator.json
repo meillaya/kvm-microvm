@@ -1,0 +1,40 @@
+{
+  "task": 22,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Implement Firecracker snapshot create/load ordering and restore rebinding",
+  "commit": "2a4954e60435f9fc6c772bae65fca9aaf6e0f746",
+  "files_committed": [
+    "crates/microvm-firecracker/src/api.rs",
+    "crates/microvm-firecracker/src/lib.rs",
+    "crates/microvm-firecracker/src/snapshot.rs",
+    "crates/microvm-firecracker/tests/snapshot_protocol.rs"
+  ],
+  "test_results": {
+    "command": "cargo test -p microvm-firecracker",
+    "exit_code": 0,
+    "output_excerpt": "lib unit: ok. 81 passed (incl. 19 snapshot::tests) | snapshot_protocol integration: ok. 9 passed | backend_replay 11, boot_config 6, error_mapping 9, phase_timestamps 4, prerequisites 5 \u2014 0 failed"
+  },
+  "verification": {
+    "cargo_fmt": "pass (cargo fmt --all --check exit 0)",
+    "cargo_clippy": "pass (cargo clippy --workspace --all-targets -- -D warnings exit 0)",
+    "cargo_test": "pass (microvm-firecracker: 81 lib unit + 9 snapshot_protocol + 35 other integration, 0 failures)"
+  },
+  "acceptance_criteria": {
+    "patch_vm_paused_before_create": "create_pauses_before_create / create_sequence_is_pause_then_create: recorded sequence is [PatchVm(Paused), SnapshotCreate]; create_does_not_call_snapshot_create_when_pause_fails: a failed pause records only the pause, no create reaches the backend",
+    "restore_load_on_fresh_process_before_config": "restore_runs_load_rebind_resume_in_order / restore_sequence_is_load_rebind_resume: backend call[0] is SnapshotLoad on a Fresh-stage protocol; load_is_required_before_rebind_and_resume and rebind_and_resume_require_a_prior_load: rebind/resume before load return InvalidTransition and record nothing",
+    "deprecated_field_rejected": "deprecated_mem_file_path_is_rejected_on_load_ingest / deprecated_mem_file_path_rejected_at_ingest: from_raw_spec with mem_file_path -> ErrorCode::SnapshotIncompatible (field=mem_file_path); deprecated_field_rejected_even_when_mem_backend_present; create/load serialized bodies assert !contains(mem_file_path) and contain mem_backend.backend_path",
+    "loaded_vm_paused_resumed_only_via_backend_contract": "loaded_vm_reaches_resumed_only_through_explicit_resume: load sets resume_vm=false and stage Loaded; Resumed is reached only via resume() issuing exactly one PatchVm(Resumed); resume_before_load_fails_and_records_nothing",
+    "no_fresh_boot_config_on_restore": "fresh_boot_config_is_rejected_after_load_with_load_pre_config / fresh_boot_config_after_load_is_rejected_with_load_pre_config: configure_boot_source/drive/machine_config -> InvalidTransition rule=load_pre_config; backend saw only the load and stage stays Loaded (no corrupted state)",
+    "network_vsock_disconnect_semantics": "no_network_or_vsock_connection_continuity_after_restore / restore_does_not_claim_connection_continuity: network_connection_continuity_after_restore() and vsock_connection_continuity_after_restore() are both false by contract; rebind_reattaches_host_tap_without_continuity: rebind reattaches the host TAP (eth0 -> tap-restored) while continuity stays false"
+  },
+  "qa_scenario": {
+    "happy": "privileged snapshot create/load round trip with guest canary and restored service readiness (behind the `privileged` feature: cargo test -p microvm-firecracker --features privileged; requires KVM/jailer/TAP, excluded from the deterministic lane)",
+    "failure": "fresh_boot_config_after_load_is_rejected_with_load_pre_config: post-load PUT /boot-source / drive / machine-config reconfiguration is rejected with InvalidTransition (rule=load_pre_config); RecordingSnapshotApi asserts only the load reached the backend and RestoreProtocol stage is unchanged (no corrupted state)"
+  },
+  "key_types": {
+    "SnapshotCreateRequest": "pause -> full snapshot create sequence (PATCH /vm Paused before PUT /snapshot/create)",
+    "SnapshotLoadRequest": "fresh-process load via mem_backend.backend_path with network/vsock overrides; resume_vm forced false; rejects deprecated mem_file_path at ingest",
+    "RestoreProtocol": "Fresh -> Loaded -> Resumed state machine: load -> rebind network/vsock -> explicit resume; rejects fresh-boot config with load_pre_config",
+    "SnapshotApi": "transport-neutral trait (patch_vm, put_snapshot_create, put_snapshot_load, put_network_interface, put_vsock); UdsSnapshotApi is the real HTTP/1.1-over-UDS client, RecordingSnapshotApi the deterministic double"
+  }
+}
