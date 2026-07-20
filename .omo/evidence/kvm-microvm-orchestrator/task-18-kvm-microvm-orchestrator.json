@@ -1,0 +1,84 @@
+{
+  "task_id": 18,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Add REST/gRPC parity, socket hardening, and request audit tests",
+  "status": "complete",
+  "timestamp": "2026-07-20T06:43:34Z",
+  "crate": "microvm-contract-tests",
+  "verification": {
+    "cargo_test": "cargo test -p microvm-contract-tests --test transport_parity — 11 tests passed, 0 failed",
+    "cargo_fmt": "cargo fmt --all --check — clean",
+    "cargo_clippy": "cargo clippy --workspace --all-targets -- -D warnings — clean",
+    "workspace_tests": "cargo test --workspace — all crates pass, 0 failures"
+  },
+  "acceptance_criteria": {
+    "each_operation_has_rest_and_grpc_happy_fixture": true,
+    "each_operation_has_invalid_or_unauthorized_fixture": true,
+    "results_and_error_codes_match_between_transports": true,
+    "insecure_socket_mode_fails": true,
+    "tcp_config_fails": true,
+    "denied_request_writes_exactly_one_audit_event": true,
+    "shared_fixtures_for_both_transports": true,
+    "uses_microvm_rest_and_microvm_grpc_as_dev_dependencies": true,
+    "uses_microvm_service_vmlifecycleservice_as_backend": true,
+    "authorization_not_duplicated_or_weakened": true
+  },
+  "backend": "Both transports are backed by the SAME Arc<microvm_service::VmLifecycleService> (composed over a deterministic scripted LifecycleService inner double standing in for FirecrackerBackend — no KVM/root/Firecracker required). The supervised service owns all authorization, quota, idempotency, state mirroring, and audit; the tests only assert it, never duplicate or weaken it. Compile-time bound verified by vm_lifecycle_service_satisfies_both_transport_backends.",
+  "transport_drivers": {
+    "rest": "Raw HTTP/1.1 over tokio::net::UnixStream against microvm_rest::RestServer on a mode-0660 Unix socket; SO_PEERCRED maps the test process UID to a configured Principal via microvm_rest::peer::StaticAuthenticator.",
+    "grpc": "tonic MicrovmServiceClient (microvm_grpc::proto::v1) over a Unix-socket connector (tower::service_fn + hyper_util TokioIo) against microvm_grpc::GrpcServer; principal propagated via microvm_grpc::peer::StaticAuthenticator.",
+    "parity_unit": "Every operation reduces to a transport-neutral OpResult enum (Created/Started/Stopped/Snapshotted/Restored/Status/Metrics/Error{code}); parity is asserted on the service result, and Error carries the stable error_code identical across transports."
+  },
+  "fixtures": {
+    "happy": [
+      "CreateVm vcpu=2 mem=512 disk=1024 -> Created(vm-512mib)",
+      "GetVmStatus vm-512mib -> Status(created then running, spec 2/512/1024/none)",
+      "StartVm vm-512mib -> Started",
+      "SnapshotVm vm-512mib -> Snapshotted(snap-vm-512mib)",
+      "GetVmMetrics vm-512mib -> Metrics(running)",
+      "RestoreVm snap-vm-512mib -> Restored(vm-restored-snap-vm-512mib)",
+      "StopVm vm-512mib -> Stopped"
+    ],
+    "invalid": [
+      "CreateVm vcpu=0 -> invalid_resource_spec (REST 400 / gRPC InvalidArgument)",
+      "Start/Stop/Snapshot/Status/Metrics vm_id=BAD-ID -> invalid_id (REST 400 / gRPC InvalidArgument)",
+      "RestoreVm snapshot_id=BAD..ID -> invalid_id (REST 400 / gRPC InvalidArgument)",
+      "GetVmStatus vm_id=missing-vm -> artifact_not_found (REST 404 / gRPC NotFound)",
+      "RestoreVm snapshot_id=missing-snap -> artifact_not_found (REST 404 / gRPC NotFound)"
+    ],
+    "unauthorized": [
+      "Viewer role: Create/Start/Stop/Snapshot -> permission_denied (REST 403 / gRPC PermissionDenied) + exactly one Denied audit event each",
+      "Cross-tenant (globex Owner) Start on acme vm -> permission_denied (REST 403 / gRPC PermissionDenied) + exactly one Denied audit event"
+    ]
+  },
+  "tests": {
+    "operation_parity": ["happy_parity_every_operation_rest_eq_grpc"],
+    "error_parity": ["error_parity_invalid_input_and_not_found", "transport_status_and_code_mapping_agree", "error_body_bytes_identical_rest_and_grpc"],
+    "authorization_and_audit": ["denied_role_request_parity_and_single_audit_event", "denied_cross_tenant_request_parity_and_single_audit_event"],
+    "socket_hardening": ["both_sockets_are_created_with_mode_0660", "insecure_socket_mode_is_rejected_by_both_transports", "neither_transport_binds_a_tcp_endpoint", "tcp_config_fails_to_reach_the_api"],
+    "backend_bound": ["vm_lifecycle_service_satisfies_both_transport_backends"]
+  },
+  "audit_guarantee": "assert_single_denied_event snapshots audit len before a single denied request and asserts len grew by exactly 1 with result=Denied and the correct Operation, for create/start/stop/snapshot via both role-denial (Viewer) and cross-tenant denial. Read-only status/metrics denials are not audited by the service (non-mutating), so they are exercised for error-code parity but not for audit count.",
+  "socket_policy": {
+    "mode_0660_both_transports": true,
+    "insecure_modes_rejected": ["0777", "0666", "0644"],
+    "no_tcp_static_scan": "Inline scanner mirrors the platform canonical FORBIDDEN_TCP_PATTERNS (0.0.0.0/127.0.0.1/tcp:///[::]/::1/localhost:) plus TcpListener/TcpSocket/TcpStream/to_socket_addrs across rest+grpc lib/config/server sources; positive control asserts UnixListener and serve_with_incoming.",
+    "tcp_runtime": "tcp_config_fails_to_reach_the_api confirms the API is reachable only via the Unix socket and a loopback TCP connect (mirroring grpcurl -plaintext 127.0.0.1:50051) does not reach it."
+  },
+  "mutation_sensitivity": {
+    "rest_status_mutation": "Temporarily mapping ErrorCode::PermissionDenied -> HTTP 404 made transport_status_and_code_mapping_agree fail (left 404 != right 403); reverted.",
+    "grpc_code_mutation": "Temporarily mapping ErrorCode::PermissionDenied -> Code::NotFound made transport_status_and_code_mapping_agree fail; reverted.",
+    "adapters_unchanged": "git status confirms only Cargo.toml/Cargo.lock and the new crate changed; microvm-rest and microvm-grpc sources are unmodified (authorization neither duplicated nor weakened)."
+  },
+  "dependencies_note": "Core deps per plan: microvm-types, microvm-errors, microvm-lifecycle, microvm-service, microvm-rest, microvm-grpc, tokio, serde_json, tempfile (all dev-dependencies; rest/grpc used as dev-dependencies). tonic/tower/hyper-util are added as dev-dependencies solely to drive the tonic-generated gRPC client over the Unix socket (versions match microvm-grpc); there is no other way to exercise the gRPC transport.",
+  "files_added": [
+    "crates/microvm-contract-tests/Cargo.toml",
+    "crates/microvm-contract-tests/src/lib.rs",
+    "crates/microvm-contract-tests/tests/common/mod.rs",
+    "crates/microvm-contract-tests/tests/transport_parity.rs"
+  ],
+  "files_changed": [
+    "Cargo.toml",
+    "Cargo.lock"
+  ]
+}

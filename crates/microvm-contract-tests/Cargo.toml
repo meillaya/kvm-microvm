@@ -1,0 +1,31 @@
+[package]
+name = "microvm-contract-tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "REST/gRPC transport parity, socket-hardening, and request-audit contract tests"
+
+# This is a test-only crate: it ships no production code. Every dependency is a
+# dev-dependency consumed by the integration tests under `tests/`. The two
+# transport adapters are exercised as dev-dependencies per the platform plan
+# (todo 18); the composed `microvm_service::VmLifecycleService` is the backend.
+[dependencies]
+
+[dev-dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-service = { path = "../microvm-service" }
+microvm-rest = { path = "../microvm-rest" }
+microvm-grpc = { path = "../microvm-grpc" }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"] }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+libc = { workspace = true }
+# gRPC client stack (required to drive the tonic-generated MicrovmServiceClient
+# over a Unix socket; versions match microvm-grpc).
+tonic = "0.14"
+tower = { version = "0.5", features = ["util"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
