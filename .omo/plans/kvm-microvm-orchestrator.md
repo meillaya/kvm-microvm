@@ -303,7 +303,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy `cargo run -p microvm-cli -- create --image sha256:<digest> --socket runtime/api/rest.sock`; failure `microvm run --image nginx:latest` returns `LocalArtifactRequired` and exit 4 without network activity. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-26-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(cli): add Unix-socket lifecycle and run commands`
 
-- [~] 27. Build the reproducible snapshot/boot benchmark harness and Docker comparison
+- [x] 27. Build the reproducible snapshot/boot benchmark harness and Docker comparison
   What to do / Must NOT do: Add a harness with identical workload/artifact content for Firecracker and Docker, cold/warm/page-cache conditions, monotonic phases, N≥100 measurements per condition, p50/p95/p99, sample failures, and host metadata. Must not treat a single number or different image contents as proof of superiority.
   Parallelization: Wave 5 | Blocked by: 14-15, 20-24, 26 | Blocks: 31-34
   References (executor has NO interview context - be exhaustive): Draft benchmark scope `.omo/drafts/kvm-microvm-orchestrator.md:28,46-48,58,70,77`; Firecracker performance caveat `https://github.com/firecracker-microvm/firecracker/blob/v1.16.1/docs/snapshotting/snapshot-support.md`; Docker comparison requirements from user prompt.

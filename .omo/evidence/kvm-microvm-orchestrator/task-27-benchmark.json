@@ -1,0 +1,74 @@
+{
+  "class": "benchmark",
+  "host_metadata": {
+    "cpu": "AMD Ryzen 7 5700X 8-Core Processor",
+    "kernel": "7.1.3-2-cachyos",
+    "kvm_api_version": 12,
+    "page_cache_state": "mixed",
+    "memory_size_mib": 64215,
+    "vcpu_count": 16,
+    "cgroup_v2": true,
+    "nested": true
+  },
+  "workload": {
+    "name": "snapshot-restore",
+    "payload_sha256": "deb7bcf55d07e26d52bf0d6fd8b562401dfd6022e66d1e5ec5001dc916f10888"
+  },
+  "runtime_versions": {},
+  "benchmarks": [
+    {
+      "name": "snapshot_restore",
+      "target_ms": 200.0,
+      "unit": "ms",
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "cold": {
+        "samples": 0,
+        "failures": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "min_ms": null,
+        "max_ms": null
+      },
+      "warm": {
+        "samples": 0,
+        "failures": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "min_ms": null,
+        "max_ms": null
+      },
+      "blocked_reason": "firecracker_missing"
+    },
+    {
+      "name": "docker_start_cold",
+      "target_ms": 800.0,
+      "unit": "ms",
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "cold": {
+        "samples": 0,
+        "failures": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "min_ms": null,
+        "max_ms": null
+      },
+      "warm": {
+        "samples": 0,
+        "failures": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "min_ms": null,
+        "max_ms": null
+      },
+      "blocked_reason": "docker_missing"
+    }
+  ]
+}
