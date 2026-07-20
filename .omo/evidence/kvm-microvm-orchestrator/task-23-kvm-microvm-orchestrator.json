@@ -1,0 +1,63 @@
+{
+  "task": 23,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Collect per-VM host and guest metrics with a stable schema",
+  "commit": "a333688f40d95639fbb1aca322771497c5d50016",
+  "files_committed": [
+    "Cargo.toml",
+    "api/microvm/v1/service.proto",
+    "api/openapi.yaml",
+    "crates/microvm-metrics/Cargo.toml",
+    "crates/microvm-metrics/src/lib.rs",
+    "crates/microvm-metrics/src/availability.rs",
+    "crates/microvm-metrics/src/cgroup.rs",
+    "crates/microvm-metrics/src/network.rs",
+    "crates/microvm-metrics/src/guest.rs",
+    "crates/microvm-metrics/src/record.rs",
+    "crates/microvm-metrics/src/collector.rs",
+    "crates/microvm-metrics/tests/schema_and_counters.rs",
+    "crates/microvm-metrics/examples/sample_record.rs",
+    "crates/microvm-lifecycle/src/lib.rs",
+    "crates/microvm-service/src/lib.rs",
+    "crates/microvm-firecracker/src/backend.rs",
+    "crates/microvm-rest/src/router.rs",
+    "crates/microvm-grpc/src/service.rs",
+    "crates/microvm-contract-tests/tests/transport_parity.rs",
+    "schemas/vm-metrics-record.v1.json",
+    "schemas/examples/vm-metrics-record-ok.json",
+    "schemas/examples/vm-metrics-record-guest-unavailable.json"
+  ],
+  "test_results": {
+    "command": "cargo test -p microvm-metrics",
+    "exit_code": 0,
+    "output_excerpt": "lib unit: 32 passed (availability 6, cgroup 9, network 4, guest 3, record 5, collector 4, surface 1) | schema_and_counters integration: 11 passed | 0 failed"
+  },
+  "verification": {
+    "cargo_fmt": "pass (cargo fmt --all --check exit 0)",
+    "cargo_clippy": "pass (cargo clippy --workspace --all-targets -- -D warnings exit 0)",
+    "cargo_test": "pass (cargo test --workspace: 776 passed, 0 failed across 49 test binaries; includes microvm-metrics 32 unit + 11 integration and REST/gRPC transport parity 12)"
+  },
+  "acceptance_criteria": {
+    "host_cgroup_metrics_cpu_mem_io_pids": "CgroupMetrics parses cgroup-v2 cpu.stat (usage_usec/nr_periods/nr_throttled/throttled_usec), memory.current, memory.events (low/high/max/oom/oom_kill), io.stat (rbytes/wbytes/rios/wios aggregated across devices), and pids.current. Tests: cgroup::tests::* (parse_cpu_stat, parses_memory_events, parses_io_stat_aggregating_devices, ...) and schema_and_counters::parses_cgroup_v2_files_into_metrics.",
+    "tap_byte_counters_rx_tx_throughput": "NetworkMetrics reads <sysfs>/class/net/<tap>/statistics/{rx_bytes,tx_bytes}; throughput (bytes/sec) is derived by MetricsCollector from the monotonic delta between consecutive samples and is None (not zero) on the first sample. Tests: network::tests::rate_is_bytes_per_second, schema_and_counters::throughput_rate_matches_monotonic_delta.",
+    "monotonic_boot_restore_phases": "PhaseMarkers holds host-monotonic markers (spawn/socket_ready/configured/service_ready/snapshot_load/restore_ready) and derives boot_time_ns (spawn->service_ready) and restore_time_ns (snapshot_load->restore_ready); a missing endpoint yields None, never a zero duration. MetricsPhase advances booting/restoring->running->stopped. Tests: record::tests::phase_markers_derive_durations, inconsistent_markers_yield_none_not_negative.",
+    "optional_guest_agent_vsock_steal_load_rss": "GuestMetrics (cpu_steal_pct, load1, rss_bytes) is read through the injectable GuestAgentReader trait (vsock in production); NoGuestAgent default returns Unavailable(NoBackend). Tests: guest::tests::*, schema_and_counters::static_guest_agent_helpers_are_deterministic.",
+    "missing_guest_marked_unavailable_never_zero": "Every source is wrapped in Availability<T>: Available(value) or Unavailable(reason). The enum shape makes an unavailable-with-value unrepresentable; serialization is {available:true,value} or {available:false,reason}. Tests: availability::tests::unavailable_never_yields_a_value, schema_and_counters::not_collected_record_marks_all_sources_unavailable_never_zero, availability_flags_serialize_with_explicit_boolean.",
+    "schema_includes_required_fields_timestamps_and_flags": "VmMetricsRecord (schemas/vm-metrics-record.v1.json) includes vm_id, schema_version, phase, collected_at (RFC3339 wall source timestamp), monotonic_ns (host-monotonic source timestamp), phases.boot_time_ns, cgroup (memory_current_bytes, cpu.usage_usec/throttled_usec), guest.cpu_steal_pct when available, network rx/tx counters + throughput, per-source sampled_monotonic_ns, and explicit availability flags. Tests: schema_and_counters::record_schema_contains_all_stable_fields, committed_example_fixtures_satisfy_the_schema, committed_json_schema_document_is_well_formed.",
+    "metrics_exposed_via_uds_api": "lifecycle::VmMetrics now embeds VmMetricsRecord; REST GET /vms/{vm_id}/metrics returns it under `record` (openapi VmMetricsRecord/MetricSlot schemas) and gRPC GetVmMetrics returns the canonical JSON in GetVmMetricsResponse.metrics_json (proto field 3). Test: transport_parity::metrics_record_schema_exposed_on_both_transports asserts the deterministic record fields (vm_id, schema_version, phase, cgroup/network/guest availability, errors) match across both Unix-socket transports.",
+    "sampling_stops_after_cleanup": "MetricsCollector::stop_sampling removes the VM; a subsequent sample() returns ErrorCode::ArtifactNotFound and performs no filesystem/agent reads; re-registering resumes with fresh state. Tests: collector::tests::cleanup_stops_sampling, schema_and_counters::cleanup_stops_sampling_and_reads_nothing.",
+    "no_high_cardinality_unbounded_labels": "The record carries no free-form label maps; the only map is `errors`, keyed by the fixed MetricErrorKind enum (cgroup_read/network_read/guest_read/parse). Tests: record::tests::error_kind_cardinality_is_bounded (asserts the label set length is fixed), schema_and_counters error-label assertions, and the JSON schema's errors.additionalProperties:false with a fixed key set."
+  },
+  "qa_scenario": {
+    "happy": "cargo test -p microvm-metrics --test schema_and_counters — record_schema_contains_all_stable_fields builds a fully-available record (cgroup + network throughput + guest steal) over a tempdir and a ManualClock and asserts every stable schema field, the monotonic boot time, the RX/TX throughput rate, the availability flags, and a lossless round-trip.",
+    "failure": "schema_and_counters::removing_cgroup_and_agent_mid_sampling_yields_unavailable_plus_bounded_error — start healthy (cgroup present, guest agent responding), then remove the cgroup leaf directory and drop the guest agent; the next sample() does NOT panic and does NOT zero-fill: cgroup is Unavailable(source_missing), guest is Unavailable(agent_unreachable), bounded error counters errors[cgroup_read] and errors[guest_read] increment (and accumulate on the next sample), and memory_current_bytes()/guest_cpu_steal_pct() return None. malformed_cgroup_content_is_parse_error_not_panic additionally asserts a malformed cpu.stat yields Unavailable(parse_error) + errors[parse], not a panic."
+  },
+  "key_types": {
+    "VmMetricsRecord": "Full per-VM metrics snapshot (schema_version 1): vm_id, phase, collected_at + monotonic_ns source timestamps, PhaseMarkers (boot/restore durations), and availability-flagged cgroup/network/guest slots plus bounded error counters. Wire schema: schemas/vm-metrics-record.v1.json.",
+    "CgroupMetrics": "Host cgroup-v2 sample: CpuStat (usage/throttling), memory_current_bytes, MemoryEvents, IoMetrics (aggregate across devices), pids_current. Parsers are pure functions of file contents; read_cgroup_metrics maps every failure to a bounded UnavailableReason.",
+    "NetworkMetrics": "TAP RX/TX monotonic byte counters plus derived rx/tx_bytes_per_sec (None until a prior sample exists; saturating, overflow-safe rate).",
+    "GuestMetrics": "Optional guest-agent sample (cpu_steal_pct, load1, rss_bytes) read via the GuestAgentReader trait; absent agent => Unavailable, never zero. NoGuestAgent (default) and StaticGuestAgent (deterministic test double) provided.",
+    "MetricsCollector": "Registers VMs (cgroup leaf + TAP), samples on demand from configurable roots with an injectable Clock and GuestAgentReader, derives throughput from monotonic deltas, records monotonic phase markers, accumulates bounded error counters, and stops sampling on cleanup (post-cleanup sample => artifact_not_found).",
+    "Availability<T>": "Enum enforcing the never-zero-fill invariant: Available(value) | Unavailable(UnavailableReason); serializes to {available,value|reason}."
+  }
+}

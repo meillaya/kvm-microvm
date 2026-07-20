@@ -271,7 +271,7 @@ When the matrix and a todo's `Blocked by`/`Blocks` disagree, the todo wins; F1 a
   QA scenarios (name the exact tool + invocation): happy privileged snapshot create/load round trip with guest canary and restored service readiness; failure mock rejects post-load `PUT /boot-source`/drive reconfiguration and asserts `LoadPreConfig`, no corrupted state. Evidence `.omo/evidence/kvm-microvm-orchestrator/task-22-kvm-microvm-orchestrator.json`.
   Commit: Y | `feat(snapshot): implement Firecracker create and restore protocol`
 
-- [~] 23. Collect per-VM host and guest metrics with a stable schema
+- [x] 23. Collect per-VM host and guest metrics with a stable schema
   What to do / Must NOT do: Add host cgroup metrics (CPU usage/throttling, memory/current/events, IO, pids), TAP byte counters, monotonic boot/restore phases, and optional guest agent/vsock fields for guest steal/load/RSS. Missing guest data must be marked unavailable, never zero-filled.
   Parallelization: Wave 4 | Blocked by: 10-15, 19 | Blocks: 24, 27-30
   References (executor has NO interview context - be exhaustive): Draft metrics requirement `.omo/drafts/kvm-microvm-orchestrator.md:18,46,57,69`; cgroup v2 `https://docs.kernel.org/admin-guide/cgroup-v2.html`; Firecracker metrics `https://github.com/firecracker-microvm/firecracker/blob/v1.16.1/docs/metrics.md`.
