@@ -20,6 +20,8 @@
 //!   [`ProcessLauncher`](process::ProcessLauncher) abstraction.
 //! - [`readiness`] — guest-readiness probing
 //!   ([`GuestReadinessProbe`](readiness::GuestReadinessProbe)).
+//! - [`snapshot`] — snapshot create/load ordering and restore rebinding
+//!   ([`RestoreProtocol`](snapshot::RestoreProtocol)).
 //! - [`prereq`] — host prerequisite checks that fail before child creation.
 //! - [`backend`] — [`FirecrackerBackend`](backend::FirecrackerBackend), the
 //!   `LifecycleService` implementation.
@@ -44,6 +46,7 @@ pub mod phase;
 pub mod prereq;
 pub mod process;
 pub mod readiness;
+pub mod snapshot;
 pub mod testing;
 
 pub use api::{
@@ -62,6 +65,14 @@ pub use process::{LaunchSpec, ProcessLauncher, TokioLauncher, VmProcess};
 pub use readiness::{
     GuestReadinessProbe, ReadinessContext, TcpHealthProbe, DEFAULT_POLL_INTERVAL,
     DEFAULT_READINESS_TIMEOUT,
+};
+pub use snapshot::{
+    network_connection_continuity_after_restore, reject_deprecated_mem_file_path,
+    vsock_connection_continuity_after_restore, MemBackend, MemBackendType, RecordingSnapshotApi,
+    RestoreCall, RestoreProtocol, RestoreStage, SnapshotApi, SnapshotCall, SnapshotCreateParams,
+    SnapshotCreateRequest, SnapshotFailPoint, SnapshotLoadParams, SnapshotLoadRequest,
+    SnapshotType, UdsSnapshotApi, VmPatch, VmState, VsockOverride, DEPRECATED_MEM_FILE_PATH,
+    LOAD_PRE_CONFIG,
 };
 
 #[cfg(test)]

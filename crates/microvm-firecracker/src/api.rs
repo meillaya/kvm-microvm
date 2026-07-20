@@ -278,16 +278,30 @@ impl UdsApiClient {
 
     /// Perform a request carrying a JSON body and require a 2xx status.
     async fn put_json<T: Serialize>(&self, path: &str, payload: &T) -> Result<(), MicrovmError> {
+        self.send_json("PUT", path, payload).await
+    }
+
+    /// Perform a request with an arbitrary HTTP method carrying a JSON body,
+    /// requiring a 2xx status.
+    ///
+    /// Shared by the boot configuration paths (`PUT`) and the snapshot
+    /// protocol ([`crate::snapshot`]), which additionally needs `PATCH /vm`.
+    pub(crate) async fn send_json<T: Serialize>(
+        &self,
+        method: &str,
+        path: &str,
+        payload: &T,
+    ) -> Result<(), MicrovmError> {
         let body = serde_json::to_vec(payload).map_err(|e| {
             MicrovmError::new(ErrorCode::InternalError, "failed to serialize API payload")
                 .with_context("path", path)
                 .with_context("serde", e.to_string())
         })?;
-        let (status, resp) = self.request("PUT", path, Some(&body)).await?;
+        let (status, resp) = self.request(method, path, Some(&body)).await?;
         if (200..300).contains(&status) {
             Ok(())
         } else {
-            Err(api_error("PUT", path, status, &resp))
+            Err(api_error(method, path, status, &resp))
         }
     }
 }
