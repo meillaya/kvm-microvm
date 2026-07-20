@@ -1,0 +1,27 @@
+{
+  "task": 5,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Define typed identifiers, resource specifications, tenancy, and stable error codes",
+  "commit": "118353878a9357cf2b4ea02ecdbc7fa457774c3e",
+  "files_committed": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates/microvm-types/Cargo.toml",
+    "crates/microvm-types/src/lib.rs",
+    "crates/microvm-types/tests/roundtrip.rs",
+    "crates/microvm-types/tests/proptest_ids.rs",
+    "crates/microvm-errors/Cargo.toml",
+    "crates/microvm-errors/src/lib.rs",
+    "crates/microvm-errors/tests/roundtrip.rs"
+  ],
+  "test_results": {
+    "command": "cargo test -p microvm-types -p microvm-errors --locked",
+    "exit_code": 0,
+    "output_excerpt": "test result: ok. 9 passed (microvm-errors unit) | ok. 5 passed (microvm-errors roundtrip) | ok. 14 passed (microvm-types unit) | ok. 6 passed (microvm-types proptest) | ok. 11 passed (microvm-types roundtrip) — 45 total, 0 failed"
+  },
+  "verification": {
+    "cargo_fmt": "pass (cargo fmt --all -- --check exit 0)",
+    "cargo_clippy": "pass (cargo clippy --workspace --all-targets -- -D warnings exit 0)",
+    "cargo_test": "pass (45 tests, 0 failures)"
+  }
+}
