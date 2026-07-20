@@ -305,6 +305,8 @@ impl CgroupManager {
         let memory_swap_max = read_cgroup_file(&leaf.join("memory.swap.max"))?;
         let pids_max = read_cgroup_file(&leaf.join("pids.max"))?;
         let io_max = match read_cgroup_file(&leaf.join("io.max")) {
+            // An empty io.max means no I/O limit was applied — treat as None.
+            Ok(v) if v.is_empty() => None,
             Ok(v) => Some(v),
             // io.max is optional; a missing file means no I/O limit was set.
             Err(e) if e.code == ErrorCode::CgroupUnavailable => None,
