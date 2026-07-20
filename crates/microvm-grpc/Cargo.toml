@@ -1,0 +1,34 @@
+[package]
+name = "microvm-grpc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-service = { path = "../microvm-service" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["net", "rt", "macros", "sync"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+tonic = "0.14"
+tonic-prost = "0.14"
+prost = "0.14"
+libc = { workspace = true }
+
+[build-dependencies]
+tonic-prost-build = "0.14"
+
+[dev-dependencies]
+async-trait = { workspace = true }
+microvm-rest = { path = "../microvm-rest" }
+microvm-transport-contract = { path = "../microvm-transport-contract" }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+tempfile = { workspace = true }
+tower = { version = "0.5", features = ["util"] }
+hyper-util = "0.1"
+chrono = { workspace = true }
+libc = { workspace = true }
