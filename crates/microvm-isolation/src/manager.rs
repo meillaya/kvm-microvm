@@ -324,10 +324,18 @@ impl CgroupManager {
     /// Remove a per-VM leaf cgroup (idempotent cleanup).
     pub fn teardown_leaf(&self, vm_id: &VmId) -> Result<(), MicrovmError> {
         let leaf = self.leaf_path(vm_id);
-        match fs::remove_dir_all(&leaf) {
+        if !leaf.exists() {
+            return Ok(());
+        }
+        // In cgroup v2, a cgroup is removed with rmdir(2), not by deleting
+        // its pseudo-files. Try rmdir first (works on real cgroups); fall
+        // back to remove_dir_all for simulated/tempdir hierarchies that
+        // contain regular files.
+        match fs::remove_dir(&leaf) {
             Ok(()) => Ok(()),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
-            Err(e) => Err(cgroup_error(e, "failed to remove leaf cgroup", &leaf)),
+            Err(_) => fs::remove_dir_all(&leaf)
+                .map_err(|e| cgroup_error(e, "failed to remove leaf cgroup", &leaf)),
         }
     }
 }

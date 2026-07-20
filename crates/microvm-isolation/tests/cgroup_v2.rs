@@ -64,7 +64,7 @@ fn enforce_cpu_memory_pids_on_real_hierarchy() {
     let result = run_leaf_checks(&mgr, &vm, &spec);
 
     // Best-effort teardown of the parent (only succeeds once empty).
-    let _ = fs::remove_dir_all(mgr.parent_path());
+    let _ = fs::remove_dir(mgr.parent_path());
 
     if let Err(e) = result {
         panic!("privileged cgroup check failed: {e}");
