@@ -19,6 +19,7 @@ pub mod policy;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use microvm_errors::{ErrorCode, MicrovmError};
+use microvm_metrics::{MetricsPhase, VmMetricsRecord};
 use microvm_types::{Principal, ResourceSpec, SnapshotId, VmId};
 use serde::{Deserialize, Serialize};
 
@@ -84,6 +85,29 @@ impl VmState {
 impl std::fmt::Display for VmState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
+    }
+}
+
+impl VmState {
+    /// Map a lifecycle state to the monotonic metrics phase used by
+    /// [`VmMetricsRecord`] (plan todo 23).
+    ///
+    /// - `Created`/`Configured` have not reached service-ready => [`Booting`].
+    /// - `Running`/`Paused`/`Snapshotting` are service-ready => [`Running`].
+    /// - `Restoring` => [`Restoring`].
+    /// - `Stopped`/`Failed` are terminal => [`Stopped`].
+    ///
+    /// [`Booting`]: MetricsPhase::Booting
+    /// [`Running`]: MetricsPhase::Running
+    /// [`Restoring`]: MetricsPhase::Restoring
+    /// [`Stopped`]: MetricsPhase::Stopped
+    pub fn metrics_phase(self) -> MetricsPhase {
+        match self {
+            Self::Created | Self::Configured => MetricsPhase::Booting,
+            Self::Running | Self::Paused | Self::Snapshotting => MetricsPhase::Running,
+            Self::Restoring => MetricsPhase::Restoring,
+            Self::Stopped | Self::Failed => MetricsPhase::Stopped,
+        }
     }
 }
 
@@ -155,13 +179,25 @@ pub struct VmStatus {
     pub resource_spec: ResourceSpec,
 }
 
-/// Placeholder per-VM metrics (real metrics arrive in todo 23).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// Per-VM metrics view returned by the service (plan todo 23).
+///
+/// Wraps the full, wire-stable [`VmMetricsRecord`] (host cgroup/TAP metrics,
+/// monotonic boot/restore phases, and optional guest-agent metrics, all
+/// availability-flagged) together with the lifecycle [`VmState`] observed at
+/// collection time. The record is produced by `microvm-metrics`; this view
+/// adds only the lifecycle state, which is a lifecycle concern rather than a
+/// measurement.
+///
+/// Note: this type is `PartialEq` but not `Eq` because the embedded record
+/// may carry fractional guest metrics (`f64`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VmMetrics {
     /// The VM these metrics describe.
     pub vm_id: VmId,
     /// Current lifecycle state at time of collection.
     pub state: VmState,
+    /// The full measurement snapshot (availability-flagged, never zero-filled).
+    pub record: VmMetricsRecord,
 }
 
 // ---------------------------------------------------------------------------
@@ -277,9 +313,28 @@ mod tests {
         let metrics = VmMetrics {
             vm_id: VmId::new("vm-002").unwrap(),
             state: VmState::Paused,
+            record: VmMetricsRecord::not_collected(
+                VmId::new("vm-002").unwrap(),
+                VmState::Paused.metrics_phase(),
+                Utc::now(),
+                0,
+            ),
         };
         let json = serde_json::to_string(&metrics).unwrap();
         let back: VmMetrics = serde_json::from_str(&json).unwrap();
         assert_eq!(metrics, back);
+    }
+
+    #[test]
+    fn state_maps_to_metrics_phase() {
+        use microvm_metrics::MetricsPhase;
+        assert_eq!(VmState::Created.metrics_phase(), MetricsPhase::Booting);
+        assert_eq!(VmState::Configured.metrics_phase(), MetricsPhase::Booting);
+        assert_eq!(VmState::Running.metrics_phase(), MetricsPhase::Running);
+        assert_eq!(VmState::Paused.metrics_phase(), MetricsPhase::Running);
+        assert_eq!(VmState::Snapshotting.metrics_phase(), MetricsPhase::Running);
+        assert_eq!(VmState::Restoring.metrics_phase(), MetricsPhase::Restoring);
+        assert_eq!(VmState::Stopped.metrics_phase(), MetricsPhase::Stopped);
+        assert_eq!(VmState::Failed.metrics_phase(), MetricsPhase::Stopped);
     }
 }

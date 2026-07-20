@@ -583,6 +583,7 @@ dependencies = [
  "microvm-errors",
  "microvm-grpc",
  "microvm-lifecycle",
+ "microvm-metrics",
  "microvm-rest",
  "microvm-service",
  "microvm-types",
@@ -611,6 +612,7 @@ dependencies = [
  "microvm-errors",
  "microvm-isolation",
  "microvm-lifecycle",
+ "microvm-metrics",
  "microvm-types",
  "serde",
  "serde_json",
@@ -628,6 +630,7 @@ dependencies = [
  "libc",
  "microvm-errors",
  "microvm-lifecycle",
+ "microvm-metrics",
  "microvm-rest",
  "microvm-service",
  "microvm-transport-contract",
@@ -663,10 +666,23 @@ dependencies = [
  "async-trait",
  "chrono",
  "microvm-errors",
+ "microvm-metrics",
  "microvm-types",
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "microvm-metrics"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "microvm-errors",
+ "microvm-types",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -681,6 +697,7 @@ dependencies = [
  "libc",
  "microvm-errors",
  "microvm-lifecycle",
+ "microvm-metrics",
  "microvm-service",
  "microvm-types",
  "serde",
@@ -700,6 +717,7 @@ dependencies = [
  "microvm-firecracker",
  "microvm-isolation",
  "microvm-lifecycle",
+ "microvm-metrics",
  "microvm-types",
  "serde",
  "serde_json",

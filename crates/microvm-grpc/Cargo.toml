@@ -23,6 +23,7 @@ tonic-prost-build = "0.14"
 
 [dev-dependencies]
 async-trait = { workspace = true }
+microvm-metrics = { path = "../microvm-metrics" }
 microvm-rest = { path = "../microvm-rest" }
 microvm-transport-contract = { path = "../microvm-transport-contract" }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sync", "time"] }

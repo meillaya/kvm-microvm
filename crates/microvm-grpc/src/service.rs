@@ -227,10 +227,18 @@ impl MicrovmService for MicrovmGrpcService {
             .map_err(|e| invalid_id_status(format!("invalid vm_id: {}", e.reason)))?;
 
         match self.service.metrics(&vm_id, &principal).await {
-            Ok(metrics) => Ok(Response::new(GetVmMetricsResponse {
-                vm_id: metrics.vm_id.to_string(),
-                state: vm_state_to_proto(metrics.state),
-            })),
+            Ok(metrics) => {
+                // The record is serialized to its canonical JSON form (stable
+                // schema schemas/vm-metrics-record.v1.json). Serialization of a
+                // valid record cannot fail; guard defensively regardless.
+                let metrics_json = serde_json::to_string(&metrics.record)
+                    .map_err(|e| Status::internal(format!("metrics encode error: {e}")))?;
+                Ok(Response::new(GetVmMetricsResponse {
+                    vm_id: metrics.vm_id.to_string(),
+                    state: vm_state_to_proto(metrics.state),
+                    metrics_json,
+                }))
+            }
             Err(e) => Err(microvm_error_to_status(&e)),
         }
     }

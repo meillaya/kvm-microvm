@@ -58,6 +58,7 @@ use microvm_lifecycle::policy::{
     ResourceType, TenantQuota, TenantUsage,
 };
 use microvm_lifecycle::{LifecycleService, VmMetrics, VmState, VmStatus};
+use microvm_metrics::VmMetricsRecord;
 use microvm_types::{Principal, ResourceSpec, Role, SnapshotId, TenantId, VmId};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -740,9 +741,21 @@ impl LifecycleService for VmLifecycleService {
             .cloned()
             .ok_or_else(|| not_found(vm_id))?;
         authorize(principal, entry.owner(), Operation::Metrics)?;
+        // The in-memory supervised service has no host-metrics collector
+        // attached (no real cgroup/TAP/guest sources), so it returns an honest
+        // record whose sources are marked unavailable — never zero-filled. A
+        // privileged backend attaches a `MetricsCollector` to produce real
+        // measurements (plan todo 23).
+        let state = entry.state();
         Ok(VmMetrics {
+            record: VmMetricsRecord::not_collected(
+                entry.vm_id().clone(),
+                state.metrics_phase(),
+                Utc::now(),
+                0,
+            ),
             vm_id: entry.vm_id().clone(),
-            state: entry.state(),
+            state,
         })
     }
 }

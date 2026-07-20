@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 microvm-types = { path = "../microvm-types" }
 microvm-errors = { path = "../microvm-errors" }
+microvm-metrics = { path = "../microvm-metrics" }
 serde = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
@@ -14,3 +15,4 @@ chrono = { workspace = true }
 [dev-dependencies]
 serde_json = { workspace = true }
 tokio = { workspace = true }
+microvm-metrics = { path = "../microvm-metrics" }

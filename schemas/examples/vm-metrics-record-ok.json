@@ -1,0 +1,64 @@
+{
+  "vm_id": "vm-example",
+  "schema_version": 1,
+  "phase": "running",
+  "collected_at": "2026-07-20T12:00:00.250Z",
+  "monotonic_ns": 250000000,
+  "phases": {
+    "spawn_ns": 0,
+    "socket_ready_ns": null,
+    "configured_ns": null,
+    "service_ready_ns": 250000000,
+    "snapshot_load_ns": null,
+    "restore_ready_ns": null,
+    "boot_time_ns": 250000000,
+    "restore_time_ns": null
+  },
+  "cgroup": {
+    "available": true,
+    "value": {
+      "sampled_monotonic_ns": 250000000,
+      "cpu": {
+        "usage_usec": 5000,
+        "nr_periods": 100,
+        "nr_throttled": 4,
+        "throttled_usec": 250
+      },
+      "memory_current_bytes": 8388608,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "io": {
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "read_ios": 0,
+        "write_ios": 0
+      },
+      "pids_current": 5
+    }
+  },
+  "network": {
+    "available": true,
+    "value": {
+      "sampled_monotonic_ns": 250000000,
+      "rx_bytes": 11000,
+      "tx_bytes": 22000,
+      "rx_bytes_per_sec": 4000,
+      "tx_bytes_per_sec": 8000
+    }
+  },
+  "guest": {
+    "available": true,
+    "value": {
+      "sampled_monotonic_ns": 250000000,
+      "cpu_steal_pct": 7.5,
+      "load1": 1.25,
+      "rss_bytes": 4194304
+    }
+  },
+  "errors": {}
+}

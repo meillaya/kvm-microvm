@@ -191,4 +191,11 @@ message GetVmMetricsResponse {
   string vm_id = 1;
   // Current lifecycle state at time of collection.
   VmState state = 2;
+  // The full per-VM metrics record (plan todo 23) serialized as canonical JSON
+  // per schemas/vm-metrics-record.v1.json: host cgroup/TAP metrics, monotonic
+  // boot/restore phases, and optional guest metrics, each availability-flagged
+  // (missing data is flagged unavailable, never zero-filled). Carried as JSON
+  // to keep the rich, availability-flagged schema stable without proto churn;
+  // the REST transport exposes the same record as structured JSON.
+  string metrics_json = 3;
 }

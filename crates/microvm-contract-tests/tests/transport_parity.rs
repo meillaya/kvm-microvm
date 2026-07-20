@@ -22,7 +22,8 @@ mod common;
 use common::*;
 use microvm_grpc::error::error_body_from_status;
 use microvm_grpc::proto::v1::{
-    CreateVmRequest, GetVmStatusRequest, NetworkPolicy as ProtoNetworkPolicy, StartVmRequest,
+    CreateVmRequest, GetVmMetricsRequest, GetVmStatusRequest, NetworkPolicy as ProtoNetworkPolicy,
+    StartVmRequest,
 };
 use microvm_grpc::GrpcServer;
 use microvm_lifecycle::policy::{AuditResult, Operation};
@@ -100,6 +101,74 @@ async fn happy_parity_every_operation_rest_eq_grpc() {
     let grpc_r = grpc_stop(&mut grpc, "vm-512mib").await;
     assert_eq!(rest, grpc_r, "stop parity");
     assert_eq!(rest, OpResult::Stopped);
+
+    t.shutdown();
+}
+
+// ===========================================================================
+// Metrics record (plan todo 23) is exposed via BOTH UDS transports
+// ===========================================================================
+
+/// The full, availability-flagged `VmMetricsRecord` must be reachable over both
+/// the REST and gRPC Unix-socket APIs. REST returns it as structured JSON under
+/// `record`; gRPC returns the same canonical JSON in `metrics_json`. The
+/// deterministic parts of the record (identity, schema version, phase, and the
+/// availability flags) must agree across transports.
+#[tokio::test]
+async fn metrics_record_schema_exposed_on_both_transports() {
+    let rig = Rig::new();
+    let t = rig.spawn(rig.owner.clone(), "metrics-schema").await;
+    let mut grpc = t.grpc().await;
+
+    // Create the VM so metrics has a subject.
+    let created = rest_create(&t.rest_sock, 2, 512, 1024).await;
+    assert_eq!(created, OpResult::Created("vm-512mib".to_string()));
+
+    // -- REST: structured record under `record` ----------------------------
+    let r = rest_call(&t.rest_sock, "GET", "/vms/vm-512mib/metrics", None).await;
+    assert_eq!(r.status, 200);
+    let rest_record = &r.body["record"];
+    assert_eq!(rest_record["vm_id"], serde_json::json!("vm-512mib"));
+    assert_eq!(rest_record["schema_version"], serde_json::json!(1));
+    assert!(rest_record["phase"].is_string());
+    assert!(rest_record["collected_at"].is_string());
+    assert!(rest_record["monotonic_ns"].is_number());
+    // The in-memory backend has no host collector: every source is flagged
+    // unavailable (never zero-filled).
+    for source in ["cgroup", "network", "guest"] {
+        assert_eq!(rest_record[source]["available"], serde_json::json!(false));
+        assert_eq!(
+            rest_record[source]["reason"],
+            serde_json::json!("no_backend")
+        );
+        assert!(rest_record[source].get("value").is_none());
+    }
+
+    // -- gRPC: canonical record JSON in `metrics_json` ---------------------
+    let resp = grpc
+        .get_vm_metrics(GetVmMetricsRequest {
+            vm_id: "vm-512mib".to_string(),
+        })
+        .await
+        .expect("grpc metrics");
+    let grpc_record: serde_json::Value =
+        serde_json::from_str(&resp.into_inner().metrics_json).expect("metrics_json is valid JSON");
+
+    // -- Deterministic parity between the two transports -------------------
+    for field in [
+        "vm_id",
+        "schema_version",
+        "phase",
+        "cgroup",
+        "network",
+        "guest",
+        "errors",
+    ] {
+        assert_eq!(
+            rest_record[field], grpc_record[field],
+            "metrics field {field} must match across transports"
+        );
+    }
 
     t.shutdown();
 }

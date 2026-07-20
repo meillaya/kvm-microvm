@@ -42,6 +42,7 @@ use microvm_lifecycle::{
     policy::{authorize, AuditEvent, AuditLog, AuditResult, Operation, ResourceType},
     transition, LifecycleService, VmMetrics, VmState, VmStatus,
 };
+use microvm_metrics::VmMetricsRecord;
 use microvm_types::{Principal, ResourceSpec, SnapshotId, TenantId, VmId};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -818,7 +819,18 @@ impl LifecycleService for FirecrackerBackend {
                 .with_context("vm_id", vm_id.as_str())
         })?;
         authorize(principal, &record.owner, Operation::Metrics)?;
+        // The backend does not (yet) attach a host-metrics collector to its
+        // in-memory record, so it returns an honest record whose sources are
+        // marked unavailable rather than zero-filled (plan todo 23). A
+        // privileged deployment wires a `MetricsCollector` to the VM's cgroup
+        // leaf and TAP device to produce real measurements.
         Ok(VmMetrics {
+            record: VmMetricsRecord::not_collected(
+                record.vm_id.clone(),
+                record.state.metrics_phase(),
+                Utc::now(),
+                0,
+            ),
             vm_id: record.vm_id.clone(),
             state: record.state,
         })

@@ -9,6 +9,7 @@
 use async_trait::async_trait;
 use microvm_errors::{ErrorCode, MicrovmError};
 use microvm_lifecycle::{LifecycleService, VmMetrics, VmState, VmStatus};
+use microvm_metrics::VmMetricsRecord;
 use microvm_rest::error::error_to_http_status;
 use microvm_rest::peer::{PeerAuthenticator, PeerCredentials, StaticAuthenticator};
 use microvm_rest::router::{self, match_route};
@@ -156,6 +157,12 @@ impl LifecycleService for MockService {
                 .with_context("vm_id", vm_id.as_str()));
         }
         Ok(VmMetrics {
+            record: VmMetricsRecord::not_collected(
+                vm_id.clone(),
+                VmState::Running.metrics_phase(),
+                chrono::Utc::now(),
+                0,
+            ),
             vm_id: vm_id.clone(),
             state: VmState::Running,
         })

@@ -35,6 +35,7 @@ use microvm_grpc::proto::v1::{
 use microvm_grpc::server::REFLECTION_ENABLED;
 use microvm_grpc::{GrpcServer, MicrovmGrpcService, SocketConfig};
 use microvm_lifecycle::{LifecycleService, VmMetrics, VmState, VmStatus};
+use microvm_metrics::VmMetricsRecord;
 use microvm_types::{NetworkPolicy, Principal, ResourceSpec, Role, SnapshotId, TenantId, VmId};
 use tonic::transport::{Channel, Uri};
 use tonic::{Code, Request};
@@ -178,6 +179,12 @@ impl LifecycleService for MockService {
                 .with_context("vm_id", vm_id.as_str()));
         }
         Ok(VmMetrics {
+            record: VmMetricsRecord::not_collected(
+                vm_id.clone(),
+                VmState::Running.metrics_phase(),
+                Utc::now(),
+                0,
+            ),
             vm_id: vm_id.clone(),
             state: VmState::Running,
         })

@@ -14,6 +14,7 @@ privileged = []
 microvm-types = { path = "../microvm-types" }
 microvm-errors = { path = "../microvm-errors" }
 microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-metrics = { path = "../microvm-metrics" }
 microvm-artifacts = { path = "../microvm-artifacts" }
 microvm-isolation = { path = "../microvm-isolation" }
 serde = { workspace = true }

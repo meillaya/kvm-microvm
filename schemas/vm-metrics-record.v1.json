@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kvm-microvm-orchestrator.local/schemas/vm-metrics-record.v1.json",
+  "title": "per-VM metrics record (v1)",
+  "description": "Stable per-VM host and guest metrics snapshot (plan todo 23). Combines host cgroup-v2 metrics (CPU usage/throttling, memory current/events, block IO, pids), TAP RX/TX byte counters and derived throughput, monotonic boot/restore phase timings, and OPTIONAL guest-agent metrics (CPU steal, load, RSS). CORE INVARIANT: every source is wrapped in an Availability slot — a source either produced a value ({available:true,value}) or is explicitly unavailable ({available:false,reason}); missing data is NEVER zero-filled, so a measured 0 and an absent source are always distinguishable. CARDINALITY: the record carries no free-form label maps; the only map is `errors`, keyed by a fixed MetricErrorKind enum, so label cardinality is bounded by construction. Produced by microvm-metrics::MetricsCollector and exposed through the UDS API (REST GET /vms/{vm_id}/metrics and gRPC GetVmMetrics).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "vm_id",
+    "schema_version",
+    "phase",
+    "collected_at",
+    "monotonic_ns",
+    "phases",
+    "cgroup",
+    "network",
+    "guest",
+    "errors"
+  ],
+  "properties": {
+    "vm_id": {
+      "description": "The VM this record describes (typed VmId). Validated by microvm-types: non-empty, <= 64 bytes, no '/', no '..', no uppercase, charset a-z 0-9 - _ . Bounded length keeps label cardinality finite.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "schema_version": {
+      "description": "Record schema version. MUST equal 1 for this schema; bumped only on a breaking change.",
+      "type": "integer",
+      "const": 1
+    },
+    "phase": {
+      "description": "Monotonic boot/restore phase the VM was in at collection time. A VM boots once (booting -> running) or restores once (restoring -> running); stopped is terminal. The phase only advances forward.",
+      "type": "string",
+      "enum": ["booting", "restoring", "running", "stopped"]
+    },
+    "collected_at": {
+      "description": "Wall-clock source timestamp of collection (RFC 3339, UTC).",
+      "type": "string",
+      "format": "date-time"
+    },
+    "monotonic_ns": {
+      "description": "Host-monotonic source timestamp of collection in nanoseconds (since the collector's monotonic epoch). Used with per-source sampled_monotonic_ns to reason about staleness and to derive throughput rates.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "phases": {
+      "description": "Host-monotonic boot/restore phase markers (ns) plus the durations derived from them. Each raw marker is null until that boundary is reached; a derived duration is null until BOTH its endpoints exist (never a fabricated zero duration).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spawn_ns",
+        "socket_ready_ns",
+        "configured_ns",
+        "service_ready_ns",
+        "snapshot_load_ns",
+        "restore_ready_ns",
+        "boot_time_ns",
+        "restore_time_ns"
+      ],
+      "properties": {
+        "spawn_ns": { "type": ["integer", "null"], "minimum": 0 },
+        "socket_ready_ns": { "type": ["integer", "null"], "minimum": 0 },
+        "configured_ns": { "type": ["integer", "null"], "minimum": 0 },
+        "service_ready_ns": { "type": ["integer", "null"], "minimum": 0 },
+        "snapshot_load_ns": { "type": ["integer", "null"], "minimum": 0 },
+        "restore_ready_ns": { "type": ["integer", "null"], "minimum": 0 },
+        "boot_time_ns": {
+          "description": "Derived cold-boot time in ns (spawn -> service-ready), or null until the guest reports service-ready.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "restore_time_ns": {
+          "description": "Derived restore time in ns (snapshot-load -> restore-ready), or null until restore completes.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      }
+    },
+    "cgroup": {
+      "description": "Host cgroup-v2 metrics, availability-flagged.",
+      "$ref": "#/$defs/availability_cgroup"
+    },
+    "network": {
+      "description": "TAP RX/TX byte counters and derived throughput, availability-flagged.",
+      "$ref": "#/$defs/availability_network"
+    },
+    "guest": {
+      "description": "OPTIONAL guest-agent metrics (CPU steal, load, RSS), availability-flagged. When no agent is configured or the agent is unreachable this is {available:false,reason} — NEVER a zero-filled value.",
+      "$ref": "#/$defs/availability_guest"
+    },
+    "errors": {
+      "description": "Cumulative collection-error counters keyed by a FIXED error kind. The key set is bounded (cgroup_read, network_read, guest_read, parse); no free-form labels are permitted.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cgroup_read": { "type": "integer", "minimum": 0 },
+        "network_read": { "type": "integer", "minimum": 0 },
+        "guest_read": { "type": "integer", "minimum": 0 },
+        "parse": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "unavailable_reason": {
+      "description": "Bounded, stable reason a source could not produce a value. Never a free-form string.",
+      "type": "string",
+      "enum": [
+        "no_backend",
+        "source_missing",
+        "parse_error",
+        "read_error",
+        "agent_unreachable",
+        "not_yet_sampled"
+      ]
+    },
+    "availability_cgroup": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["available", "value"],
+          "properties": {
+            "available": { "const": true },
+            "value": { "$ref": "#/$defs/cgroup_metrics" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["available", "reason"],
+          "properties": {
+            "available": { "const": false },
+            "reason": { "$ref": "#/$defs/unavailable_reason" }
+          }
+        }
+      ]
+    },
+    "availability_network": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["available", "value"],
+          "properties": {
+            "available": { "const": true },
+            "value": { "$ref": "#/$defs/network_metrics" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["available", "reason"],
+          "properties": {
+            "available": { "const": false },
+            "reason": { "$ref": "#/$defs/unavailable_reason" }
+          }
+        }
+      ]
+    },
+    "availability_guest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["available", "value"],
+          "properties": {
+            "available": { "const": true },
+            "value": { "$ref": "#/$defs/guest_metrics" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["available", "reason"],
+          "properties": {
+            "available": { "const": false },
+            "reason": { "$ref": "#/$defs/unavailable_reason" }
+          }
+        }
+      ]
+    },
+    "cgroup_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sampled_monotonic_ns",
+        "cpu",
+        "memory_current_bytes",
+        "memory_events",
+        "io",
+        "pids_current"
+      ],
+      "properties": {
+        "sampled_monotonic_ns": { "type": "integer", "minimum": 0 },
+        "cpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["usage_usec", "nr_periods", "nr_throttled", "throttled_usec"],
+          "properties": {
+            "usage_usec": { "type": "integer", "minimum": 0 },
+            "nr_periods": { "type": "integer", "minimum": 0 },
+            "nr_throttled": { "type": "integer", "minimum": 0 },
+            "throttled_usec": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "memory_current_bytes": { "type": "integer", "minimum": 0 },
+        "memory_events": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["low", "high", "max", "oom", "oom_kill"],
+          "properties": {
+            "low": { "type": "integer", "minimum": 0 },
+            "high": { "type": "integer", "minimum": 0 },
+            "max": { "type": "integer", "minimum": 0 },
+            "oom": { "type": "integer", "minimum": 0 },
+            "oom_kill": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "io": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["read_bytes", "write_bytes", "read_ios", "write_ios"],
+          "properties": {
+            "read_bytes": { "type": "integer", "minimum": 0 },
+            "write_bytes": { "type": "integer", "minimum": 0 },
+            "read_ios": { "type": "integer", "minimum": 0 },
+            "write_ios": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "pids_current": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "network_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sampled_monotonic_ns", "rx_bytes", "tx_bytes"],
+      "properties": {
+        "sampled_monotonic_ns": { "type": "integer", "minimum": 0 },
+        "rx_bytes": { "type": "integer", "minimum": 0 },
+        "tx_bytes": { "type": "integer", "minimum": 0 },
+        "rx_bytes_per_sec": {
+          "description": "Receive throughput in bytes/sec since the previous sample. Absent (not zero) on the first sample, when no rate is derivable yet.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "tx_bytes_per_sec": {
+          "description": "Transmit throughput in bytes/sec since the previous sample. Absent (not zero) on the first sample.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "guest_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sampled_monotonic_ns", "cpu_steal_pct", "load1", "rss_bytes"],
+      "properties": {
+        "sampled_monotonic_ns": { "type": "integer", "minimum": 0 },
+        "cpu_steal_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "load1": { "type": "number", "minimum": 0 },
+        "rss_bytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

@@ -15,6 +15,7 @@
 
 use microvm_errors::{ErrorCode, MicrovmError};
 use microvm_lifecycle::LifecycleService;
+use microvm_metrics::VmMetricsRecord;
 use microvm_types::{NetworkPolicy, Principal, ResourceSpec, SnapshotId, VmId};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -73,12 +74,20 @@ pub struct ResourceSpecResponse {
 }
 
 /// Response body for `GET /vms/{vm_id}/metrics` (200).
+///
+/// Carries the lifecycle state plus the full, availability-flagged
+/// [`VmMetricsRecord`] (plan todo 23): host cgroup/TAP metrics, monotonic
+/// boot/restore phases, and optional guest metrics. Missing sources are
+/// flagged unavailable, never zero-filled.
 #[derive(Clone, Debug, Serialize)]
 pub struct VmMetricsResponse {
     /// VM identifier.
     pub vm_id: String,
     /// Current lifecycle state.
     pub state: String,
+    /// The full measurement snapshot (stable schema
+    /// `schemas/vm-metrics-record.v1.json`).
+    pub record: VmMetricsRecord,
 }
 
 /// Response body for `POST /vms/{vm_id}/snapshot` (201).
@@ -371,6 +380,7 @@ async fn handle_get_metrics(
         Ok(metrics) => HttpResponse::ok(&VmMetricsResponse {
             vm_id: metrics.vm_id.to_string(),
             state: metrics.state.as_str().to_string(),
+            record: metrics.record,
         }),
         Err(e) => service_error_response(&e),
     }

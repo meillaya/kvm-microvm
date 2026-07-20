@@ -15,6 +15,7 @@ description = "REST/gRPC transport parity, socket-hardening, and request-audit c
 microvm-types = { path = "../microvm-types" }
 microvm-errors = { path = "../microvm-errors" }
 microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-metrics = { path = "../microvm-metrics" }
 microvm-service = { path = "../microvm-service" }
 microvm-rest = { path = "../microvm-rest" }
 microvm-grpc = { path = "../microvm-grpc" }

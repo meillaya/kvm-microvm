@@ -32,6 +32,7 @@ use microvm_grpc::proto::v1::{
 use microvm_grpc::{GrpcServer, SocketConfig as GrpcSocketConfig};
 use microvm_lifecycle::policy::{AuditEvent, InMemoryAuditLog};
 use microvm_lifecycle::{LifecycleService, VmMetrics, VmState, VmStatus};
+use microvm_metrics::VmMetricsRecord;
 use microvm_rest::peer::{
     PeerAuthenticator as RestPeerAuthenticator, StaticAuthenticator as RestStaticAuthenticator,
 };
@@ -116,6 +117,12 @@ impl LifecycleService for ScriptedBackend {
         _principal: &Principal,
     ) -> Result<VmMetrics, MicrovmError> {
         Ok(VmMetrics {
+            record: VmMetricsRecord::not_collected(
+                vm_id.clone(),
+                VmState::Running.metrics_phase(),
+                chrono::Utc::now(),
+                0,
+            ),
             vm_id: vm_id.clone(),
             state: VmState::Running,
         })

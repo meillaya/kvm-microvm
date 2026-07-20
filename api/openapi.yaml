@@ -296,12 +296,108 @@ components:
       required:
         - vm_id
         - state
+        - record
       properties:
         vm_id:
           type: string
           description: VM identifier
         state:
           $ref: "#/components/schemas/VmState"
+        record:
+          $ref: "#/components/schemas/VmMetricsRecord"
+
+    VmMetricsRecord:
+      type: object
+      description: >-
+        Full per-VM metrics snapshot (plan todo 23). Canonical schema:
+        schemas/vm-metrics-record.v1.json. Includes boot time, memory usage,
+        CPU usage/throttling, guest CPU steal when available, RX/TX
+        throughput, per-source timestamps, and explicit availability flags.
+        Every source (cgroup, network, guest) is availability-flagged:
+        {available:true,value} or {available:false,reason}. Missing data is
+        NEVER zero-filled.
+      required:
+        - vm_id
+        - schema_version
+        - phase
+        - collected_at
+        - monotonic_ns
+        - phases
+        - cgroup
+        - network
+        - guest
+        - errors
+      properties:
+        vm_id:
+          type: string
+          description: VM identifier (typed VmId).
+        schema_version:
+          type: integer
+          enum: [1]
+          description: Record schema version; 1 for this contract.
+        phase:
+          type: string
+          enum: [booting, restoring, running, stopped]
+          description: Monotonic boot/restore phase at collection time.
+        collected_at:
+          type: string
+          format: date-time
+          description: Wall-clock source timestamp of collection (RFC 3339, UTC).
+        monotonic_ns:
+          type: integer
+          minimum: 0
+          description: Host-monotonic source timestamp of collection (ns).
+        phases:
+          type: object
+          description: >-
+            Monotonic boot/restore phase markers (ns) plus derived
+            boot_time_ns / restore_time_ns (null until both endpoints exist;
+            never a fabricated zero duration).
+          additionalProperties: true
+        cgroup:
+          $ref: "#/components/schemas/MetricSlot"
+        network:
+          $ref: "#/components/schemas/MetricSlot"
+        guest:
+          $ref: "#/components/schemas/MetricSlot"
+        errors:
+          type: object
+          description: >-
+            Bounded collection-error counters keyed by a fixed error kind
+            (cgroup_read, network_read, guest_read, parse). No free-form
+            labels.
+          additionalProperties:
+            type: integer
+            minimum: 0
+
+    MetricSlot:
+      type: object
+      description: >-
+        Availability-flagged metric source. Either {available:true,value} or
+        {available:false,reason}; a missing source is flagged unavailable,
+        never zero-filled. The shape of `value` depends on the source (cgroup,
+        network, or guest); see schemas/vm-metrics-record.v1.json for the full
+        nested contract.
+      required:
+        - available
+      properties:
+        available:
+          type: boolean
+          description: True iff the source produced a value.
+        value:
+          type: object
+          additionalProperties: true
+          description: The measured value (present iff available is true).
+        reason:
+          type: string
+          enum:
+            - no_backend
+            - source_missing
+            - parse_error
+            - read_error
+            - agent_unreachable
+            - not_yet_sampled
+          description: Bounded reason (present iff available is false).
 
     SnapshotVmResponse:
       type: object

@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use microvm_errors::{ErrorCode, MicrovmError};
 use microvm_lifecycle::{transition, LifecycleService, VmMetrics, VmState, VmStatus};
+use microvm_metrics::VmMetricsRecord;
 use microvm_types::{NetworkPolicy, Principal, ResourceSpec, Role, SnapshotId, TenantId, VmId};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -197,6 +198,12 @@ impl LifecycleService for MockBackend {
                 .with_context("vm_id", vm_id.as_str())
         })?;
         Ok(VmMetrics {
+            record: VmMetricsRecord::not_collected(
+                vm_id.clone(),
+                record.state.metrics_phase(),
+                Utc::now(),
+                0,
+            ),
             vm_id: vm_id.clone(),
             state: record.state,
         })
