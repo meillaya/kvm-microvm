@@ -9,6 +9,7 @@ members = [
     "crates/microvm-isolation",
     "crates/microvm-firecracker",
     "crates/microvm-service",
+    "crates/microvm-rest",
 ]
 
 [workspace.package]

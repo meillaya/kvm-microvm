@@ -1,0 +1,57 @@
+{
+  "task_id": 16,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Implement REST/JSON over a protected Unix socket",
+  "status": "complete",
+  "timestamp": "2026-07-20T05:44:00Z",
+  "crate": "microvm-rest",
+  "verification": {
+    "cargo_test": "cargo test -p microvm-rest — 78 tests passed (45 unit + 33 integration)",
+    "cargo_fmt": "cargo fmt --all — clean",
+    "cargo_clippy": "cargo clippy --workspace --all-targets -- -D warnings — clean",
+    "workspace_tests": "cargo test --workspace — all crates pass"
+  },
+  "acceptance_criteria": {
+    "rest_happy_paths_call_shared_service": true,
+    "socket_mode_0660_and_expected_owner_group": true,
+    "peer_uid_gid_captured_before_authorization": true,
+    "cross_tenant_maps_to_403": true,
+    "malformed_json_maps_to_400": true,
+    "no_tcp_listener_created": true
+  },
+  "routes_implemented": [
+    "POST /vms",
+    "GET /vms/{vm_id}",
+    "POST /vms/{vm_id}/start",
+    "POST /vms/{vm_id}/stop",
+    "POST /vms/{vm_id}/snapshot",
+    "GET /vms/{vm_id}/metrics",
+    "POST /snapshots/{snapshot_id}/restore"
+  ],
+  "error_mapping": {
+    "invalid_id": 400,
+    "invalid_resource_spec": 400,
+    "invalid_transition": 409,
+    "permission_denied": 403,
+    "quota_exceeded": 409,
+    "artifact_not_found": 404,
+    "internal_error": 500
+  },
+  "security_invariants": {
+    "unix_socket_only": true,
+    "no_tcp_patterns_in_source": true,
+    "so_peercred_before_authorization": true,
+    "socket_mode_validation": true,
+    "socket_owner_validation": true
+  },
+  "files_added": [
+    "crates/microvm-rest/Cargo.toml",
+    "crates/microvm-rest/src/lib.rs",
+    "crates/microvm-rest/src/config.rs",
+    "crates/microvm-rest/src/peer.rs",
+    "crates/microvm-rest/src/error.rs",
+    "crates/microvm-rest/src/router.rs",
+    "crates/microvm-rest/src/server.rs",
+    "crates/microvm-rest/tests/rest_contract.rs"
+  ]
+}
