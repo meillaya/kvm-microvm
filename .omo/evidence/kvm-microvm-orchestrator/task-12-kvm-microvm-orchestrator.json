@@ -1,0 +1,89 @@
+{
+  "task": 12,
+  "plan": "kvm-microvm-orchestrator",
+  "title": "Pinned Firecracker/jailer process specification and binary provenance gate",
+  "status": "complete",
+  "commit": "d711865",
+  "commit_message": "feat(isolation): pin Firecracker and validate jailer launch",
+  "timestamp": "2026-07-20T02:09:31Z",
+  "crate": "microvm-isolation",
+  "files_changed": [
+    "Cargo.lock",
+    "crates/microvm-isolation/Cargo.toml",
+    "crates/microvm-isolation/src/firecracker.rs",
+    "crates/microvm-isolation/src/lib.rs",
+    "crates/microvm-isolation/tests/jailer_invocation.rs"
+  ],
+  "deliverables": {
+    "binary_manifest": "BinaryManifest{name,version,sha256,machine}; validated at construction (vMAJOR.MINOR.PATCH version, 64-hex sha256 normalized lowercase, safe name); is_pinned() == (version == PINNED_VERSION v1.16.1)",
+    "pinned_manifests": "pinned_firecracker(machine)/pinned_jailer(machine) for x86_64 and aarch64 with official v1.16.1 SHA-256",
+    "binary_verifier": "BinaryVerifier::verify_bytes/verify_path: (1) manifest pinned, (2) exact SHA-256 match, (3) ELF release/static form, (4) embedded version string; all failures => ErrorCode::BinaryProvenanceError before spawn",
+    "elf_form_check": "parse_elf_form: ELF64 little-endian, e_type ET_EXEC or ET_DYN (PIE), e_machine match, statically_linked = no PT_INTERP, has_debug_sections = any .debug_* section. require_release_static rejects dynamic/GNU (PT_INTERP), debug (.debug_*), and machine mismatch",
+    "jailer_argv": "JailerArgv::builder(...).build(): always --cgroup-version=2 + pre-created --parent-cgroup; requires --netns, non-root --uid/--gid, >=1 bounded --resource-limit (fsize/no-file in [1,max]); invalid => ErrorCode::InvalidResourceSpec before spawn; deterministic argv (BTreeMap-sorted resource limits)",
+    "resource_limits": "ResourceKind{Fsize,NoFile} (the two jailer v1.16.1 resources); MAX_FSIZE_BYTES=1TiB, MAX_NO_FILE=1<<20; recommended defaults fsize=250000000, no-file=1024",
+    "seccomp_stub": "parse_seccomp_mode/verify_seccomp_status/SeccompVerifier: post-exec /proc/<pid>/status must report Seccomp:2 (filter). Documented that the jailer does NOT install seccomp; Firecracker installs it after exec. Missing/non-filter => ErrorCode::ProcessSpawnError",
+    "helpers": "sha256_hex (sha2 crate), binary_contains_version (strips leading v; release embeds 1.16.1)",
+    "workspace_deps_added": [
+      "sha2 0.10 (already a workspace dependency)"
+    ]
+  },
+  "pinned_binaries": {
+    "version": "v1.16.1",
+    "source": "official release tarballs; SHA-256 verified against the SHA256SUMS shipped inside each tarball",
+    "firecracker_x86_64": "2fd0171309af7e24cf8dafc8a6f921c1434c49b5f9349bb996b7ed0a4deb8aa7",
+    "jailer_x86_64": "1f3a0c1fe86212d0001819bfe0819071c01208b3ccc9398c3b3bc1b84cf21edd",
+    "firecracker_aarch64": "71ca0733576579a75cef268a8fd0ae0629b761b9844559c611f144132ac6038a",
+    "jailer_aarch64": "7db39d34991ccdd8d12aacab384b1dcbe35e79c27823e4e4d33725d4b504edd7",
+    "elf_form_observed": "x86_64 release is ET_DYN (PIE), aarch64 release is ET_EXEC; both static (0 PT_INTERP) with 0 .debug_* sections; release keeps .symtab"
+  },
+  "verification": {
+    "cargo_test": {
+      "command": "cargo test -p microvm-isolation",
+      "result": "pass",
+      "tests_total": 120,
+      "tests_passed": 120,
+      "firecracker_unit_tests": 35
+    },
+    "cargo_fmt": {
+      "command": "cargo fmt --all",
+      "result": "pass"
+    },
+    "cargo_clippy": {
+      "command": "cargo clippy --workspace --all-targets -- -D warnings",
+      "result": "pass",
+      "warnings": 0,
+      "note": "also clean with --features privileged"
+    },
+    "privileged_test": {
+      "command": "cargo test --features privileged --test jailer_invocation -- --nocapture",
+      "result": "pass",
+      "tests_passed": 5,
+      "happy_path": "verified the genuine v1.16.1 x86_64 firecracker (sha256 2fd017...) and jailer (sha256 1f3a0c...) against the pinned manifests via MICROVM_PINNED_FIRECRACKER/MICROVM_PINNED_JAILER overrides",
+      "blocked_path": "without pinned binaries on PATH, reports blocked: firecracker_binary_missing / jailer_binary_missing / no_pinned_binary_verified and still passes (platform pass/blocked/failed model)"
+    }
+  },
+  "test_coverage": {
+    "manifest_validation": "valid record accepted; bad sha256/version/empty name rejected with BinaryProvenanceError; sha256 normalized to lowercase",
+    "argv_generation": "required flags present (--cgroup-version=2, --parent-cgroup <leaf>, --netns, non-root --uid/--gid, bounded fsize=/no-file=); deterministic; root uid/gid, missing fields, empty id, unbounded/zero/absent resource limits rejected with InvalidResourceSpec",
+    "hash_verification_logic": "sha256 known vectors (empty, abc); matching static release accepted; hash mismatch rejected (stage=hash_mismatch); tampered file rejected; missing file rejected (stage=io)",
+    "rejection_of_debug_binaries": "debug build (.debug_info) rejected even with matching hash (stage=debug_build); GNU/dynamic (PT_INTERP) rejected even with matching hash (stage=dynamic_binary); machine mismatch rejected; non-pinned manifest rejected (stage=not_pinned); missing embedded version rejected (stage=version_mismatch)",
+    "elf_form": "static release accepted; PIE/static accepted; PT_INTERP detected; .debug_* detected; non-ELF/truncated/wrong-class/wrong-endianness/non-executable rejected",
+    "seccomp": "parse Seccomp:2/0/absent; verify requires filter mode (ProcessSpawnError otherwise); configurable proc root; missing pid status => ProcessSpawnError",
+    "no_child_process": "the module exposes no spawn API and constructs no std::process::Command; every rejection is pre-spawn (asserted in privileged provenance_rejects_debug_and_wrong_hash_without_spawning)"
+  },
+  "guardrails": {
+    "rejects_debug_binaries": true,
+    "rejects_gnu_dynamic_binaries": true,
+    "rejects_non_pinned_binaries": true,
+    "rejects_before_spawn": true,
+    "module_never_spawns": true,
+    "does_not_claim_jailer_installs_seccomp": true,
+    "error_contract": "BinaryProvenanceError for binary provenance (pre-spawn); InvalidResourceSpec for argv configuration (pre-spawn); ProcessSpawnError for post-exec seccomp state"
+  },
+  "design_notes": {
+    "determinism": "manifest validation, sha256, ELF parsing, version scan, argv generation, and seccomp-status parsing are pure; verify_path/SeccompVerifier take configurable roots and are tested against synthetic/tempdir inputs in the default run",
+    "version_scan": "release binaries embed the numeric 1.16.1 (no v prefix); binary_contains_version strips a leading v before scanning, so it accepts the genuine artifact",
+    "pie_handling": "e_type accepts both ET_EXEC (aarch64) and ET_DYN PIE (x86_64) because the official releases differ",
+    "symtab_note": "the stripped release retains .symtab, so .symtab is deliberately NOT treated as a debug signal; only .debug_* sections indicate a debug build"
+  }
+}
