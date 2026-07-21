@@ -23,3 +23,7 @@ result-*
 
 # Codegraph symlink (local only)
 .codegraph
+
+# Guest image artifacts built by scripts/build-guest-image.sh (large binaries:
+# vmlinux + rootfs.ext4); consumed by scripts/prepare-bench-artifacts.sh.
+guest/

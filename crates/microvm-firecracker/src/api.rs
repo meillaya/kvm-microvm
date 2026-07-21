@@ -265,13 +265,14 @@ impl UdsApiClient {
                 .with_context("io", e.to_string())
         })?;
 
-        // Read the entire response (we asked for Connection: close).
-        let mut buf = Vec::new();
-        stream.read_to_end(&mut buf).await.map_err(|e| {
-            MicrovmError::new(ErrorCode::TransportError, "failed to read response")
-                .with_context("socket", self.socket_path.display().to_string())
-                .with_context("io", e.to_string())
-        })?;
+        // Read the response by HTTP framing (headers, then exactly
+        // `Content-Length` body bytes) rather than waiting for the connection to
+        // close. Firecracker honors HTTP/1.1 keep-alive and answers mutating
+        // calls with `204 No Content`, so reading to EOF would block forever.
+        let mut buf = Vec::with_capacity(512);
+        read_response_framed(&mut stream, &mut buf)
+            .await
+            .map_err(|e| e.with_context("socket", self.socket_path.display().to_string()))?;
 
         parse_http_response(&buf)
     }
@@ -359,6 +360,66 @@ impl FirecrackerApi for UdsApiClient {
 ///
 /// Handles both `Content-Length`-delimited and read-to-close bodies. Returns
 /// [`ErrorCode::TransportError`] if the status line is malformed.
+/// Read a complete HTTP response from `stream` into `buf` using message framing
+/// (headers up to the blank line, then exactly `Content-Length` body bytes)
+/// instead of waiting for the connection to close.
+///
+/// Firecracker keeps the API socket alive (HTTP/1.1 keep-alive) and answers
+/// mutating calls with `204 No Content`, so a read-to-EOF would block forever.
+/// Headers are tiny, so reading them one byte at a time until `\r\n\r\n` is
+/// negligible next to the VM operation being measured.
+async fn read_response_framed(
+    stream: &mut UnixStream,
+    buf: &mut Vec<u8>,
+) -> Result<(), MicrovmError> {
+    // 1. Read until the header terminator (or EOF, which the parser reports).
+    let mut byte = [0u8; 1];
+    while find_subsequence(buf, b"\r\n\r\n").is_none() {
+        match stream.read(&mut byte).await {
+            Ok(0) => break,
+            Ok(_) => buf.push(byte[0]),
+            Err(e) => {
+                return Err(MicrovmError::new(
+                    ErrorCode::TransportError,
+                    "failed to read response headers",
+                )
+                .with_context("io", e.to_string()));
+            }
+        }
+    }
+
+    // 2. Read exactly the remaining `Content-Length` body bytes (none for 204).
+    if let Some(idx) = find_subsequence(buf, b"\r\n\r\n") {
+        if let Some(content_length) = content_length_of(&buf[..idx]) {
+            let have = buf.len() - (idx + 4);
+            let need = content_length.saturating_sub(have);
+            if need > 0 {
+                let mut rest = vec![0u8; need];
+                stream.read_exact(&mut rest).await.map_err(|e| {
+                    MicrovmError::new(ErrorCode::TransportError, "failed to read response body")
+                        .with_context("io", e.to_string())
+                })?;
+                buf.extend_from_slice(&rest);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Extract the `Content-Length` value from a raw header block, if present.
+fn content_length_of(headers: &[u8]) -> Option<usize> {
+    let mut lines = headers.split(|&b| b == b'\n');
+    lines.next(); // skip the status line
+    for line in lines {
+        let line = trim_cr(line);
+        if let Some(rest) = strip_prefix_ascii(line, b"content-length:") {
+            let val = std::str::from_utf8(rest).unwrap_or("").trim();
+            return val.parse::<usize>().ok();
+        }
+    }
+    None
+}
+
 fn parse_http_response(buf: &[u8]) -> Result<(u16, Vec<u8>), MicrovmError> {
     let header_end = find_subsequence(buf, b"\r\n\r\n").ok_or_else(|| {
         MicrovmError::new(
@@ -570,5 +631,77 @@ mod tests {
             err.context.get("fault").map(String::as_str),
             Some("internal explosion")
         );
+    }
+
+    #[test]
+    fn content_length_of_parses_header() {
+        let headers = b"HTTP/1.1 200 OK\r\nContent-Length: 42\r\nContent-Type: application/json";
+        assert_eq!(content_length_of(headers), Some(42));
+    }
+
+    #[test]
+    fn content_length_of_is_none_when_absent() {
+        let headers = b"HTTP/1.1 204 No Content\r\nDate: x";
+        assert_eq!(content_length_of(headers), None);
+    }
+
+    /// Regression: Firecracker answers mutating calls with `204 No Content` and
+    /// keeps the socket open (HTTP/1.1 keep-alive). The reader must frame by
+    /// headers, not wait for EOF — the old read-to-EOF hung forever here.
+    #[tokio::test]
+    async fn read_response_framed_does_not_wait_for_keep_alive_close() {
+        use tokio::io::AsyncWriteExt;
+        use tokio::net::UnixStream;
+        let (mut client, mut server) = UnixStream::pair().unwrap();
+        let server_task = tokio::spawn(async move {
+            server
+                .write_all(b"HTTP/1.1 204 No Content\r\nDate: x\r\n\r\n")
+                .await
+                .unwrap();
+            // Deliberately do NOT close: hold the connection open.
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        });
+
+        let mut buf = Vec::new();
+        let outcome = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            read_response_framed(&mut client, &mut buf),
+        )
+        .await;
+        let inner = outcome.expect("reader must not wait for the connection to close");
+        inner.unwrap();
+        let (status, body) = parse_http_response(&buf).unwrap();
+        assert_eq!(status, 204);
+        assert!(body.is_empty());
+        server_task.abort();
+    }
+
+    /// The reader consumes exactly `Content-Length` body bytes and ignores any
+    /// trailing keep-alive bytes still buffered on the socket.
+    #[tokio::test]
+    async fn read_response_framed_reads_exactly_content_length_bytes() {
+        use tokio::io::AsyncWriteExt;
+        use tokio::net::UnixStream;
+        let (mut client, mut server) = UnixStream::pair().unwrap();
+        let server_task = tokio::spawn(async move {
+            server
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhelloEXTRA")
+                .await
+                .unwrap();
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        });
+
+        let mut buf = Vec::new();
+        tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            read_response_framed(&mut client, &mut buf),
+        )
+        .await
+        .expect("reader must not hang")
+        .unwrap();
+        let (status, body) = parse_http_response(&buf).unwrap();
+        assert_eq!(status, 200);
+        assert_eq!(body, b"hello");
+        server_task.abort();
     }
 }

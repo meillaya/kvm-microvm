@@ -2,7 +2,7 @@
 # Build a Firecracker-compatible guest image with the microvm-guest-health server.
 #
 # Outputs:
-#   guest/vmlinux       - Firecracker-compatible kernel v6.1.102
+#   guest/vmlinux       - Firecracker-compatible guest kernel (latest CI, overridable)
 #   guest/rootfs.ext4   - 64MiB ext4 rootfs with busybox + health server
 #   guest/payload.sha256 - SHA-256 checksums of the above
 #
@@ -14,8 +14,30 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GUEST_DIR="${REPO_ROOT}/guest"
 ROOTFS_SIZE_MIB=64
-KERNEL_URL="https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.16.1/x86_64/vmlinux-6.1.102"
+S3_BUCKET="${S3_BUCKET:-https://s3.amazonaws.com/spec.ccfc.min}"
+# Explicit kernel URL override for reproducible pinning. When unset, resolve the
+# latest guest kernel from the Firecracker CI bucket. The bucket moved from
+# version-tagged (firecracker-ci/v1.16.1/...) to date-tagged prefixes, so a
+# hardcoded version path no longer resolves (it was the root cause of the
+# benchmark's Firecracker lane blocking on `artifact_missing`).
+KERNEL_URL="${KERNEL_URL:-}"
 TARGET="x86_64-unknown-linux-musl"
+
+# Resolve the latest guest kernel URL from the Firecracker CI bucket, mirroring
+# upstream docs/getting-started.md: pick the newest date-tagged prefix (the
+# [0-9]{8} filter skips personal/test branches), then the highest vmlinux under it.
+resolve_latest_kernel_url() {
+  local arch="$1" prefix key
+  prefix=$(curl -fsSL "$S3_BUCKET?list-type=2&prefix=firecracker-ci/&delimiter=/" \
+    | grep -oP "(?<=<Prefix>)firecracker-ci/[0-9]{8}-[^/]+/(?=</Prefix>)" \
+    | sort | tail -1)
+  [[ -n "$prefix" ]] || return 1
+  key=$(curl -fsSL "$S3_BUCKET?list-type=2&prefix=${prefix}${arch}/vmlinux-" \
+    | grep -oP "(?<=<Key>)(${prefix}${arch}/vmlinux-[0-9]+\.[0-9]+\.[0-9]{1,3})(?=</Key>)" \
+    | sort -V | tail -1)
+  [[ -n "$key" ]] || return 1
+  echo "$S3_BUCKET/$key"
+}
 
 echo "==> Building microvm-guest-health for ${TARGET}..."
 cargo build --release --target "${TARGET}" -p microvm-guest-health
@@ -31,7 +53,11 @@ mkdir -p "${GUEST_DIR}"
 
 # --- Kernel ---
 if [[ ! -f "${GUEST_DIR}/vmlinux" ]]; then
-    echo "==> Downloading Firecracker-compatible kernel v6.1.102..."
+    if [[ -z "${KERNEL_URL}" ]]; then
+        echo "==> Resolving latest Firecracker guest kernel from CI bucket..."
+        KERNEL_URL="$(resolve_latest_kernel_url "$(uname -m)")"
+    fi
+    echo "==> Downloading Firecracker-compatible kernel from ${KERNEL_URL}..."
     curl -fSL --retry 3 -o "${GUEST_DIR}/vmlinux" "${KERNEL_URL}"
 else
     echo "==> Kernel already present, skipping download."
