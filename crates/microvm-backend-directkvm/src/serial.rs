@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn captures_the_marker_in_order() {
         let mut serial = SerialOutput::new();
-        for b in [b'O', b'K', b'!'] {
+        for b in *b"OK!" {
             serial.record(SERIAL_PORT, b);
         }
         assert_eq!(serial.as_string(), "OK!");

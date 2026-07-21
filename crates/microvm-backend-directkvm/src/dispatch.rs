@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn dispatcher_accumulates_multiple_serial_bytes() {
         let mut d = ExitDispatcher::new();
-        for b in [b'O', b'K'] {
+        for b in *b"OK" {
             assert_eq!(
                 d.dispatch(GuestExit::IoOut {
                     port: SERIAL_PORT,
