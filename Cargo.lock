@@ -843,6 +843,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-guest-health"
+version = "0.1.0"
+
+[[package]]
 name = "microvm-isolation"
 version = "0.1.0"
 dependencies = [

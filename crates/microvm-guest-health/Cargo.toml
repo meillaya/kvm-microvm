@@ -1,0 +1,12 @@
+[package]
+name = "microvm-guest-health"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Tiny static HTTP health server for microvm guest rootfs"
+
+[[bin]]
+name = "microvm-guest-health"
+path = "src/main.rs"
+
+[dependencies]
