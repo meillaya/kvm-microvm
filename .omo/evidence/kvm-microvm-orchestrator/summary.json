@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "plan": "kvm-microvm-orchestrator",
-  "generated_at": "2026-07-20T18:53:49Z",
-  "git_head": "6a746712f80513ed1157d606a175d64a880ba8db",
+  "generated_at": "2026-07-21T02:42:55Z",
+  "git_head": "2b335f886be897842ad10a12eff94012d3f34efb",
   "generator": "scripts/aggregate-evidence.sh",
-  "strict_mode": true,
+  "strict_mode": false,
   "outcome_vocabulary": {
     "deterministic": [
       "pass",
@@ -939,7 +939,7 @@
       "outcome_source_exists": true,
       "outcome_source_valid_json": true,
       "outcome": "blocked",
-      "reason": "docker_missing,firecracker_missing",
+      "reason": "firecracker_missing",
       "violation": null,
       "anti_mock": false,
       "note": null,
@@ -948,7 +948,6 @@
         "top_level_pass_field": false,
         "item_pass_field": false,
         "benchmark_blocked_reasons": [
-          "docker_missing",
           "firecracker_missing"
         ],
         "warm_blocked_reason": null,
