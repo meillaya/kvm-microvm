@@ -10,15 +10,20 @@
 #   1. Builds the Firecracker guest image from phase 2 story 1
 #      (scripts/build-guest-image.sh) -> guest/vmlinux, guest/rootfs.ext4,
 #      guest/payload.sha256
-#   2. Boots a Firecracker VM from that guest image, waits for readiness, and
+#   2. Extracts the busybox payload from the guest rootfs and computes its
+#      SHA-256 — the single payload hash both benchmark lanes are pinned to
+#   3. Boots a Firecracker VM from that guest image, waits for readiness, and
 #      takes a full snapshot (snapshot state file + guest memory file)
-#   3. Verifies the snapshot and memfile exist and are non-empty (fails closed
+#   4. Verifies the snapshot and memfile exist and are non-empty (fails closed
 #      so the benchmark lane is never pointed at missing artifacts)
-#   4. Builds a Docker image from the same busybox rootfs
-#   5. Runs the benchmark with both lanes, passing the prepared snapshot/memfile
-#      so the FirecrackerSnapshotLane produces real restore-latency samples
+#   5. Builds a Docker image from the same busybox payload bytes
+#   6. Runs the benchmark with both lanes, passing the shared --payload-hash plus
+#      the prepared snapshot/memfile so the FirecrackerSnapshotLane produces real
+#      restore-latency samples and both lanes record the same payload_sha256
 #
 # Requirements: firecracker, jailer, docker (daemon running), KVM, mkfs.ext4
+# (debugfs from the same e2fsprogs package is used as an unprivileged extraction
+# fallback when a loop mount is unavailable)
 
 set -euo pipefail
 
@@ -31,6 +36,9 @@ OUT="${OUT:-.omo/evidence/kvm-microvm-orchestrator/task-27-benchmark.json}"
 GUEST_DIR="$REPO_ROOT/guest"
 GUEST_KERNEL="$GUEST_DIR/vmlinux"
 GUEST_ROOTFS="$GUEST_DIR/rootfs.ext4"
+
+# Extracted busybox payload shared by both lanes (phase 2 story 4).
+PAYLOAD_DIR="$WORKDIR/payload"
 
 # Prepared Firecracker snapshot artifacts the benchmark lane restores.
 SNAPSHOT="$WORKDIR/snapshot"
@@ -58,6 +66,28 @@ ensure_busybox() {
   echo "busybox: $(command -v busybox)"
 }
 
+# Extract /bin/busybox from the guest rootfs into $1. Prefers a read-only loop
+# mount (the fast path under sudo, matching build-guest-image.sh); falls back to
+# debugfs (e2fsprogs, already required for mkfs.ext4) so the payload can also be
+# extracted unprivileged for local verification where loop mounts are blocked.
+extract_busybox() {
+  local out="$1" mnt="$WORKDIR/mnt-payload"
+  mkdir -p "$mnt"
+  rm -f "$out"
+  if mount -o loop,ro "$GUEST_ROOTFS" "$mnt" 2>/dev/null; then
+    cp "$mnt/bin/busybox" "$out"
+    umount "$mnt"
+  else
+    echo "loop mount unavailable; extracting busybox via debugfs..."
+    debugfs -R "dump /bin/busybox $out" "$GUEST_ROOTFS" >/dev/null 2>&1 || true
+  fi
+  rmdir "$mnt" 2>/dev/null || true
+  if [[ ! -s "$out" ]]; then
+    echo "ERROR: failed to extract busybox payload from $GUEST_ROOTFS" >&2
+    return 1
+  fi
+}
+
 echo "=== Step 1: Guest image (phase 2 story 1) ==="
 ensure_busybox
 if [[ ! -f "$GUEST_KERNEL" || ! -f "$GUEST_ROOTFS" ]]; then
@@ -72,7 +102,20 @@ echo "kernel: $(file "$GUEST_KERNEL" | head -1)"
 echo "rootfs: $(file "$GUEST_ROOTFS" | head -1)"
 
 echo ""
-echo "=== Step 2: Firecracker snapshot ==="
+echo "=== Step 2: Extract identical payload (busybox) from guest rootfs ==="
+mkdir -p "$PAYLOAD_DIR"
+extract_busybox "$PAYLOAD_DIR/busybox"
+chmod +x "$PAYLOAD_DIR/busybox"
+# The payload SHA-256 is the hash of the busybox binary that BOTH lanes execute:
+# the VM rootfs ships it at /bin/busybox and the Docker image is built from these
+# exact bytes. Passing this one hash as --payload-hash pins the Firecracker and
+# Docker lanes to identical content (Workload.payload_sha256) instead of the
+# harness's placeholder default, satisfying the identical-payload requirement.
+PAYLOAD_SHA=$(sha256sum "$PAYLOAD_DIR/busybox" | cut -d' ' -f1)
+echo "payload (busybox) sha256: $PAYLOAD_SHA"
+
+echo ""
+echo "=== Step 3: Firecracker snapshot ==="
 SOCK="$WORKDIR/fc-api.sock"
 FC_BIN="$(which firecracker)"
 
@@ -141,45 +184,58 @@ echo "Snapshot created:"
 ls -lh "$SNAPSHOT" "$MEMFILE"
 
 echo ""
-echo "=== Step 3: Docker image from same rootfs ==="
+echo "=== Step 4: Docker image from same payload ==="
 DOCKER_IMAGE="microvm-bench/payload:latest"
-if ! docker image inspect "$DOCKER_IMAGE" &>/dev/null; then
-  echo "Building Docker image from busybox rootfs..."
-  DOCKER_BUILD="$WORKDIR/docker-build"
-  mkdir -p "$DOCKER_BUILD"
+DOCKER_BUILD="$WORKDIR/docker-build"
+mkdir -p "$DOCKER_BUILD"
 
-  # Extract busybox from the guest rootfs so the Docker image runs the same
-  # payload content as the VM lane.
-  MNT="$WORKDIR/mnt-docker"
-  mkdir -p "$MNT"
-  mount -o loop,ro "$GUEST_ROOTFS" "$MNT"
-  cp "$MNT/bin/busybox" "$DOCKER_BUILD/busybox"
-  umount "$MNT"
-  rmdir "$MNT"
+# Build from the exact busybox bytes extracted from the guest rootfs so the
+# Docker lane runs the same payload content as the VM lane.
+cp "$PAYLOAD_DIR/busybox" "$DOCKER_BUILD/busybox"
+chmod +x "$DOCKER_BUILD/busybox"
 
-  cat > "$DOCKER_BUILD/Dockerfile" << 'DOCKERFILE'
+# The guest busybox is a minimal static build: it provides `sh` plus a few
+# applets, with `echo` as a shell builtin, but omits `ln` and `sleep`. The image
+# therefore invokes busybox directly and runs the payload to completion without
+# applet symlinks, so `docker run --rm` measures cold-start of the exact payload
+# bytes the VM rootfs ships at /bin/busybox.
+cat > "$DOCKER_BUILD/Dockerfile" << 'DOCKERFILE'
 FROM scratch
 COPY busybox /bin/busybox
-RUN ["/bin/busybox", "sh", "-c", "for a in sh ls cat echo mkdir sleep; do /bin/busybox ln -sf busybox /bin/$a; done"]
-ENTRYPOINT ["/bin/busybox", "sh", "-c", "echo MICROVM_BENCH_READY && sleep 1"]
+ENTRYPOINT ["/bin/busybox", "sh", "-c", "echo MICROVM_BENCH_READY"]
 DOCKERFILE
 
+# Rebuild only when the payload content changed. A stale image built from
+# different bytes would make the two lanes compare different content, defeating
+# the identical-payload guarantee; the marker records the payload hash the image
+# was built from so a matching image is reused.
+BUILT_MARKER="$DOCKER_BUILD/.payload-sha"
+if [[ "$(cat "$BUILT_MARKER" 2>/dev/null || true)" != "$PAYLOAD_SHA" ]]; then
+  echo "Building Docker image from busybox payload ($PAYLOAD_SHA)..."
   docker build -t "$DOCKER_IMAGE" "$DOCKER_BUILD"
+  echo "$PAYLOAD_SHA" > "$BUILT_MARKER"
   echo "Docker image built: $DOCKER_IMAGE"
 else
-  echo "Docker image already exists: $DOCKER_IMAGE"
+  echo "Docker image already matches payload ($PAYLOAD_SHA): $DOCKER_IMAGE"
 fi
 
+# Pin the Docker-side OCI image digest so the workload records both the shared
+# payload hash and the concrete image id derived from that same content.
+IMAGE_SHA=$(docker image inspect --format '{{.Id}}' "$DOCKER_IMAGE" | sed 's/^sha256://')
+echo "docker image sha256: $IMAGE_SHA"
+
 echo ""
-echo "=== Step 4: Run benchmark ==="
+echo "=== Step 5: Run benchmark ==="
 cd "$REPO_ROOT"
 KERNEL_SHA=$(sha256sum "$GUEST_KERNEL" | cut -d' ' -f1)
 ROOTFS_SHA=$(sha256sum "$GUEST_ROOTFS" | cut -d' ' -f1)
 
 cargo run -p microvm-bench -- snapshot-restore \
   --samples "$SAMPLES" \
+  --payload-hash "$PAYLOAD_SHA" \
   --kernel "$KERNEL_SHA" \
   --rootfs "$ROOTFS_SHA" \
+  --image "$IMAGE_SHA" \
   --snapshot "$SNAPSHOT" \
   --memfile "$MEMFILE" \
   --socket-dir "$WORKDIR" \
