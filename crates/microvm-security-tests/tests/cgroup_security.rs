@@ -439,7 +439,9 @@ fn privileged_kernel_no_internal_process_rule() {
         if res.is_err() {
             println!("pass: kernel enforces no-internal-process (EBUSY)");
         } else {
-            println!("info: kernel allowed process in delegating cgroup (root bypass or kernel version)");
+            println!(
+                "info: kernel allowed process in delegating cgroup (root bypass or kernel version)"
+            );
             // Move the process back out to keep the cgroup clean for removal.
             let _ = fs::write(root.join("cgroup.procs"), std::process::id().to_string());
         }
