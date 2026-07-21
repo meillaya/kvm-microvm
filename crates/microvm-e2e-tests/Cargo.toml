@@ -1,0 +1,60 @@
+[package]
+name = "microvm-e2e-tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "End-to-end REST and gRPC VM lifecycle integration tests"
+
+# This is a test-only crate: it ships no production code. Every dependency is a
+# dev-dependency consumed by the integration tests under `tests/`. The tests
+# boot the full API stack — `microvm_rest::RestServer` / `microvm_grpc::GrpcServer`
+# over real Unix sockets, backed by the composed
+# `microvm_service::VmLifecycleService` — and drive a complete VM lifecycle
+# (create -> start -> health -> status -> snapshot -> restore -> stop -> cleanup).
+#
+# Two deterministic lanes run without KVM/root/Firecracker:
+# - a fully-scripted inner backend (no real Firecracker) exercises the whole
+#   lifecycle flow, including the snapshot/restore routes;
+# - the genuine `microvm_firecracker::FirecrackerBackend` wired with scripted
+#   launcher/API/readiness/prereq/cleanup doubles exercises a real composed boot
+#   and post-stop resource cleanup (no leftover cgroup/netns/TAP/socket).
+#
+# The `privileged` lane boots a real Firecracker/jailer guest through the REST
+# API on a capable host; on an incapable host it reports a stable `blocked`
+# token and passes rather than failing.
+[dependencies]
+
+[dev-dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-metrics = { path = "../microvm-metrics" }
+microvm-service = { path = "../microvm-service" }
+microvm-rest = { path = "../microvm-rest" }
+microvm-grpc = { path = "../microvm-grpc" }
+microvm-firecracker = { path = "../microvm-firecracker" }
+microvm-isolation = { path = "../microvm-isolation" }
+microvm-artifacts = { path = "../microvm-artifacts" }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util", "fs"] }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+libc = { workspace = true }
+# gRPC client stack (required to drive the tonic-generated MicrovmServiceClient
+# over a Unix socket; versions match microvm-grpc).
+tonic = "0.14"
+tower = { version = "0.5", features = ["util"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+
+[features]
+# Privileged tests boot a real Firecracker/jailer guest through the API on a
+# capable host (KVM, cgroup-v2, TAP/netns, pinned binaries, guest image). They
+# are excluded from the default (deterministic) test run so CI can run without
+# root, /dev/kvm, or a pinned binary. Enabling this feature enables the
+# privileged lanes of the runtime/isolation crates the service composes.
+privileged = [
+    "microvm-service/privileged",
+    "microvm-firecracker/privileged",
+    "microvm-isolation/privileged",
+]

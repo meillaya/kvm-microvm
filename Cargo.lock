@@ -790,6 +790,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "microvm-e2e-tests"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "hyper-util",
+ "libc",
+ "microvm-artifacts",
+ "microvm-errors",
+ "microvm-firecracker",
+ "microvm-grpc",
+ "microvm-isolation",
+ "microvm-lifecycle",
+ "microvm-metrics",
+ "microvm-rest",
+ "microvm-service",
+ "microvm-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tonic",
+ "tower",
+]
+
+[[package]]
 name = "microvm-errors"
 version = "0.1.0"
 dependencies = [
