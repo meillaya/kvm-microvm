@@ -2,20 +2,32 @@ name: deterministic
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   test:
-    name: devenv test (ubuntu-latest)
+    name: deterministic lane (ubuntu-latest)
     runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v4
+
       - name: install Nix
         uses: cachix/install-nix-action@v31
+
       - name: configure Cachix
         uses: cachix/cachix-action@v16
+
       - name: install devenv
         run: nix profile add nixpkgs#devenv
-      - name: run devenv test
-        run: devenv test
+
+      - name: cargo fmt (check)
+        run: devenv shell -- cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: devenv shell -- cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test (workspace)
+        run: devenv shell -- cargo test --workspace

@@ -1,4 +1,4 @@
-name: privileged-host
+name: privileged
 
 on:
   workflow_dispatch:
@@ -7,19 +7,31 @@ on:
 
 jobs:
   privileged:
-    name: preflight + privileged tests (self-hosted kvm runner)
+    name: privileged lane (self-hosted kvm runner)
+    # Only run PR builds when the 'privileged' label is present; manual
+    # dispatch always runs.
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'privileged')
     runs-on: [self-hosted, linux, x86_64, kvm]
     steps:
       - name: checkout
         uses: actions/checkout@v4
+
       - name: install Nix
         uses: cachix/install-nix-action@v31
+
       - name: configure Cachix
         uses: cachix/cachix-action@v16
+
       - name: install devenv
         run: nix profile add nixpkgs#devenv
-      - name: preflight (strict)
-        run: devenv shell -- bash scripts/preflight.sh --strict
-      - name: privileged tests
-        run: devenv shell -- bash scripts/run-privileged-tests.sh
+
+      - name: run privileged suite
+        run: devenv shell -- sudo -E bash scripts/run-privileged-suite.sh
+
+      - name: upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: privileged-benchmark-artifacts
+          path: .omo/evidence/kvm-microvm-orchestrator/
+          if-no-files-found: warn

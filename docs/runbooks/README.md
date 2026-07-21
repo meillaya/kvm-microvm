@@ -9,6 +9,7 @@ Each runbook contains runnable commands and explains how to interpret results.
 | [snapshot.md](snapshot.md) | Create and restore snapshots, read the compatibility gate, respond to tamper/owner rejection. |
 | [network.md](network.md) | Per-VM TAP/netns/nftables policy, egress policies, and network cleanup. |
 | [cleanup.md](cleanup.md) | Idempotent resource cleanup, orphan reconciliation, and leak records. |
+| [ci-setup.md](ci-setup.md) | Register the self-hosted KVM runner, required packages, and the deterministic/privileged workflow triggers. |
 
 > **Scope reminder.** These runbooks operate a development/verification
 > platform. They do not claim to make a host production-ready. Privileged
