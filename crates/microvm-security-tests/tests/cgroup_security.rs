@@ -403,9 +403,9 @@ fn cgroup_security_battery_emits_evidence_and_detects_no_bypass() {
 
 /// On a capable host with a writable unified cgroup-v2 hierarchy, demonstrate
 /// the kernel's actual no-internal-process rule: once a parent delegates
-/// controllers via `cgroup.subtree_control`, writing a PID to that parent's
-/// `cgroup.procs` fails with `EBUSY`. Gated behind `privileged` because it
-/// requires root and a real cgroupfs.
+/// controllers via `cgroup.subtree_control` and has a child cgroup, writing a
+/// PID to that parent's `cgroup.procs` fails with `EBUSY`. Gated behind
+/// `privileged` because it requires root and a real cgroupfs.
 #[cfg(feature = "privileged")]
 #[test]
 fn privileged_kernel_no_internal_process_rule() {
@@ -416,15 +416,19 @@ fn privileged_kernel_no_internal_process_rule() {
         return;
     }
     let test_parent = root.join("microvm-sec-nip-test");
+    let test_child = test_parent.join("child");
     if fs::create_dir_all(&test_parent).is_err() {
         eprintln!("[privileged] cannot create test cgroup (need root); skipping");
         return;
     }
-    // Delegate a controller to the test parent.
+    // Delegate a controller through the test parent to a child.
     let _ = fs::write(root.join("cgroup.subtree_control"), "+cpu");
     let delegated = fs::write(test_parent.join("cgroup.subtree_control"), "+cpu").is_ok();
-    if delegated {
-        // The parent now delegates; putting a process directly in it must fail.
+    // Create a child cgroup so the parent truly has internal controllers.
+    let _ = fs::create_dir_all(&test_child);
+    if delegated && test_child.exists() {
+        // The parent now delegates controllers to its child; putting a process
+        // directly in the parent must fail with EBUSY (no-internal-process).
         let res = fs::write(
             test_parent.join("cgroup.procs"),
             std::process::id().to_string(),
@@ -433,8 +437,11 @@ fn privileged_kernel_no_internal_process_rule() {
             res.is_err(),
             "kernel must refuse a process inside a delegating cgroup (no-internal-process)"
         );
+    } else {
+        eprintln!("[privileged] delegation failed; skipping no-internal-process assertion");
     }
-    // Cleanup the disposable test cgroup.
+    // Cleanup the disposable test cgroups (child first, then parent).
+    let _ = fs::remove_dir(&test_child);
     let _ = fs::write(test_parent.join("cgroup.subtree_control"), "");
     let _ = fs::remove_dir(&test_parent);
 }
