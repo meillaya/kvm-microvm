@@ -18,3 +18,8 @@ result-*
 .vscode/
 *.swp
 .DS_Store
+# OMX orchestration state (local only)
+.omo/
+
+# Codegraph symlink (local only)
+.codegraph
