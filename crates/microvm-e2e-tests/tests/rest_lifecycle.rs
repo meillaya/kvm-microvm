@@ -1,8 +1,8 @@
 //! End-to-end VM lifecycle test over the REST Unix-socket API (phase 2 story 2).
 //!
-//! Boots the full API stack — [`microvm_rest::RestServer`] over a temp Unix
+//! Boots the full API stack: [`microvm_rest::RestServer`] over a temp Unix
 //! socket, backed by the composed
-//! [`VmLifecycleService`](microvm_service::VmLifecycleService) — and drives the
+//! [`VmLifecycleService`](microvm_service::VmLifecycleService), and drives the
 //! complete lifecycle described in the story:
 //!
 //! ```text
@@ -16,14 +16,14 @@
 //! ```
 //!
 //! # Lanes
-//! - `full_lifecycle_over_rest_unix_socket` — deterministic, fully-scripted
+//! - `full_lifecycle_over_rest_unix_socket`: deterministic, fully-scripted
 //!   inner backend (no real Firecracker); exercises the whole flow including
 //!   snapshot/restore and resource cleanup.
-//! - `composed_firecracker_boot_stop_cleanup_over_rest` — deterministic, genuine
+//! - `composed_firecracker_boot_stop_cleanup_over_rest`: deterministic, genuine
 //!   [`FirecrackerBackend`](microvm_firecracker::FirecrackerBackend) wired with
 //!   scripted doubles; proves a real composed boot through the API and post-stop
 //!   cleanup (no leftover cgroup/netns/socket).
-//! - `privileged::real_firecracker_boot_over_rest` — boots a real Firecracker
+//! - `privileged::real_firecracker_boot_over_rest`: boots a real Firecracker
 //!   guest through the REST API on a capable host; reports `blocked` and passes
 //!   on an incapable host.
 

@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 
 /// CPU-affinity constraint attached to a [`PlacementRequest`].
 ///
-/// Affinity is **optional**: [`CpuAffinity::None`] lets the scheduler place the
+/// Affinity is optional: [`CpuAffinity::None`] lets the scheduler place the
 /// VM on any fitting bin. NUMA-node and CPU-set affinities are only honored when
 /// the host topology actually carries the corresponding preflight metadata.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,7 +33,7 @@ pub enum CpuAffinity {
 
 /// A request to place one VM's reserved resources onto the host.
 ///
-/// Reservations are **hard limits**: the scheduler accounts the full
+/// Reservations are hard limits: the scheduler accounts the full
 /// `vcpu_count` and `memory_mib` up front and never overcommits them,
 /// regardless of observed runtime usage.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

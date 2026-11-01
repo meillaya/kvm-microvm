@@ -5,10 +5,10 @@
 //! scripted launcher/API/readiness/prereq/cleanup doubles), then wraps it in a
 //! [`VmLifecycleService`] with a scripted supervisor probe, an in-memory audit
 //! log, and an isolation-cleanup bridge. This exercises the entire composed
-//! supervision layer — idempotency, serialization, quota, reconciliation, and
-//! audit — without a capable host, KVM, root, or a real Firecracker binary.
+//! supervision layer: idempotency, serialization, quota, reconciliation, and
+//! audit: without a capable host, KVM, root, or a real Firecracker binary.
 //!
-//! The inner backend is built **without** an audit log: the service is the
+//! The inner backend is built without an audit log: the service is the
 //! single audit source.
 
 #![allow(dead_code)]

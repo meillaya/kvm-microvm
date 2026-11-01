@@ -4,7 +4,7 @@
 //! [`VmLifecycleService`] and driven through the real REST/gRPC Unix-socket
 //! servers:
 //!
-//! 1. [`ScriptedBackend`] — a fully-scripted inner backend (no real Firecracker)
+//! 1. [`ScriptedBackend`]: a fully-scripted inner backend (no real Firecracker)
 //!    that implements the *entire* lifecycle, including the snapshot/restore
 //!    routes, with a realistic state machine, a concrete guest-health TCP
 //!    endpoint (the "TAP IP:port" the orchestrator waits on), and real
@@ -12,7 +12,7 @@
 //!    provisioned on start and released on stop. This drives the full
 //!    create → start → health → status → snapshot → restore → stop → cleanup
 //!    flow deterministically.
-//! 2. [`ComposedRig`] — the genuine [`FirecrackerBackend`] wired with scripted
+//! 2. [`ComposedRig`]: the genuine [`FirecrackerBackend`] wired with scripted
 //!    launcher/API/readiness/prereq/cleanup doubles over temporary directories
 //!    (a real digest-validated artifact store, a simulated cgroup-v2 hierarchy,
 //!    and a netns root). This proves a real composed boot through the API and

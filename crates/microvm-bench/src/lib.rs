@@ -1,28 +1,28 @@
 //! Reproducible snapshot/boot benchmark harness and Docker comparison
 //! (plan todo 27).
 //!
-//! This crate publishes **distributions**, never a verdict. For each benchmark
+//! This crate publishes distributions, never a verdict. For each benchmark
 //! lane (Firecracker snapshot/restore and Docker start) it records p50/p95/p99
 //! under cold and warm page-cache conditions, with full host metadata, the
 //! pinned workload/artifact hashes, and runtime versions. The output conforms to
 //! `schemas/evidence-benchmark.v1.json` ([`result::BENCHMARK_SCHEMA_ID`]).
 //!
 //! # Hard rules encoded by this crate
-//! - **No pass/fail gate** (requirement 10). `target_ms` is metadata; there is no
+//! - No pass/fail gate (requirement 10). `target_ms` is metadata; there is no
 //!   `pass` field anywhere in the output and no method that computes one. The
-//!   `<200 ms` figure is a reference target only — Firecracker publishes no
+//!   `<200 ms` figure is a reference target only. Firecracker publishes no
 //!   universal restore-latency SLA.
-//! - **Identical content across runtimes** (requirements 1, 7, 9). A single
+//! - Identical content across runtimes (requirements 1, 7, 9). A single
 //!   [`config::Workload`] pins one `payload_sha256` shared by the Docker and VM
 //!   lanes; comparing different image contents is explicitly not proof of
 //!   superiority.
-//! - **Blocked lanes carry evidence, not fabricated samples** (requirement 11).
+//! - Blocked lanes carry evidence, not fabricated samples (requirement 11).
 //!   An unavailable Docker/KVM/firecracker lane records a stable
 //!   [`outcome::BlockedReason`], zero samples, and null percentiles; the binary
 //!   exits `77` for a blocked privileged lane.
-//! - **Sample failures are recorded** (requirement 6), excluded from statistics,
+//! - Sample failures are recorded (requirement 6), excluded from statistics,
 //!   and never zero-filled.
-//! - **Monotonic timing** (requirement 3): every sample is timed with a
+//! - Monotonic timing (requirement 3): every sample is timed with a
 //!   host-monotonic clock via [`phase`].
 //!
 //! # Determinism

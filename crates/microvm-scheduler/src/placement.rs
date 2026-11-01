@@ -3,7 +3,7 @@
 //! A [`Placement`] is the scheduler's decision: which host a VM lands on, which
 //! physical CPUs are reserved, how much memory is reserved, and (when the host
 //! is NUMA-aware) which NUMA node owns the allocation. Placements are recorded
-//! in the scheduler ledger **before** any lifecycle mutation.
+//! in the scheduler ledger before any lifecycle mutation.
 
 use crate::topology::HostId;
 use microvm_types::{TenantId, VmId};

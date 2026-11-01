@@ -1,7 +1,7 @@
 //! Guest-readiness probing.
 //!
 //! A VM is not `Running` merely because the Firecracker process spawned or its
-//! API socket accepts connections — the guest itself must signal readiness
+//! API socket accepts connections: the guest itself must signal readiness
 //! (for example, a health service listening inside the guest). This module
 //! defines the [`GuestReadinessProbe`] trait the backend awaits after
 //! `InstanceStart`, plus a real [`TcpHealthProbe`] that polls a guest TCP

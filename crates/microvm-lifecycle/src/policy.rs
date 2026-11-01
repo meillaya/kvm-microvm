@@ -3,9 +3,9 @@
 //!
 //! # Design constraints
 //!
-//! - Authorization is performed on **typed identifiers** ([`TenantId`],
+//! - Authorization is performed on typed identifiers ([`TenantId`],
 //!   [`Role`]), never on mutable path strings.
-//! - Quota checks happen **before** any backend call so that over-quota
+//! - Quota checks happen before any backend call so that over-quota
 //!   requests are rejected without side effects.
 //! - Every mutating request produces exactly one [`AuditEvent`].
 
@@ -154,7 +154,7 @@ fn role_permits(role: Role, operation: Operation) -> bool {
 /// 2. The principal's [`Role`] must permit the operation (see
 ///    [`role_permits`]).
 ///
-/// Authorization is performed on typed identifiers — never on mutable path
+/// Authorization is performed on typed identifiers; never on mutable path
 /// strings.
 ///
 /// # Errors
@@ -232,7 +232,7 @@ pub struct TenantUsage {
 
 /// Validate that a create request fits within the tenant's quota.
 ///
-/// This check must happen **before** any backend call so that over-quota
+/// This check must happen before any backend call so that over-quota
 /// requests are rejected without side effects.
 ///
 /// # Errors

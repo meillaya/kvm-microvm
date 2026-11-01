@@ -2,7 +2,7 @@
 //!
 //! Every command maps its outcome to one of these codes so scripts and
 //! operators can branch on `$?` without parsing stdout/stderr text.
-//! The numeric values are a **stable contract** and must never change.
+//! The numeric values are a stable contract and must never change.
 //!
 //! | Code | Meaning |
 //! |------|---------|

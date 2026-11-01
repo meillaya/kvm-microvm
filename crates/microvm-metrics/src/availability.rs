@@ -1,7 +1,7 @@
 //! Availability-flagged metric slots.
 //!
-//! The orchestrator's metrics contract requires that **missing data is marked
-//! unavailable, never zero-filled** (plan todo 23). A `0` in a metrics field
+//! The orchestrator's metrics contract requires that missing data is marked
+//! unavailable, never zero-filled (plan todo 23). A `0` in a metrics field
 //! must mean "measured zero", not "we could not measure it". [`Availability`]
 //! makes that distinction unrepresentable-as-zero by construction: a source
 //! either produced a value ([`Availability::Available`]) or it did not
@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 
 /// Why a metric source could not produce a value.
 ///
-/// This is a **bounded, stable enum** — never a free-form string — so error
+/// This is a bounded, stable enum, never a free-form string, so error
 /// labels cannot grow unboundedly (no high-cardinality labels). The
 /// `snake_case` serialization is part of the stable wire contract.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -67,7 +67,7 @@ impl std::fmt::Display for UnavailableReason {
 /// A metric slot that is either a measured value or an explicit unavailability.
 ///
 /// The enum shape guarantees the invariant a boolean-plus-`Option` struct
-/// could not: an unavailable slot carries **no** value, so it can never be
+/// could not: an unavailable slot carries no value, so it can never be
 /// mistaken for a measured zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Availability<T> {

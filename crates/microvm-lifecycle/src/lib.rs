@@ -2,17 +2,17 @@
 //! kvm-microvm-orchestrator platform.
 //!
 //! This crate defines:
-//! - [`VmState`] — the finite set of VM lifecycle states.
-//! - [`transition`] — a pure function that validates state transitions.
-//! - [`LifecycleService`] — an async trait that any backend (Firecracker,
+//! - [`VmState`]: the finite set of VM lifecycle states.
+//! - [`transition`]: a pure function that validates state transitions.
+//! - [`LifecycleService`]: an async trait that any backend (Firecracker,
 //!   mock, direct-KVM) can implement without embedding transport or
 //!   runtime-specific details.
-//! - [`VmStatus`] / [`VmMetrics`] — read-only views returned by the service.
+//! - [`VmStatus`] / [`VmMetrics`]: read-only views returned by the service.
 //!
-//! **No REST, gRPC, or Firecracker-specific JSON lives here.**
+//! No REST, gRPC, or Firecracker-specific JSON lives here.
 //!
 //! # Policy
-//! - [`policy`] — tenant authorization, ownership, quotas, and audit events.
+//! - [`policy`]: tenant authorization, ownership, quotas, and audit events.
 
 pub mod policy;
 
@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 
 /// Finite set of VM lifecycle states.
 ///
-/// The state machine is validated by [`transition`]. Serializes to
+/// The state machine is validated by [`transition`]; it serializes to
 /// `snake_case` strings for stable wire representation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

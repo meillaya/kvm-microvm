@@ -6,11 +6,11 @@
 //!
 //! # Checks
 //!
-//! - **Schema parity**: every OpenAPI operation has a matching proto RPC.
-//! - **Static scan**: no TCP addresses (`0.0.0.0`, `127.0.0.1`, `tcp://`)
+//! - Schema parity: every OpenAPI operation has a matching proto RPC.
+//! - Static scan: no TCP addresses (`0.0.0.0`, `127.0.0.1`, `tcp://`)
 //!   appear in either contract file.
-//! - **OpenAPI validity**: the spec parses as valid YAML with required fields.
-//! - **Proto validity**: the proto file has valid proto3 syntax structure.
+//! - OpenAPI validity: the spec parses as valid YAML with required fields.
+//! - Proto validity: the proto file has valid proto3 syntax structure.
 
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -189,7 +189,7 @@ impl ProtoDoc {
     /// Parse a proto3 file from its text content.
     ///
     /// This is a lightweight structural parser sufficient for parity
-    /// validation — it extracts syntax, package, service/RPC names,
+    /// validation: it extracts syntax, package, service/RPC names,
     /// message names, and enum names.
     pub fn from_text(content: &str) -> Result<Self, Vec<String>> {
         let mut errors = Vec::new();

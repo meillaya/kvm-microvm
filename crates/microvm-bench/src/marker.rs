@@ -2,12 +2,12 @@
 //! [`BenchmarkResult`] (plan todo 27).
 //!
 //! For each lane the marker:
-//! 1. **Probes** availability. A blocked probe yields a blocked item (zero
-//!    samples, null percentiles, recorded `blocked_reason`) — samples are never
+//! 1. Probes availability. A blocked probe yields a blocked item (zero
+//!    samples, null percentiles, recorded `blocked_reason`): samples are never
 //!    fabricated (requirement 11).
-//! 2. **Collects** `N` cold and `N` warm samples, recording failures separately
+//! 2. Collects `N` cold and `N` warm samples, recording failures separately
 //!    from successful samples (requirement 6).
-//! 3. **Summarises** each condition into a [`Distribution`] (p50/p95/p99 + min/max).
+//! 3. Summarises each condition into a [`Distribution`] (p50/p95/p99 + min/max).
 //!
 //! The marker is generic over [`LaneRunner`], so the same orchestration drives
 //! the deterministic [`ScriptedLane`] in tests and the real Firecracker/Docker
@@ -229,7 +229,7 @@ mod tests {
     async fn target_is_carried_as_metadata_not_a_gate() {
         let marker = BenchMarker::new(config(10));
         // Samples all exceed the target; the item still simply records the
-        // distribution — there is no pass/fail field.
+        // distribution: there is no pass/fail field.
         let lane = ScriptedLane::new("x", 30.0, ok_seq(10, 500.0), ok_seq(10, 500.0));
         let result = marker
             .run(host(), RuntimeVersions::default(), vec![Box::new(lane)])

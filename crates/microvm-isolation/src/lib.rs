@@ -3,22 +3,22 @@
 //!
 //! This crate owns the platform's cgroup-v2 isolation boundary. Firecracker's
 //! jailer historically defaulted to cgroup v1 and is willing to create cgroups
-//! itself, so the orchestrator instead builds a **unified cgroup-v2** hierarchy
+//! itself, so the orchestrator instead builds a unified cgroup-v2 hierarchy
 //! explicitly and hands the jailer only a pre-created leaf path.
 //!
 //! # Model
-//! - One **parent** cgroup (`<root>/microvm`) delegates `cpu`, `memory`,
+//! - One parent cgroup (`<root>/microvm`) delegates `cpu`, `memory`,
 //!   `pids`, and `io` top-down via `cgroup.subtree_control`.
-//! - One **leaf** cgroup per VM (`<root>/microvm/<vm-id>`) carries the explicit
+//! - One leaf cgroup per VM (`<root>/microvm/<vm-id>`) carries the explicit
 //!   limits (`cpu.max`, `memory.max`, `memory.swap.max`, `pids.max`, and an
-//!   optional `io.max`). A leaf has **no children** and an **empty**
-//!   `cgroup.subtree_control` — no domain controllers live in a leaf subtree.
-//! - The generated jailer argv **always** includes `--cgroup-version=2` and a
+//!   optional `io.max`). A leaf has no children and an empty
+//!   `cgroup.subtree_control`; no domain controllers live in a leaf subtree.
+//! - The generated jailer argv always includes `--cgroup-version=2` and a
 //!   `--parent-cgroup` pointing at the pre-created leaf.
 //!
 //! # Error contract
 //! All failures are typed [`MicrovmError`]s. A missing cgroup root or a missing
-//! required controller yields [`ErrorCode::CgroupUnavailable`] **before** any
+//! required controller yields [`ErrorCode::CgroupUnavailable`] before any
 //! process spawn; an invalid [`CgroupSpec`] or a leaf-contract violation yields
 //! [`ErrorCode::InvalidResourceSpec`].
 //!

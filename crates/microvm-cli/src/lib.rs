@@ -4,7 +4,7 @@
 //! This crate provides the [`Cli`] parser (clap-based), a stable
 //! [`ExitCode`] contract, and a Unix-socket REST [`Client`]. It drives
 //! the microvm daemon's OpenAPI lifecycle routes (todo 8) exclusively
-//! through a filesystem Unix socket — **never** TCP — and maps every
+//! through a filesystem Unix socket, never TCP, and maps every
 //! outcome to a documented exit code.
 //!
 //! # Exit codes
@@ -18,11 +18,11 @@
 //! | 5 | Permission denied |
 //!
 //! # Forbidden flags
-//! The CLI deliberately exposes **no** `--tcp`, `--rootless`, `--mount`,
+//! The CLI deliberately exposes no `--tcp`, `--rootless`, `--mount`,
 //! `--cap-add`, or remote registry convenience flags.
 //!
 //! # `microvm run`
-//! The `run` subcommand is a **constrained local import** surface (not an
+//! The `run` subcommand is a constrained local import surface (not an
 //! OCI runtime); its help text is sourced from [`microvm_oci::help`].
 
 pub mod cli;

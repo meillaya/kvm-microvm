@@ -1,27 +1,27 @@
-//! Constrained **local** OCI-like image importer and `microvm run` interface.
+//! Constrained local OCI-like image importer and `microvm run` interface.
 //!
 //! This crate turns a local, digest-pinned OCI-like image layout into a typed
 //! [`MicroVmSpec`] (kernel layer, rootfs layer, and resource limits) that the
-//! rest of the platform can boot. It is a **constrained import surface, not an
-//! OCI runtime**, and it makes no claim of OCI runtime compatibility.
+//! rest of the platform can boot. It is a constrained import surface, not an
+//! OCI runtime, and it makes no claim of OCI runtime compatibility.
 //!
 //! # Guarantees
-//! - **Local only.** Remote and tag-only references (`https://…`, `docker://…`,
+//! - Local only. Remote and tag-only references (`https://…`, `docker://…`,
 //!   `oci://…`, `repo/img@sha256:…`, `nginx:latest`) are rejected with
 //!   [`ImportError::RemoteReference`] before any I/O. The crate performs no
 //!   network I/O and has no remote client dependency.
-//! - **Every layer hash is verified.** The config blob and every layer blob are
+//! - Every layer hash is verified. The config blob and every layer blob are
 //!   read through the descriptor-relative artifact resolver and checked against
 //!   their declared SHA-256 digest and size; the first mismatch fails closed
 //!   with [`ImportError::DigestMismatch`] / [`ImportError::SizeMismatch`].
-//! - **Platform selection.** Only `linux/amd64` and `linux/arm64` are accepted
+//! - Platform selection. Only `linux/amd64` and `linux/arm64` are accepted
 //!   ([`Platform`]); anything else is rejected with
 //!   [`ImportError::UnsupportedPlatform`].
-//! - **Hard refusal of host-side knobs.** Host mounts, host network/PID/IPC
+//! - Hard refusal of host-side knobs. Host mounts, host network/PID/IPC
 //!   sharing, privileged mode, capability additions, and arbitrary host process
 //!   controls are rejected with [`ImportError::Forbidden`] regardless of where
 //!   they appear in the manifest or image config.
-//! - **Typed rejections.** Every failure is an [`ImportError`] variant mapping
+//! - Typed rejections. Every failure is an [`ImportError`] variant mapping
 //!   to a stable [`microvm_errors::ErrorCode`].
 //!
 //! # Layout convention

@@ -2,7 +2,7 @@
 //!
 //! Named QA scenario: `cargo test -p microvm-bench --test blocked_lane`.
 //!
-//! An unavailable Docker/KVM/firecracker lane must be **blocked with evidence**:
+//! An unavailable Docker/KVM/firecracker lane must be blocked with evidence:
 //! a stable `blocked_reason`, zero samples, and null percentiles. Samples are
 //! never fabricated, and a blocked privileged lane maps to exit code 77 (a
 //! skip, not a failure and not a pass).

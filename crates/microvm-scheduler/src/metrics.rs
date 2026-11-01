@@ -1,13 +1,13 @@
 //! Pure metrics consumption and reconciliation inputs (plan todo 24).
 //!
-//! The scheduler **consumes** per-VM metrics ([`VmMetricsRecord`]) to build
+//! The scheduler consumes per-VM metrics ([`VmMetricsRecord`]) to build
 //! reconciliation inputs, but it never mutates the record and never touches any
-//! host resource. Crucially, observed metrics **never relax hard limits**:
+//! host resource. Crucially, observed metrics never relax hard limits:
 //! admission and bin capacity are accounted against *reserved* resources, while
 //! metrics only inform reconciliation (reserved-vs-observed drift detection).
 //!
 //! Every observed value is availability-flagged: a missing cgroup sample stays
-//! [`Availability::Unavailable`] — it is never coerced to a measured `0`.
+//! [`Availability::Unavailable`]: it is never coerced to a measured `0`.
 
 use crate::placement::Placement;
 use microvm_errors::{ErrorCode, MicrovmError};
@@ -65,7 +65,7 @@ pub struct ReconciliationInput {
 impl ReconciliationInput {
     /// Whether observed memory exceeds the reservation, availability-flagged.
     ///
-    /// `Unavailable` when the metrics sample is unavailable — drift is unknown,
+    /// `Unavailable` when the metrics sample is unavailable: drift is unknown,
     /// not assumed false.
     #[must_use]
     pub fn observed_exceeds_reserved_memory(&self) -> Availability<bool> {

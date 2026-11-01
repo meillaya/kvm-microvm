@@ -7,14 +7,14 @@
 //! cleanup evidence, and host metadata.
 //!
 //! # Hard rules encoded by this type
-//! - **No pass/fail gate.** There is no `pass` field at any level and no method
+//! - No pass/fail gate. There is no `pass` field at any level and no method
 //!   that reduces the measurements to a verdict. `cold_first_call_ms` and the
 //!   warm percentiles are reported numbers; a reviewer interprets them. The
 //!   `<200 ms` figure from the wider plan is a reference target only.
-//! - **Blocked carries evidence, not fabricated samples.** A blocked report sets
+//! - Blocked carries evidence, not fabricated samples. A blocked report sets
 //!   `blocked_reason`, a null cold call, and an empty warm distribution; samples
 //!   are never invented.
-//! - **Every trial is accounted for.** `request_trials` equals the sample budget
+//! - Every trial is accounted for. `request_trials` equals the sample budget
 //!   and `warm.samples + warm.failures == request_trials`.
 
 use crate::measure::ColdWarmMeasurement;
@@ -43,11 +43,11 @@ pub struct ColdPhaseDurations {
     pub configured_ms: Option<f64>,
     /// `spawn -> guest_ready` (ms).
     pub guest_ready_ms: Option<f64>,
-    /// `spawn -> snapshot_ready` (ms) — snapshot taken after readiness.
+    /// `spawn -> snapshot_ready` (ms): snapshot taken after readiness.
     pub snapshot_ready_ms: Option<f64>,
     /// `spawn -> restore_ready` (ms) from a representative warm restore.
     pub restore_ready_ms: Option<f64>,
-    /// `spawn -> request` (ms) — the cold first call.
+    /// `spawn -> request` (ms): the cold first call.
     pub request_ms: Option<f64>,
 }
 
@@ -78,7 +78,7 @@ pub struct CleanupEvidence {
 
 /// The complete warm-HTTP demo evidence artifact.
 ///
-/// There is intentionally **no** `pass` field and no method that computes one.
+/// There is intentionally no `pass` field and no method that computes one.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DemoReport {
     /// Class discriminator; always [`DEMO_CLASS`].

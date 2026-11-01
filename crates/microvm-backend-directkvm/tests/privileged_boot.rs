@@ -1,7 +1,7 @@
 //! Privileged integration tests for the educational direct-KVM subset.
 //!
 //! Gated behind BOTH the `direct-kvm` and `privileged` features. These tests
-//! require a real `/dev/kvm` on a capable x86_64 host and are NEVER compiled or
+//! require a real `/dev/kvm` on a capable x86_64 host and are never compiled or
 //! run in the default workspace build or in CI without host KVM access.
 //!
 //! Run with:
@@ -14,7 +14,7 @@
 //! - On a capable host the marker guest boots on real KVM, writes `0x4B` (`'K'`)
 //!   to I/O port `0x3F8`, and stops via `HLT`.
 //! - A missing `/dev/kvm` produces a structured `Blocked{kvm_unavailable}`
-//!   outcome — **never** a pass and **never** a fallback to Firecracker/QEMU/TCG.
+//!   outcome: never a pass and never a fallback to Firecracker/QEMU/TCG.
 
 #![cfg(all(feature = "direct-kvm", feature = "privileged"))]
 
@@ -64,7 +64,7 @@ fn direct_kvm_subset_boot_observes_serial_marker_or_blocks() {
 }
 
 /// Missing `/dev/kvm` (simulated with a nonexistent path) must produce a
-/// structured `Blocked{kvm_unavailable}` outcome — never `Completed`, never
+/// structured `Blocked{kvm_unavailable}` outcome; never `Completed`, never
 /// `Failed`, never a fallback. Deterministic: independent of host KVM presence.
 #[test]
 fn missing_device_is_blocked_not_pass_and_has_no_fallback() {

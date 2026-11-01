@@ -1,4 +1,4 @@
-# ADR-0003: One Transport-Neutral Service Behind REST and gRPC
+# ADR-0003: One transport-neutral service behind REST and gRPC
 
 ## Status
 
@@ -12,7 +12,7 @@ idempotency rule, or ownership check could behave differently on REST vs gRPC.
 
 ## Decision
 
-Implement the lifecycle logic **once** in a **transport-neutral service layer**
+Implement the lifecycle logic once in a transport-neutral service layer
 (`microvm-transport-contract` + `microvm-service`). REST (`microvm-rest`) and
 gRPC (`microvm-grpc`) are thin adapters over that single contract.
 

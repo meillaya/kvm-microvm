@@ -1,7 +1,7 @@
 //! The minimal static Rust HTTP function and its pinned local rootfs
 //! (plan todo 28, requirement 1).
 //!
-//! The demo serves exactly **one** HTTP function. There is no multi-function
+//! The demo serves exactly one HTTP function. There is no multi-function
 //! routing, no autoscaling, no persistent external data, and no second language
 //! runtime: the function is a fixed Rust handler compiled into a pinned,
 //! content-addressed local rootfs image. The rootfs is identified by its SHA-256

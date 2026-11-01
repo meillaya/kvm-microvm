@@ -19,7 +19,7 @@
 //! is the real transport used on a capable host.
 //!
 //! # Security
-//! The API socket is **unauthenticated**. Callers must never hand the socket
+//! The API socket is unauthenticated. Callers must never hand the socket
 //! path to a tenant; the backend keeps it in a host-only socket root and it is
 //! absent from every tenant-facing status/metrics response.
 
@@ -647,7 +647,7 @@ mod tests {
 
     /// Regression: Firecracker answers mutating calls with `204 No Content` and
     /// keeps the socket open (HTTP/1.1 keep-alive). The reader must frame by
-    /// headers, not wait for EOF — the old read-to-EOF hung forever here.
+    /// headers, not wait for EOF: the old read-to-EOF hung forever here.
     #[tokio::test]
     async fn read_response_framed_does_not_wait_for_keep_alive_close() {
         use tokio::io::AsyncWriteExt;
@@ -658,7 +658,7 @@ mod tests {
                 .write_all(b"HTTP/1.1 204 No Content\r\nDate: x\r\n\r\n")
                 .await
                 .unwrap();
-            // Deliberately do NOT close: hold the connection open.
+            // Deliberately do not close: hold the connection open.
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
         });
 

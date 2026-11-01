@@ -2,7 +2,7 @@
 //!
 //! The constrained importer reads the OCI image config blob to select the
 //! platform and to derive a typed microVM resource specification from
-//! `org.microvm.*` labels. It then **refuses** any config that carries OCI
+//! `org.microvm.*` labels. It then refuses any config that carries OCI
 //! runtime knobs the platform will not apply to the host: mounts, capability
 //! additions, privileged mode, host network/PID/IPC sharing, and arbitrary host
 //! process controls. The refusal is a recursive key scan over the raw JSON, so
@@ -10,7 +10,7 @@
 //!
 //! Guest-container metadata that the microVM does not apply (`Env`, `Cmd`,
 //! `Entrypoint`, `WorkingDir`, `User`) is ignored rather than applied; it is the
-//! forbidden runtime knobs — not inert metadata — that trigger rejection.
+//! forbidden runtime knobs, not inert metadata, that trigger rejection.
 
 use crate::error::{ForbiddenField, ImportError};
 use microvm_types::{NetworkPolicy, ResourceSpec};

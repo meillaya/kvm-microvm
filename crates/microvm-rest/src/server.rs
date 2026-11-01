@@ -4,7 +4,7 @@
 //! extracts peer credentials via `SO_PEERCRED`, and serves HTTP/1.1
 //! requests through the route dispatcher.
 //!
-//! **No TCP listener is ever created.** The server exclusively uses
+//! No TCP listener is ever created. The server exclusively uses
 //! `tokio::net::UnixListener`.
 
 use std::os::unix::fs::PermissionsExt;
@@ -178,7 +178,7 @@ impl RestServer {
             let peer_creds = match get_peer_credentials(&stream) {
                 Ok(creds) => creds,
                 Err(_) => {
-                    // Cannot identify peer — reject the connection.
+                    // Cannot identify peer: reject the connection.
                     continue;
                 }
             };

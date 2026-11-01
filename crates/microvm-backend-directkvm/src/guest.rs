@@ -9,7 +9,7 @@
 //! 64-bit code segment, and the control registers / `EFER` MSRs are programmed
 //! via `KVM_SET_SREGS` + `KVM_SET_REGS`.
 //!
-//! Every byte produced here is **pure and deterministic** (no host access), so
+//! Every byte produced here is pure and deterministic (no host access), so
 //! the guest image and boot layout are unit-tested in the default no-feature
 //! lane. The privileged runner copies [`write_boot_layout`] output into the
 //! identity-mapped memory slot (index == guest physical address).
@@ -41,17 +41,17 @@ pub const INITIAL_RFLAGS: u64 = 0x0000_0000_0000_0002;
 // Control-register / MSR bits for long mode entry
 // ---------------------------------------------------------------------------
 
-/// CR0.PE — protection enable.
+/// CR0.PE: protection enable.
 pub const CR0_PE: u64 = 1 << 0;
-/// CR0.ET — extension type (fixed on modern x86).
+/// CR0.ET: extension type (fixed on modern x86).
 pub const CR0_ET: u64 = 1 << 4;
-/// CR0.PG — paging enable.
+/// CR0.PG: paging enable.
 pub const CR0_PG: u64 = 1 << 31;
-/// CR4.PAE — physical address extension (required for long mode).
+/// CR4.PAE: physical address extension (required for long mode).
 pub const CR4_PAE: u64 = 1 << 5;
-/// EFER.LME — long mode enable.
+/// EFER.LME: long mode enable.
 pub const EFER_LME: u64 = 1 << 8;
-/// EFER.LMA — long mode active.
+/// EFER.LMA: long mode active.
 pub const EFER_LMA: u64 = 1 << 10;
 
 /// Initial CR0: PE | ET | PG.

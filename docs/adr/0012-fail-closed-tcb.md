@@ -1,4 +1,4 @@
-# ADR-0012: Fail-Closed Trust Model; Orchestrator-Owned TCB
+# ADR-0012: Fail-closed trust model; orchestrator-owned TCB
 
 ## Status
 
@@ -15,17 +15,17 @@ degrade.
 
 ## Decision
 
-- The **orchestrator owns the outer-platform TCB**: input validation,
-  authentication, authorization/tenant ownership, binary provenance, artifact
-  integrity, isolation setup, and safe cleanup (see
+- The orchestrator owns the outer-platform TCB: input validation,
+  authentication, authorization and tenant ownership, binary provenance,
+  artifact integrity, isolation setup, and safe cleanup (see
   [../security.md](../security.md#2-trusted-computing-base-tcb)).
-- The orchestrator does **not** treat Firecracker's unauthenticated UDS API,
+- The orchestrator does not treat Firecracker's unauthenticated UDS API,
   trusted jailer paths, release-build seccomp, or snapshot CRC as sufficient
-  outer security; it validates around them.
-- **Fail closed, never fall back.** Missing `/dev/kvm`, TAP, cgroup v2, jailer,
-  or seccomp; invalid paths; unrestricted subprocess arguments; unsupported
-  cgroup topology; and unverified/invalid artifacts are all hard errors before
-  any process spawn — never silent fallbacks.
+  outer security. It validates around them.
+- Missing `/dev/kvm`, TAP, cgroup v2, jailer, or seccomp; invalid paths;
+  unrestricted subprocess arguments; unsupported cgroup topology; and
+  unverified or invalid artifacts are all hard errors before any process spawn.
+  The platform does not fall back silently.
 - Cleanup is idempotent and leaves no owned resource behind; orphan
   reconciliation quarantines and records leaks rather than ignoring them.
 

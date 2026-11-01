@@ -359,7 +359,7 @@ async fn status_and_metrics_require_matching_tenant() {
 }
 
 // ---------------------------------------------------------------------------
-// Readiness gating (guest marker, not just process/socket)
+// Readiness gating (guest marker, not merely the process or socket)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -526,7 +526,7 @@ async fn denied_and_errored_requests_are_audited() {
         .create(rig.spec.clone(), rig.owner.clone())
         .await
         .unwrap();
-    // Denied (cross-tenant) — use a fresh VM id space via the created VM.
+    // Denied (cross-tenant): use a fresh VM id space via the created VM.
     let vm = rig
         .service
         .create_with(

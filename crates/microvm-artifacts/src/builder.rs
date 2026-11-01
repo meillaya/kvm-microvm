@@ -1,6 +1,6 @@
 //! Deterministic local image builder and digest-addressed artifact manifests.
 //!
-//! [`ImageBuilder`] packages **local** kernel and rootfs inputs into the
+//! [`ImageBuilder`] packages local kernel and rootfs inputs into the
 //! uncompressed kernel and ext4/rootfs artifacts a Firecracker guest boots,
 //! alongside a content-addressed [`ImageManifest`]. The builder is the
 //! provenance gate for the image lane: it only ever reads operator-supplied
@@ -10,7 +10,7 @@
 //! manifest.
 //!
 //! # Determinism contract
-//! - Kernel and rootfs bytes are copied **verbatim**; the builder never
+//! - Kernel and rootfs bytes are copied verbatim; the builder never
 //!   regenerates a filesystem or recompresses a kernel, so artifact bytes (and
 //!   therefore their SHA-256 digests) are a pure function of the input bytes.
 //! - The manifest carries no wall-clock timestamps and no volatile metadata:
@@ -18,7 +18,7 @@
 //!   schema version) or content-derived (per-file SHA-256, size, and a
 //!   normalized `file://` provenance origin). Serialization field order is
 //!   fixed by the struct layout, so the manifest bytes are reproducible.
-//! - All source validation happens **before** any output is written. A rejected
+//! - All source validation happens before any output is written. A rejected
 //!   source leaves no partial artifact tree behind.
 //!
 //! # Security contract
@@ -31,8 +31,8 @@
 //!   / [`ErrorCode::ArtifactNotFound`] before any output is produced.
 //! - Generated artifacts are written beneath `out_dir` at stable relative paths
 //!   ([`KERNEL_RELPATH`], [`ROOTFS_RELPATH`], [`MANIFEST_RELPATH`]) that pass
-//!   [`crate::path::validate_relative_path`] and therefore open **only** through
-//!   the descriptor-relative [`crate::path::PathResolver`] (todo 9) — never via
+//!   [`crate::path::validate_relative_path`] and therefore open only through
+//!   the descriptor-relative [`crate::path::PathResolver`] (todo 9); never via
 //!   an absolute, symlink-following `open(2)`.
 //!
 //! [`ErrorCode::LocalArtifactRequired`]: microvm_errors::ErrorCode::LocalArtifactRequired

@@ -1,6 +1,6 @@
 //! The `microvm run` constrained-import command.
 //!
-//! `run` is a **constrained local import** surface, not an OCI runtime.
+//! `run` is a constrained local import surface, not an OCI runtime.
 //! It validates a local, digest-pinned OCI-like reference, imports it
 //! through [`microvm_oci::OciImporter`] (verifying every layer hash and
 //! refusing host mounts / capabilities / privileged / host-network
@@ -8,7 +8,7 @@
 //! starts a microVM through the REST Unix socket.
 //!
 //! Remote and tag-only references are rejected with exit code 4
-//! ([`ExitCode::LocalArtifactRequired`]) **before any I/O**, so
+//! ([`ExitCode::LocalArtifactRequired`]) before any I/O, so
 //! `microvm run --image nginx:latest` performs no network activity.
 
 use crate::client::{Client, CreateVmRequest, NetworkPolicyArg};

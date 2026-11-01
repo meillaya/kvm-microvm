@@ -1,13 +1,13 @@
 //! Shared harness for the adversarial security suites.
 //!
 //! Two responsibilities:
-//! 1. A **typed-error probe recorder** that runs each security boundary against
+//! 1. A typed-error probe recorder that runs each security boundary against
 //!    a hostile input, captures the [`ErrorCode`] the production code returns,
 //!    and emits a per-domain machine-readable evidence artifact. The recorder
 //!    writes the artifact *before* the caller asserts, so a detected bypass
 //!    still leaves evidence behind.
-//! 2. **Synthetic fixtures** — controllable ELF64 binaries, on-disk OCI
-//!    layouts, and simulated cgroup-v2 hierarchies — so the real production
+//! 2. Synthetic fixtures: controllable ELF64 binaries, on-disk OCI
+//!    layouts, and simulated cgroup-v2 hierarchies, so the real production
 //!    gates can be driven deterministically without root, KVM, or a pinned
 //!    Firecracker install.
 
@@ -53,7 +53,7 @@ impl SecCode for microvm_snapshots::SnapshotError {
 }
 
 /// Extract the code a boundary produced, or `None` when the operation
-/// **succeeded** — which, for a hostile input, means a bypass.
+/// succeeded: which, for a hostile input, means a bypass.
 pub fn outcome<T, E: SecCode>(result: Result<T, E>) -> Option<ErrorCode> {
     result.err().map(|e| e.sec_code())
 }
@@ -65,7 +65,7 @@ pub struct Probe {
     pub name: String,
     /// The trap class (e.g. `path:symlink_escape`).
     pub trap: String,
-    /// The code the boundary MUST produce to be considered secure.
+    /// The code the boundary must produce to be considered secure.
     pub expected: ErrorCode,
     /// The code the boundary actually produced (`None` == it succeeded == bypass).
     pub actual: Option<ErrorCode>,
@@ -129,7 +129,7 @@ pub struct EvidenceSummary {
     pub total: usize,
     /// Probes where the boundary produced the expected typed rejection.
     pub pass: usize,
-    /// Probes where the boundary did NOT (a bypass or wrong code).
+    /// Probes where the boundary returned a bypass or the wrong code.
     pub fail: usize,
 }
 
@@ -224,7 +224,7 @@ impl SecurityEvidence {
 
 /// Run a battery of probes for `domain`: build the evidence artifact, write it
 /// to disk, and return it. The caller then asserts no bypass via
-/// [`assert_no_bypass`]. Evidence is written **before** any assertion so a
+/// [`assert_no_bypass`]. Evidence is written before any assertion so a
 /// detected bypass still leaves an artifact behind.
 pub fn run_battery(domain: &str, probes: Vec<Probe>) -> SecurityEvidence {
     let evidence = SecurityEvidence::from_probes(domain, &probes);

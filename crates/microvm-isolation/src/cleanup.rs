@@ -1,15 +1,15 @@
 //! Idempotent VM resource cleanup and orphan reconciliation.
 //!
-//! This module owns the orchestrator's **cleanup and reconciliation** boundary.
+//! This module owns the orchestrator's cleanup and reconciliation boundary.
 //! Every VM's owned resources are tracked in a [`ResourceRecord`], and
 //! [`CleanupManager`] tears them down in strict reverse-creation order.
-//! Cleanup is **idempotent**: repeated invocations on an already-cleaned record
+//! Cleanup is idempotent: repeated invocations on an already-cleaned record
 //! are no-ops. When cleanup cannot complete (for example, a stuck process or a
 //! permission error), a [`LeakRecord`] is emitted so the operator can intervene.
 //!
 //! [`OrphanReconciler`] scans for resources that outlived their owning VM
 //! (startup or periodic reconciliation). Orphans are quarantined rather than
-//! deleted outright, and resources owned by another tenant are **never**
+//! deleted outright, and resources owned by another tenant are never
 //! removed.
 //!
 //! # Cleanup order (reverse of creation)
@@ -253,7 +253,7 @@ pub struct CleanupAction {
     /// Human-readable detail (path, pid, table name, etc.).
     pub detail: String,
     /// Whether the resource was actually removed (`true`) or was already
-    /// absent (`false` — idempotent no-op).
+    /// absent (`false`: idempotent no-op).
     pub removed: bool,
 }
 
@@ -828,12 +828,12 @@ impl CleanupManager {
 /// Scans for orphaned microVM resources and reconciles them.
 ///
 /// An orphan is a resource (cgroup leaf, netns, chroot, socket) that exists
-/// on the filesystem but is **not** tracked by any live [`ResourceRecord`].
+/// on the filesystem but is not tracked by any live [`ResourceRecord`].
 /// Orphans are quarantined (moved to a quarantine directory) rather than
 /// deleted, so an operator can inspect them.
 ///
 /// # Cross-tenant protection
-/// The reconciler **never** removes or quarantines a resource whose owning
+/// The reconciler never removes or quarantines a resource whose owning
 /// tenant differs from the requesting tenant. Resources owned by another
 /// tenant are reported but left untouched.
 #[derive(Clone, Debug)]
@@ -1969,7 +1969,7 @@ mod tests {
             .any(|o| o.path.contains("vm-stale")));
         assert!(outcome_recon.is_clean());
 
-        // tenant-b's vm-cache is NOT touched (cross-tenant protection).
+        // tenant-b's vm-cache is not touched (cross-tenant protection).
         assert!(cgroup_root.join("microvm/vm-cache").exists());
 
         // Idempotent: clean up vm-web again.

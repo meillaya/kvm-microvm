@@ -1,12 +1,12 @@
 //! Warm HTTP-function microVM demo with cold/warm evidence (plan todo 28).
 //!
-//! This crate demonstrates the "Lambda clone" warm-function model: **one**
+//! This crate demonstrates the "Lambda clone" warm-function model: one
 //! minimal static Rust HTTP function packaged in a pinned local rootfs is
 //! snapshotted after service readiness, then restored through the orchestrator
-//! into a warm pool. The demo reports the **cold first-call** latency versus the
-//! **warm pool/request** latency distribution.
+//! into a warm pool. The demo reports the cold first-call latency versus the
+//! warm pool/request latency distribution.
 //!
-//! # Scope (what this crate deliberately does NOT do)
+//! # Scope (what this crate deliberately does not do)
 //! - No autoscaling: the warm pool is filled to a fixed size and reused.
 //! - No multi-function routing: exactly one [`function::HttpFunction`].
 //! - No persistent external data and no second language runtime.

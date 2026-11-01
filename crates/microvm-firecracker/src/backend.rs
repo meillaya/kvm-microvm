@@ -5,19 +5,19 @@
 //! process per VM, configured over its per-VM Unix-socket API. The backend
 //! orchestrates the full boot pipeline:
 //!
-//! 1. **Prerequisites** — host capabilities and binary provenance are verified
+//! 1. Prerequisites: host capabilities and binary provenance are verified
 //!    *before* any child is created ([`crate::prereq`]).
-//! 2. **Artifact integrity** — kernel and rootfs are opened relative to the
+//! 2. Artifact integrity: kernel and rootfs are opened relative to the
 //!    tenant root and SHA-256-verified ([`microvm_artifacts`]).
-//! 3. **Isolation** — a cgroup-v2 leaf and (when networked) a netns/TAP are
+//! 3. Isolation: a cgroup-v2 leaf and (when networked) a netns/TAP are
 //!    provisioned ([`microvm_isolation`]).
-//! 4. **Spawn** — the child process is launched and the `spawn` phase recorded.
-//! 5. **Socket readiness** — the backend waits for the API socket, recording
+//! 4. Spawn: the child process is launched and the `spawn` phase recorded.
+//! 5. Socket readiness: the backend waits for the API socket, recording
 //!    `socket_ready`.
-//! 6. **Configuration** — machine/kernel/rootfs/network are pushed over the API,
+//! 6. Configuration: machine/kernel/rootfs/network are pushed over the API,
 //!    recording `configured` (Created→Configured).
-//! 7. **Start + guest readiness** — `InstanceStart` is issued and the backend
-//!    waits for the *guest* (not just the process/socket), recording
+//! 7. Start + guest readiness: `InstanceStart` is issued and the backend
+//!    waits for the guest itself rather than only the process or socket, recording
 //!    `guest_ready` (Configured→Running).
 //!
 //! Process spawn failures and API errors drive the VM to [`VmState::Failed`] and
@@ -26,7 +26,7 @@
 //!
 //! # Security
 //! The Firecracker API socket is unauthenticated. It lives in a host-only
-//! socket root and is **never** exposed in tenant-facing [`VmStatus`] or
+//! socket root and is never exposed in tenant-facing [`VmStatus`] or
 //! [`VmMetrics`] responses; see [`FirecrackerBackend::socket_path`] for the
 //! host-internal accessor.
 
@@ -193,7 +193,7 @@ impl FirecrackerBackend {
 
     /// The host-internal API socket path for a VM.
     ///
-    /// This path is **never** returned to tenants; it is exposed only for
+    /// This path is never returned to tenants; it is exposed only for
     /// operator tooling and tests.
     pub fn socket_path(&self, vm_id: &VmId) -> PathBuf {
         self.config
@@ -509,13 +509,13 @@ impl FirecrackerBackend {
 
         let net_required = boot.has_network();
 
-        // 1. Prerequisites — fail before any child creation.
+        // 1. Prerequisites: fail before any child creation.
         self.prereq.check(net_required).map_err(|e| {
             e.with_context("vm_id", vm_id.as_str())
                 .with_context("phase", "prerequisite")
         })?;
 
-        // 2. Artifact integrity — digest-validate kernel and rootfs. A mismatch
+        // 2. Artifact integrity: digest-validate kernel and rootfs. A mismatch
         // is an integrity violation: the VM is driven to Failed and no child is
         // created, so no InstanceStart is ever issued.
         let (kernel_host, rootfs_host) = match self.verify_artifacts(&owner, &boot) {
@@ -529,7 +529,7 @@ impl FirecrackerBackend {
             }
         };
 
-        // 3. Isolation — cgroup leaf, then (optionally) netns/TAP.
+        // 3. Isolation: cgroup leaf, then (optionally) netns/TAP.
         let cgroup_spec = self.cgroup_spec(&spec)?;
         self.cgroup.create_parent()?;
         self.cgroup.apply_spec(vm_id, &cgroup_spec).map_err(|e| {
@@ -621,7 +621,7 @@ impl FirecrackerBackend {
             return Err(self.fail_vm(vm_id, e.with_context("phase", "instance_start")));
         }
 
-        // 8. Wait for guest readiness (not just process/socket).
+        // 8. Wait for guest readiness beyond the process or socket.
         let ctx = ReadinessContext::new(
             vm_id.clone(),
             net_config.as_ref().map(|n| n.guest_ip()),

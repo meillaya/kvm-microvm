@@ -1,10 +1,10 @@
 //! Pinned Firecracker/jailer binary provenance gate and validated jailer argv.
 //!
-//! This module owns the orchestrator's **binary provenance** boundary. Before
+//! This module owns the orchestrator's binary provenance boundary. Before
 //! any microVM process is spawned, the exact Firecracker and jailer release
 //! binaries are pinned by SHA-256 and verified on disk. A binary is accepted
 //! only when *every* check passes; otherwise the gate fails closed with
-//! [`ErrorCode::BinaryProvenanceError`] **before** any child process exists.
+//! [`ErrorCode::BinaryProvenanceError`] before any child process exists.
 //!
 //! # Provenance model
 //! - A [`BinaryManifest`] pins one binary: a role name (`firecracker`/`jailer`),
@@ -13,33 +13,33 @@
 //! - [`BinaryVerifier::verify_path`] reads the binary and, in order:
 //!   1. confirms the manifest is pinned to [`PINNED_VERSION`],
 //!   2. recomputes the SHA-256 and requires an exact match,
-//!   3. parses the ELF header and requires the **release/static** form,
+//!   3. parses the ELF header and requires the release/static form,
 //!   4. confirms the binary embeds the pinned version string.
 //!
 //! # ELF release/static form
 //! The genuine Firecracker/jailer release artifacts are statically linked musl
 //! binaries. The form check requires:
 //! - ELF64, little-endian,
-//! - `e_type` is `ET_EXEC` **or** `ET_DYN` (the x86_64 release is a PIE/`ET_DYN`,
-//!   the aarch64 release is `ET_EXEC` — both are accepted),
+//! - `e_type` is `ET_EXEC` or `ET_DYN` (the x86_64 release is a PIE/`ET_DYN`,
+//!   the aarch64 release is `ET_EXEC`: both are accepted),
 //! - `e_machine` matches the manifest,
-//! - **no `PT_INTERP` program header** — a dynamically linked GNU/glibc binary
+//! - no `PT_INTERP` program header: a dynamically linked GNU/glibc binary
 //!   carries an interpreter (`ld-linux-*.so`); a static musl binary has none,
-//! - **no `.debug_*` sections** — a debug build carries DWARF; the stripped
+//! - no `.debug_*` sections: a debug build carries DWARF; the stripped
 //!   release does not (the release *does* keep `.symtab`, so `.symtab` alone is
 //!   not a debug signal).
 //!
 //! # Jailer argv contract
 //! [`JailerArgv`] is a validated launcher argument vector. The jailer defaults
-//! `--cgroup-version` to v1, so the generated argv **always** pins
+//! `--cgroup-version` to v1, so the generated argv always pins
 //! `--cgroup-version=2` and points `--parent-cgroup` at a pre-created leaf. It
-//! also requires a `--netns`, a **non-root** `--uid`/`--gid`, and at least one
-//! **bounded** `--resource-limit`. Invalid argv fails closed with
+//! also requires a `--netns`, a non-root `--uid`/`--gid`, and at least one
+//! bounded `--resource-limit`. Invalid argv fails closed with
 //! [`ErrorCode::InvalidResourceSpec`] before spawn.
 //!
 //! # Seccomp (post-exec)
-//! The jailer performs chroot/cgroup/netns/UID-drop and exec, but **does not
-//! install seccomp**; Firecracker installs per-thread seccomp *after* exec and
+//! The jailer performs chroot/cgroup/netns/UID-drop and exec, but does not
+//! install seccomp; Firecracker installs per-thread seccomp *after* exec and
 //! before guest code. [`SeccompVerifier`] is a post-exec stub that reads
 //! `/proc/<pid>/status` and requires `Seccomp: 2` (filter mode) once the API is
 //! ready. A missing/non-filter mode yields [`ErrorCode::ProcessSpawnError`].
@@ -53,12 +53,12 @@
 //!
 //! # Determinism
 //! Manifest validation, SHA-256 computation, ELF parsing, version scanning, argv
-//! generation, and seccomp-status parsing are **pure**. [`BinaryVerifier::verify_path`]
+//! generation, and seccomp-status parsing are pure. [`BinaryVerifier::verify_path`]
 //! and [`SeccompVerifier::verify_pid`] take configurable roots and are exercised
 //! against temporary/synthetic inputs in the default test run; verifying a real
 //! installed binary and reading a real `/proc` live behind the `privileged`
 //! feature (`cargo test --features privileged --test jailer_invocation`). This
-//! module **never spawns a process**: every rejection happens before any
+//! module never spawns a process: every rejection happens before any
 //! `std::process::Command` could run.
 //!
 //! [`ErrorCode::BinaryProvenanceError`]: microvm_errors::ErrorCode::BinaryProvenanceError
@@ -909,7 +909,7 @@ pub fn parse_seccomp_mode(status: &str) -> Option<u8> {
 
 /// Verify a parsed status document reports seccomp filter mode (`Seccomp: 2`).
 ///
-/// The jailer does **not** install seccomp; Firecracker installs it after exec.
+/// The jailer does not install seccomp; Firecracker installs it after exec.
 /// Call this only after API readiness. A missing or non-filter mode yields
 /// [`ErrorCode::ProcessSpawnError`].
 pub fn verify_seccomp_status(status: &str) -> Result<(), MicrovmError> {

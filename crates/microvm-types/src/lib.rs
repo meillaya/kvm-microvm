@@ -1,7 +1,7 @@
 //! Typed identifiers, resource specifications, and tenancy types for the
 //! kvm-microvm-orchestrator platform.
 //!
-//! This crate contains **no I/O and no host API calls**. All types are
+//! This crate contains no I/O and no host API calls. All types are
 //! validated at construction time and are safe to serialize/deserialize
 //! across transport boundaries.
 

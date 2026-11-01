@@ -5,7 +5,7 @@
 //! cargo test --features privileged --test firecracker_boot -- --nocapture
 //! ```
 //!
-//! This drives a **real** Firecracker/jailer on a capable host: create,
+//! This drives a real Firecracker/jailer on a capable host: create,
 //! configure (kernel/rootfs/machine/network over the UDS API), start, observe
 //! guest readiness, stop, and clean one VM. It follows the platform's
 //! privileged evidence model (`pass` / `blocked` / `failed`): when the host
@@ -13,12 +13,12 @@
 //! test reports a stable `blocked` token and passes rather than failing.
 //!
 //! Required environment (otherwise `blocked`):
-//! - `FC_KERNEL_PATH` — guest kernel image (bzImage).
-//! - `FC_ROOTFS_PATH` — guest rootfs block device.
-//! - `FC_GUEST_HEALTH_PORT` — TCP port a guest agent listens on (readiness).
+//! - `FC_KERNEL_PATH`: guest kernel image (bzImage).
+//! - `FC_ROOTFS_PATH`: guest rootfs block device.
+//! - `FC_GUEST_HEALTH_PORT`. TCP port a guest agent listens on (readiness).
 //!
 //! Optional:
-//! - `FC_FIRECRACKER` / `FC_JAILER` — binary paths (default `/usr/bin/...`).
+//! - `FC_FIRECRACKER` / `FC_JAILER`: binary paths (default `/usr/bin/...`).
 //!
 //! Must run with sufficient privilege for KVM, cgroup delegation, and netns.
 

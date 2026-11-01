@@ -23,13 +23,13 @@ pub struct Platform {
 }
 
 impl Platform {
-    /// `linux/amd64` — 64-bit x86 (Firecracker `x86_64`).
+    /// `linux/amd64`: 64-bit x86 (Firecracker `x86_64`).
     pub const LINUX_AMD64: Platform = Platform {
         os: "linux",
         architecture: "amd64",
     };
 
-    /// `linux/arm64` — 64-bit ARM (Firecracker `aarch64`).
+    /// `linux/arm64`: 64-bit ARM (Firecracker `aarch64`).
     pub const LINUX_ARM64: Platform = Platform {
         os: "linux",
         architecture: "arm64",

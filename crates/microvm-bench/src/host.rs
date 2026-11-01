@@ -238,7 +238,7 @@ pub fn probe_firecracker_version() -> Option<String> {
         return None;
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    // Expected: "Firecracker v1.16.1" — take the last whitespace token, strip a
+    // Expected: "Firecracker v1.16.1": take the last whitespace token, strip a
     // leading 'v'.
     stdout
         .lines()

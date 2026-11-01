@@ -4,10 +4,10 @@
 //! [`microvm_isolation::NetConfig`] validator, and the pure
 //! [`microvm_isolation::nft_ruleset`] generator.
 //!
-//! The inter-VM denial proof is **structural, not grep-only**: the generated
+//! The inter-VM denial proof is structural, not grep-only: the generated
 //! nftables script is parsed into a forward-chain reachability model
 //! (`(saddr, daddr, action)` tuples plus the chain default policy), and the
-//! test asserts that no guest can reach another guest's address — the only
+//! test asserts that no guest can reach another guest's address: the only
 //! `accept` rules a guest gets are to its own gateway, and the chain default
 //! policy is `drop`. Address isolation (distinct, non-overlapping per-VM
 //! addresses) and NAT-only masquerade scoping are verified the same way.
@@ -319,7 +319,7 @@ fn egress_allowed_permits_external_but_still_isolated_at_forward() {
         model.can_reach(a.guest_ip(), b.guest_ip()),
         "egress policy grants A->B (documented tradeoff)"
     );
-    // The masquerade for EgressAllowed is NOT destination-scoped.
+    // The masquerade for EgressAllowed is not destination-scoped.
     assert!(model.masquerade.iter().any(|(_, scoped)| !scoped));
 }
 

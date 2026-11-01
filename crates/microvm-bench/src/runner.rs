@@ -2,7 +2,7 @@
 //! snapshot/restore, Docker start) that the [`crate::marker::BenchMarker`]
 //! drives.
 //!
-//! A lane reports a stable name, a **target** (metadata, never a pass
+//! A lane reports a stable name, a target (metadata, never a pass
 //! threshold), a probe outcome (ran vs blocked-with-evidence), and produces
 //! per-sample monotonic durations under cold and warm conditions. Sample
 //! failures are returned as `Err` so the marker can record them without counting
@@ -46,7 +46,7 @@ pub trait LaneRunner: Send + Sync {
     /// Stable benchmark identifier (e.g. `snapshot_restore`, `docker_start_cold`).
     fn name(&self) -> String;
 
-    /// Reference target in `unit()`. **Metadata only** — never a pass threshold.
+    /// Reference target in `unit()`. Metadata only; never a pass threshold.
     fn target_ms(&self) -> f64;
 
     /// Unit of the produced samples. Defaults to milliseconds.

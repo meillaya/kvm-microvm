@@ -1,8 +1,8 @@
 //! Deterministic full boot/stop orchestration against scripted doubles.
 //!
-//! These tests drive the entire [`FirecrackerBackend`] pipeline — prerequisite
+//! These tests drive the entire [`FirecrackerBackend`] pipeline: prerequisite
 //! check, digest validation, isolation setup, spawn, socket readiness, API
-//! configuration, `InstanceStart`, guest readiness, and stop/cleanup — without
+//! configuration, `InstanceStart`, guest readiness, and stop/cleanup: without
 //! a capable host, by injecting scripted launcher/API/probe doubles.
 
 mod common;

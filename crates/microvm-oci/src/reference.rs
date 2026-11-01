@@ -1,6 +1,6 @@
 //! Local-only reference validation for the constrained importer.
 //!
-//! `microvm run --image <ref>` must accept only a **local, digest-pinned**
+//! `microvm run --image <ref>` must accept only a local, digest-pinned
 //! layout reference. Remote registry references and tag-only references are
 //! refused with [`ImportError::RemoteReference`] (which maps to
 //! [`ErrorCode::LocalArtifactRequired`]) *before* any I/O or network activity.

@@ -2,7 +2,7 @@
 //! service.
 //!
 //! [`MicrovmGrpcService`] implements the generated `MicrovmService` trait by
-//! delegating every RPC to an `Arc<dyn LifecycleService>` — the same backend
+//! delegating every RPC to an `Arc<dyn LifecycleService>`: the same backend
 //! contract the REST transport drives. In production this is the composed
 //! [`VmLifecycleService`](microvm_service::VmLifecycleService); tests inject a
 //! scripted mock. All business policy (state machine, quota, ownership) lives

@@ -7,9 +7,9 @@ description = "End-to-end REST and gRPC VM lifecycle integration tests"
 
 # This is a test-only crate: it ships no production code. Every dependency is a
 # dev-dependency consumed by the integration tests under `tests/`. The tests
-# boot the full API stack — `microvm_rest::RestServer` / `microvm_grpc::GrpcServer`
+# boot the full API stack: `microvm_rest::RestServer` / `microvm_grpc::GrpcServer`
 # over real Unix sockets, backed by the composed
-# `microvm_service::VmLifecycleService` — and drive a complete VM lifecycle
+# `microvm_service::VmLifecycleService`, and drive a complete VM lifecycle
 # (create -> start -> health -> status -> snapshot -> restore -> stop -> cleanup).
 #
 # Two deterministic lanes run without KVM/root/Firecracker:

@@ -5,31 +5,31 @@
 //! platform's building blocks behind the
 //! [`LifecycleService`](microvm_lifecycle::LifecycleService) contract:
 //!
-//! - **typed state + policy** ([`microvm_lifecycle`]) — the VM state machine,
+//! - typed state + policy ([`microvm_lifecycle`]): the VM state machine,
 //!   tenant authorization, quota enforcement, and structured audit events;
-//! - **Firecracker backend** ([`microvm_firecracker`]) — the runtime that
+//! - Firecracker backend ([`microvm_firecracker`]): the runtime that
 //!   spawns, configures, starts, and stops the VM, gating `Running` on a
 //!   guest-readiness probe rather than mere process/socket readiness;
-//! - **isolation cleanup** ([`microvm_isolation`]) — idempotent teardown of
+//! - isolation cleanup ([`microvm_isolation`]): idempotent teardown of
 //!   cgroup/netns/socket/chroot resources during supervisor-death
 //!   reconciliation.
 //!
 //! On top of the composed backend the service adds the *supervision* layer the
 //! raw backend does not provide:
 //!
-//! - **Idempotency by request key** — duplicate create/start/stop requests
+//! - Idempotency by request key: duplicate create/start/stop requests
 //!   carrying the same [`RequestKey`] are no-ops that replay the cached outcome
 //!   (one backend mutation, one audit decision per request).
-//! - **Per-VM serialization** — concurrent operations on the same VM are
+//! - Per-VM serialization: concurrent operations on the same VM are
 //!   serialized on a per-VM lock so duplicate concurrent operations cannot both
 //!   mutate the backend.
-//! - **Owner + quota checks before mutation** — authorization and quota are
+//! - Owner + quota checks before mutation: authorization and quota are
 //!   verified before any backend call, so over-quota or cross-tenant requests
 //!   are rejected without side effects.
-//! - **Supervisor-death reconciliation** — a [`SupervisorProbe`] detects an
+//! - Supervisor-death reconciliation: a [`SupervisorProbe`] detects an
 //!   unexpectedly-dead supervisor process; the VM is driven to `Failed`, an
 //!   audit event is recorded, and its resources are released.
-//! - **Audit** — every mutating request produces exactly one
+//! - Audit: every mutating request produces exactly one
 //!   [`AuditEvent`](microvm_lifecycle::policy::AuditEvent).
 //!
 //! The service is the single audit source: construct the inner backend
@@ -38,7 +38,7 @@
 //! # Determinism
 //! All supervision logic (idempotency, serialization, quota, reconciliation,
 //! audit) is exercised against a fully-scripted [`FirecrackerBackend`] in the
-//! `tests/service_contract.rs` suite — no KVM, root, or real Firecracker binary
+//! `tests/service_contract.rs` suite; no KVM, root, or real Firecracker binary
 //! is required.
 
 pub mod cleanup;
@@ -743,7 +743,7 @@ impl LifecycleService for VmLifecycleService {
         authorize(principal, entry.owner(), Operation::Metrics)?;
         // The in-memory supervised service has no host-metrics collector
         // attached (no real cgroup/TAP/guest sources), so it returns an honest
-        // record whose sources are marked unavailable — never zero-filled. A
+        // record whose sources are marked unavailable; never zero-filled. A
         // privileged backend attaches a `MetricsCollector` to produce real
         // measurements (plan todo 23).
         let state = entry.state();

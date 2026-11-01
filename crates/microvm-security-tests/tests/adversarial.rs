@@ -4,22 +4,22 @@
 //! Where the per-domain suites enumerate each known trap, this target attacks
 //! the boundaries *generatively*:
 //!
-//! - **Property suites (proptest):** invariants that must hold for *all*
-//!   inputs — any path containing a `..` component is refused, any non-`file`
+//! - Property suites (proptest): invariants that must hold for *all*
+//!   inputs: any path containing a `..` component is refused, any non-`file`
 //!   URI is refused, any identifier containing `/`/`..`/uppercase is refused,
 //!   any zero-valued cgroup spec is refused, any non-ELF byte string is refused.
-//! - **Mutation corpus:** a genuine static release binary and a valid OCI
+//! - Mutation corpus: a genuine static release binary and a valid OCI
 //!   layout are systematically mutated (single-byte flips, header-field
 //!   rewrites, deeply-nested forbidden keys, encoding tricks) and every mutant
 //!   must be rejected with the correct typed code.
-//! - **Deliberate-bypass canaries:** fixtures engineered to slip past a *naive*
+//! - Deliberate-bypass canaries: fixtures engineered to slip past a *naive*
 //!   check (a clean-named symlink to `/etc/shadow`, a `./..` path a
 //!   dot-stripper would miss, a forbidden key buried in a nested array, a
 //!   binary that is static and correctly-machined but carries the wrong
 //!   version). The real boundaries reject all of them, and the harness canary
 //!   proves that any mutant that *did* slip through would fail the battery.
 //!
-//! Every rejection happens in a pure, pre-spawn function — no probe spawns a
+//! Every rejection happens in a pure, pre-spawn function; no probe spawns a
 //! process or touches a privileged resource, so the suite fails on a bypass
 //! *before* any side effect. The consolidated `adversarial.json` evidence
 //! artifact is written before the assertions.
@@ -176,7 +176,7 @@ fn every_single_byte_mutation_of_the_binary_is_caught() {
 }
 
 /// Targeted ELF-form mutations that keep the hash self-consistent (the manifest
-/// is rebuilt for each mutant) so the *form* gate — not the hash — is what
+/// is rebuilt for each mutant) so the *form* gate, not the hash, is what
 /// rejects. Each mutates one security-relevant ELF property.
 #[test]
 fn elf_form_mutations_are_rejected_by_the_form_gate() {
@@ -332,8 +332,8 @@ fn bypass_file_uri_with_remote_host_is_refused() {
 /// Every boundary exercised here is a pure function that returns its typed
 /// rejection before any `std::process::Command` could run. This test documents
 /// and asserts that property by construction: the probes call only
-/// `validate_*`, `verify_bytes`, `build`, `import`, and `validate` — none of
-/// which spawn — and each returns `Err` (the rejection) rather than performing
+/// `validate_*`, `verify_bytes`, `build`, `import`, and `validate`; none of
+/// which spawn, and each returns `Err` (the rejection) rather than performing
 /// the dangerous operation.
 #[test]
 fn all_rejections_are_pre_spawn_pure_functions() {

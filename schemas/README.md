@@ -1,44 +1,74 @@
-# kvm-microvm-orchestrator — evidence schemas
+# Evidence schemas
 
-This directory holds the JSON Schemas (draft 2020-12) that define the outcome vocabulary for every evidence artifact the project writes to `.omo/evidence/kvm-microvm-orchestrator/`. Four lanes, four schemas, one fail-closed posture.
+This directory holds the JSON Schemas (draft 2020-12) for the evidence artifacts
+that the project writes under `.omo/evidence/kvm-microvm-orchestrator/`, plus
+the schemas for snapshot manifests, per-VM metrics, and warm demo records.
 
-## Lanes
+## Evidence schemas
 
-| Lane | Schema | Purpose | Host substrate |
+| Schema | Class | Purpose | Host substrate |
 | --- | --- | --- | --- |
-| deterministic | `evidence-deterministic.v1.json` | Unit, property, API contract, scheduler pure logic, OCI importer, snapshot manifest, transport parity. Reproducible across hosts. | None — must run without `/dev/kvm`, `/dev/net/tun`, cgroup-v2 mutation. |
-| privileged | `evidence-privileged.v1.json` | Firecracker boot, cgroup-v2 enforcement, TAP/netns, jailer launch, lifecycle cleanup, snapshot/restore against real KVM. | Real `/dev/kvm` (API >= 12), `/dev/net/tun`, unified cgroup-v2 with cpu+memory+pids, pinned Firecracker + jailer. |
-| benchmark | `evidence-benchmark.v1.json` | Snapshot create/restore latency, Docker cold/warm comparison, warm HTTP function p50/p95/p99. | Same as privileged, plus page-cache control and N>=100 samples. |
-| host_preflight | `evidence-host-preflight.v1.json` | Standalone read-only capability snapshot. Embedded as `host_preflight` inside every privileged artifact. | None — read-only. |
+| `evidence-deterministic.v1.json` | `deterministic` | Unit, property, API contract, scheduler, OCI importer, snapshot manifest, and transport parity results. | None. The lane must run without `/dev/kvm`, `/dev/net/tun`, or cgroup-v2 mutation. |
+| `evidence-privileged.v1.json` | `privileged` | Firecracker boot, cgroup-v2 enforcement, TAP and netns, jailer launch, lifecycle cleanup, and snapshot/restore against real KVM. | `/dev/kvm` (API 12 or later), `/dev/net/tun`, unified cgroup v2 with `cpu`, `memory`, and `pids`, and pinned Firecracker and jailer. |
+| `evidence-benchmark.v1.json` | `benchmark` | Snapshot and restore latency, the Docker cold and warm comparison, and warm HTTP function percentiles. | The privileged substrate, plus page-cache control and at least 100 samples. |
+| `evidence-host-preflight.v1.json` | `host_preflight` | A standalone read-only capability snapshot. Privileged artifacts embed it as `host_preflight`. | None. The probe is read-only. |
+| `evidence-security.v1.json` | `security` | Adversarial probes against production security boundaries, with the typed error code each probe produced. | None. The probes are deterministic and do not need root or `/dev/kvm`. |
 
-## Fail-closed semantics
+## Fail-closed rules
 
-Three rules govern every schema in this directory. Together they make a mocked privileged run impossible to encode as a real pass and a benchmark impossible to encode as a boolean gate.
+Three rules apply across the evidence schemas. They make a mocked privileged
+pass impossible to encode and a benchmark impossible to encode as a boolean
+gate.
 
-### 1. `class` discriminator is a constant
+### The class discriminator is constant
 
-Every schema sets `class` to a single allowed string (`deterministic`, `privileged`, `benchmark`, `host_preflight`). A reviewer can branch on lane without parsing the file name, and tooling can refuse to accept an artifact whose `class` does not match the expected lane for the directory it lives in.
+Every schema fixes `class` to one value: `deterministic`, `privileged`,
+`benchmark`, `host_preflight`, or `security`. A reviewer can branch on the lane
+without parsing the file name, and tooling can reject an artifact whose `class`
+does not match the lane that produced it.
 
-### 2. Anti-mock rule for the privileged lane
+### The privileged lane cannot mock a pass
 
-`evidence-privileged.v1.json` carries an explicit `if`/`then` rule: when `host_preflight.kvm_ok` is `false`, no run may record `pass: true`. The privileged lane cannot claim a real success against a host that lacks KVM. A blocked lane emits `pass: false`, `blocked: true`, and `blocked_reason: "<token>"`. The same rule is exercised by the negative fixture `examples/privileged-blocked.json` and the negative probe `/tmp/negative-privileged.json`.
+`evidence-privileged.v1.json` carries an `if`/`then` rule: when
+`host_preflight.kvm_ok` is `false`, the artifact cannot record `pass: true`. A
+blocked lane records `pass: false`, `blocked: true`, and a `blocked_reason`
+token. The fixture `examples/privileged-blocked.json` exercises the blocked
+shape.
 
-### 3. Anti-boolean for the benchmark lane
+### The benchmark lane cannot record a pass
 
-`evidence-benchmark.v1.json` forbids a `pass` field at every level it could be added: the top-level object (via `additionalProperties: false` plus an explicit `not: { required: ["pass"] }`) and each benchmark item (same pair of rules). Benchmark artifacts publish distributions and `target_ms` metadata; reviewers compare the recorded p50/p95/p99 against `target_ms`, not against a boolean. The negative fixture `examples/benchmark-ok.json` confirms the schema accepts a well-formed benchmark; the negative probe `/tmp/negative-benchmark.json` confirms the schema rejects a benchmark that smuggles a `pass` field back in.
+`evidence-benchmark.v1.json` rejects a `pass` field at the top level and on every
+benchmark item. It combines `additionalProperties: false` with an explicit
+`not: { required: ["pass"] }` rule. Benchmark artifacts publish distributions
+and `target_ms` metadata. A reviewer compares the recorded p50, p95, and p99
+against `target_ms` rather than reading a boolean.
 
-## Determinism guarantee
+## Determinism
 
-Deterministic lane artifacts MUST NOT carry `host_preflight` or `target_ms` fields. Deterministic tests are reproducible across hosts; per-host metadata would only confuse the result. The schema enforces this with `additionalProperties: false` at the top level.
+Deterministic artifacts do not carry `host_preflight` or `target_ms` fields.
+Per-host metadata would make a reproducible result depend on the host. The
+schema enforces this with `additionalProperties: false` at the top level.
 
 ## Summary arithmetic
 
-Schemas cannot count, so they do not enforce `summary.total == items.length` or `summary.pass + summary.fail == summary.total`. Reviewers MUST reject artifacts where the math does not reconcile. The validator tooling (planned for the `evidence-validate` binary in plan todo 3's follow-up work) is responsible for the arithmetic check.
+A schema cannot count, so it does not enforce
+`summary.total == items.length` or
+`summary.pass + summary.fail == summary.total`. A reviewer rejects an artifact
+whose arithmetic does not reconcile. The evidence reducer
+(`scripts/aggregate-evidence.sh`) performs that check for the release matrix.
+
+## Supporting schemas
+
+| Schema | Purpose |
+| --- | --- |
+| `snapshot-manifest.v1.json` | Content hashes and compatibility metadata for a local snapshot. |
+| `vm-metrics-record.v1.json` | Per-VM host and guest metrics with availability flags. |
+| `warm-http-demo.v1.json` | Cold and warm evidence for the HTTP-function demo. |
 
 ## Usage
 
 ```python
-import json, jsonschema
+import json
 from jsonschema import Draft202012Validator
 
 schema = json.load(open("schemas/evidence-deterministic.v1.json"))
@@ -47,4 +77,6 @@ Draft202012Validator.check_schema(schema)
 Draft202012Validator(schema).validate(example)
 ```
 
-The schemas are intentionally compatible with the upcoming `evidence-validate` Rust binary (`cargo run --bin evidence-validate -- --all schemas/examples`) referenced in plan todo 3's acceptance criteria. Each example in `schemas/examples/` is a positive fixture that must validate; each negative probe in `/tmp/negative-*.json` is a hand-crafted counter-example that must be rejected.
+The files in `schemas/examples/` are positive fixtures. A fixture must validate
+against the schema named by its content. When a schema changes, update the
+fixture in the same change.

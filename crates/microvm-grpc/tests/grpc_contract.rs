@@ -1,17 +1,17 @@
 //! Integration tests for the gRPC Unix socket API.
 //!
 //! These tests verify, deterministically and without KVM/root/Firecracker:
-//! - **RPC handling**: all 7 `MicrovmService` RPCs dispatch to the lifecycle
+//! - RPC handling: all 7 `MicrovmService` RPCs dispatch to the lifecycle
 //!   service and return correct responses (both in-process and end-to-end over
 //!   a real Unix socket).
-//! - **Error mapping**: every [`ErrorCode`] maps to a deterministic gRPC code,
+//! - Error mapping: every [`ErrorCode`] maps to a deterministic gRPC code,
 //!   and the stable `error_code` survives in the status details.
-//! - **REST parity**: the *same* request through REST and gRPC reaches the
+//! - REST parity: the *same* request through REST and gRPC reaches the
 //!   *same* service result, and the gRPC error details are byte-identical to
 //!   the REST error body.
-//! - **Authentication**: an unauthenticated peer receives `PermissionDenied`.
-//! - **No-TCP**: the server source binds only a Unix socket (static scan).
-//! - **No-reflection**: reflection stays disabled and unregistered.
+//! - Authentication: an unauthenticated peer receives `PermissionDenied`.
+//! - No-TCP: the server source binds only a Unix socket (static scan).
+//! - No-reflection: reflection stays disabled and unregistered.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -363,7 +363,7 @@ async fn missing_vm_maps_to_not_found() {
 #[tokio::test]
 async fn unauthenticated_peer_is_permission_denied() {
     let svc = grpc_service(Arc::new(MockService::new()));
-    // Request with NO connect info -> unauthenticated.
+    // Request with no connect info -> unauthenticated.
     let err = svc
         .create_vm(Request::new(CreateVmRequest {
             vcpu_count: 2,
@@ -803,7 +803,7 @@ fn server_uses_unix_listener_not_tcp() {
     for forbidden in ["TcpListener", "TcpStream", "to_socket_addrs", "TcpSocket"] {
         assert!(
             !server_src.contains(forbidden),
-            "server must NOT reference {forbidden}"
+            "server must not reference {forbidden}"
         );
     }
     // No source file may bind a TCP listener type.
@@ -811,7 +811,7 @@ fn server_uses_unix_listener_not_tcp() {
         for forbidden in ["TcpListener", "TcpSocket", "to_socket_addrs"] {
             assert!(
                 !content.contains(forbidden),
-                "{name} must NOT reference {forbidden}"
+                "{name} must not reference {forbidden}"
             );
         }
     }

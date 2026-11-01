@@ -3,14 +3,14 @@
 //! The serialized form conforms to `schemas/evidence-benchmark.v1.json`
 //! ([`BENCHMARK_SCHEMA_ID`]). Two invariants are load-bearing:
 //!
-//! 1. **No `pass` field anywhere** (requirement 10). `target_ms` is metadata;
+//! 1. No `pass` field anywhere (requirement 10). `target_ms` is metadata;
 //!    the schema forbids a `pass` boolean at every level via
 //!    `additionalProperties:false` plus an explicit `not: {required:["pass"]}`.
 //!    [`BenchmarkResult`] therefore has no field, method, or accessor that
 //!    reduces a distribution to a pass/fail verdict.
-//! 2. **Blocked lanes carry zero samples and null percentiles** (requirement 11).
+//! 2. Blocked lanes carry zero samples and null percentiles (requirement 11).
 //!    A blocked item sets `blocked_reason`, `cold.samples = warm.samples = 0`,
-//!    and null p50/p95/p99 — samples are never fabricated.
+//!    and null p50/p95/p99: samples are never fabricated.
 //!
 //! The result also carries the fields requirement 8 demands beyond the original
 //! schema: [`Workload`] (workload/artifact hashes) and [`RuntimeVersions`]
@@ -103,8 +103,8 @@ pub struct HostMetadata {
 /// A single named benchmark distribution record.
 ///
 /// Matches one entry of the schema `benchmarks` array. The headline
-/// `p50/p95/p99` summarise the primary condition: the **warm** distribution
-/// when it has samples, otherwise the **cold** distribution, otherwise `null`
+/// `p50/p95/p99` summarise the primary condition: the warm distribution
+/// when it has samples, otherwise the cold distribution, otherwise `null`
 /// (blocked). This mirrors the committed schema example, where a warm-capable
 /// benchmark headlines its warm latency and a cold-only benchmark headlines its
 /// cold latency.
@@ -112,7 +112,7 @@ pub struct HostMetadata {
 pub struct BenchmarkItem {
     /// Stable benchmark identifier (e.g. `snapshot_restore`, `docker_start_cold`).
     pub name: String,
-    /// Reference target in `unit`. **Metadata only** — never a pass/fail threshold.
+    /// Reference target in `unit`. Metadata only; never a pass/fail threshold.
     pub target_ms: f64,
     /// Unit of the percentiles and `target_ms`.
     pub unit: Unit,
@@ -190,7 +190,7 @@ impl BenchmarkItem {
 /// The complete benchmark evidence artifact.
 ///
 /// Serialized to the output JSON file. Conforms to [`BENCHMARK_SCHEMA_ID`].
-/// There is intentionally **no** `pass` field and no method that computes one.
+/// There is intentionally no `pass` field and no method that computes one.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BenchmarkResult {
     /// Class discriminator; always [`BENCHMARK_CLASS`].

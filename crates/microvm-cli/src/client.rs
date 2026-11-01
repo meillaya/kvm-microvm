@@ -1,7 +1,7 @@
 //! REST/JSON client over a protected Unix domain socket.
 //!
 //! The [`Client`] connects to the microvm daemon's REST API exclusively
-//! through a filesystem Unix socket. **No TCP connection is ever made.**
+//! through a filesystem Unix socket. No TCP connection is ever made.
 //! Before connecting, the socket file is validated for ownership; a
 //! wrong-owner socket is refused with a [`CliError::wrong_owner`] that
 //! does not leak the host path.
@@ -60,7 +60,7 @@ impl Client {
     ///
     /// Checks that the file exists, is a socket, and is owned by the
     /// current process UID. A wrong-owner socket is refused with a
-    /// permission-denied error that does **not** leak the host path.
+    /// permission-denied error that does not leak the host path.
     pub fn validate_socket(&self) -> Result<(), CliError> {
         let meta = std::fs::metadata(&self.socket_path).map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
@@ -88,49 +88,49 @@ impl Client {
         Ok(())
     }
 
-    /// `POST /vms` — create a VM.
+    /// `POST /vms`: create a VM.
     pub async fn create_vm(&self, req: &CreateVmRequest) -> Result<CreateVmResponse, CliError> {
         let body = serde_json::to_vec(req).map_err(|e| CliError::usage(e.to_string()))?;
         let resp = self.request("POST", "/vms", Some(&body)).await?;
         Self::decode(&resp)
     }
 
-    /// `POST /vms/{vm_id}/start` — start a VM.
+    /// `POST /vms/{vm_id}/start`: start a VM.
     pub async fn start_vm(&self, vm_id: &str) -> Result<(), CliError> {
         let path = format!("/vms/{}/start", vm_id);
         let resp = self.request("POST", &path, None).await?;
         Self::expect_empty(&resp)
     }
 
-    /// `POST /vms/{vm_id}/stop` — stop a VM.
+    /// `POST /vms/{vm_id}/stop`: stop a VM.
     pub async fn stop_vm(&self, vm_id: &str) -> Result<(), CliError> {
         let path = format!("/vms/{}/stop", vm_id);
         let resp = self.request("POST", &path, None).await?;
         Self::expect_empty(&resp)
     }
 
-    /// `POST /vms/{vm_id}/snapshot` — snapshot a VM.
+    /// `POST /vms/{vm_id}/snapshot`: snapshot a VM.
     pub async fn snapshot_vm(&self, vm_id: &str) -> Result<SnapshotVmResponse, CliError> {
         let path = format!("/vms/{}/snapshot", vm_id);
         let resp = self.request("POST", &path, None).await?;
         Self::decode(&resp)
     }
 
-    /// `POST /snapshots/{snapshot_id}/restore` — restore from a snapshot.
+    /// `POST /snapshots/{snapshot_id}/restore`: restore from a snapshot.
     pub async fn restore_vm(&self, snapshot_id: &str) -> Result<RestoreVmResponse, CliError> {
         let path = format!("/snapshots/{}/restore", snapshot_id);
         let resp = self.request("POST", &path, None).await?;
         Self::decode(&resp)
     }
 
-    /// `GET /vms/{vm_id}` — query VM status.
+    /// `GET /vms/{vm_id}`: query VM status.
     pub async fn get_status(&self, vm_id: &str) -> Result<VmStatusResponse, CliError> {
         let path = format!("/vms/{}", vm_id);
         let resp = self.request("GET", &path, None).await?;
         Self::decode(&resp)
     }
 
-    /// `GET /vms/{vm_id}/metrics` — query VM metrics.
+    /// `GET /vms/{vm_id}/metrics`: query VM metrics.
     pub async fn get_metrics(&self, vm_id: &str) -> Result<serde_json::Value, CliError> {
         let path = format!("/vms/{}/metrics", vm_id);
         let resp = self.request("GET", &path, None).await?;

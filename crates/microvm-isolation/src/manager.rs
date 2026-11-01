@@ -2,8 +2,8 @@
 //!
 //! [`CgroupManager`] owns the orchestrator's cgroup-v2 boundary. It creates a
 //! single parent cgroup, delegates the required controllers top-down, and
-//! creates one **leaf** cgroup per VM with explicit resource limits. The jailer
-//! is only ever handed a **pre-created** leaf path; it never creates the
+//! creates one leaf cgroup per VM with explicit resource limits. The jailer
+//! is only ever handed a pre-created leaf path; it never creates the
 //! hierarchy itself.
 //!
 //! # Layout
@@ -49,7 +49,7 @@ pub const CGROUP_VERSION: u32 = 2;
 /// A deterministic jailer launch command.
 ///
 /// The cgroup contract is fixed: `--cgroup-version=2` is always present and
-/// `--parent-cgroup` always points at a **pre-created** leaf path (relative to
+/// `--parent-cgroup` always points at a pre-created leaf path (relative to
 /// the cgroup root) so the jailer never creates the hierarchy itself. Extra
 /// flags (netns, uid/gid, resource limits) are appended by later waves.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -177,7 +177,7 @@ impl CgroupManager {
     /// Confirm the cgroup root exists and is a directory.
     ///
     /// Returns [`ErrorCode::CgroupUnavailable`] when the root is missing, so
-    /// callers fail closed **before** any process spawn.
+    /// callers fail closed before any process spawn.
     pub fn require_root(&self) -> Result<(), MicrovmError> {
         if self.root.is_dir() {
             Ok(())
@@ -305,7 +305,7 @@ impl CgroupManager {
         let memory_swap_max = read_cgroup_file(&leaf.join("memory.swap.max"))?;
         let pids_max = read_cgroup_file(&leaf.join("pids.max"))?;
         let io_max = match read_cgroup_file(&leaf.join("io.max")) {
-            // An empty io.max means no I/O limit was applied — treat as None.
+            // An empty io.max means no I/O limit was applied: treat as None.
             Ok(v) if v.is_empty() => None,
             Ok(v) => Some(v),
             // io.max is optional; a missing file means no I/O limit was set.
@@ -552,7 +552,7 @@ mod tests {
     #[test]
     fn apply_spec_missing_controller_rejected_before_write() {
         let mgr = CgroupManager::new("/placeholder");
-        // Parent exposes cpu+pids but NOT memory.
+        // Parent exposes cpu+pids but not memory.
         let tmp = simulated_hierarchy(&mgr, "cpu pids");
         let mgr = CgroupManager::new(tmp.path().join("cgroup"));
         mgr.create_parent().unwrap();

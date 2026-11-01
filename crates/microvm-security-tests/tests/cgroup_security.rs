@@ -6,7 +6,7 @@
 //! and [`microvm_isolation::JailerArgv`]).
 //!
 //! Traps covered: the jailer defaulting to cgroup v1 (the argv must always pin
-//! `--cgroup-version=2`), the cgroup-v2 **no-internal-process** leaf contract
+//! `--cgroup-version=2`), the cgroup-v2 no-internal-process leaf contract
 //! (a leaf must have no children and an empty `cgroup.subtree_control`; the
 //! delegation domain is the parent, never a leaf), missing-controller
 //! delegation, invalid resource specs, and limit-file round-trip integrity.
@@ -99,7 +99,7 @@ fn parent_delegates_controllers_and_leaf_is_a_true_leaf() {
     // The parent is the delegation domain: after create_parent its
     // subtree_control is NON-empty (controllers pushed top-down). Under the
     // cgroup-v2 no-internal-process rule a delegating cgroup may not contain
-    // processes directly — so VM processes must live in a leaf, never here.
+    // processes directly, so VM processes must live in a leaf, never here.
     let parent_subtree =
         std::fs::read_to_string(mgr.parent_path().join("cgroup.subtree_control")).unwrap();
     assert!(
@@ -177,7 +177,7 @@ fn verify_leaf_detects_a_child_cgroup_on_disk() {
 fn missing_required_controller_is_rejected_before_spawn() {
     let tmp = TempDir::new().unwrap();
     let root = tmp.path().join("cgroup");
-    // Parent exposes cpu+pids but NOT memory (and the spec needs memory).
+    // Parent exposes cpu+pids but not memory (and the spec needs memory).
     simulate_cgroup_root(&root, "microvm", "cpu pids");
     let mgr = CgroupManager::new(&root);
     let err = mgr.check_parent_controllers(&valid_spec()).unwrap_err();

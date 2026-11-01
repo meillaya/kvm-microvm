@@ -2,7 +2,7 @@
 //!
 //! Defines the [`Cli`] parser and [`Command`] subcommands. The CLI talks
 //! to the microvm daemon exclusively over a REST Unix socket; it exposes
-//! **no** `--tcp`, `--rootless`, `--mount`, `--cap-add`, or remote
+//! no `--tcp`, `--rootless`, `--mount`, `--cap-add`, or remote
 //! registry convenience flags. Those omissions are enforced by tests.
 
 use clap::{Parser, Subcommand};

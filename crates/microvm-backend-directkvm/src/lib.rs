@@ -1,6 +1,6 @@
 //! Educational direct-KVM microvm backend contract types.
 //!
-//! **This crate is NOT a production Firecracker replacement.** It exists solely
+//! This crate is not a production Firecracker replacement. It exists solely
 //! to teach the KVM API surface used by the kvm-microvm-orchestrator platform.
 //!
 //! The contract pins exactly:
@@ -13,7 +13,7 @@
 //!
 //! # Feature gate
 //!
-//! The `direct-kvm` Cargo feature is **off by default**. Contract types and
+//! The `direct-kvm` Cargo feature is off by default. Contract types and
 //! validation are always available without the feature. The feature gates the
 //! real KVM ioctl path implemented in the [`runner`] module: an API-version /
 //! capability probe, one identity-mapped 16 MiB memory slot, one vCPU programmed
@@ -29,7 +29,7 @@
 //!
 //! # Scope lock
 //!
-//! This subset must NOT be expanded without a formal scope-change decision.
+//! This subset must not be expanded without a formal scope-change decision.
 //! See `docs/design/direct-kvm-subset.md` for the authoritative scope definition.
 
 use serde::{Deserialize, Serialize};

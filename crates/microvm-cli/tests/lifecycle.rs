@@ -313,7 +313,7 @@ async fn stop_of_missing_vm_is_not_found_exit_3() {
 async fn run_with_remote_tag_is_local_artifact_required_exit_4_no_network() {
     let dir = tempfile::tempdir().unwrap();
     let socket = dir.path().join("rest.sock");
-    // Note: we do NOT need a running server; the reference is rejected
+    // Note: we do not need a running server; the reference is rejected
     // before any socket contact. But start one anyway to prove no network
     // activity is required for the rejection.
     start_server(socket.clone()).await;

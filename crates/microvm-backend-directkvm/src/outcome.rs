@@ -3,8 +3,8 @@
 //! The outcome model encodes the central safety contract of the subset:
 //!
 //! - A host without a usable KVM produces [`RunOutcome::Blocked`] with a
-//!   structured [`BlockedReason`] — **never** a pass.
-//! - There is **no fallback** to Firecracker, QEMU, or TCG: a blocked or failed
+//!   structured [`BlockedReason`]: never a pass.
+//! - There is no fallback to Firecracker, QEMU, or TCG: a blocked or failed
 //!   subset boot never becomes a [`RunOutcome::Completed`] through another
 //!   backend. TCG (software emulation) is never reported as KVM evidence.
 //! - A boot that reaches KVM but faults is [`RunOutcome::Failed`] with the
@@ -69,7 +69,7 @@ pub enum FailureReason {
 
 /// Terminal outcome of one educational direct-KVM subset boot.
 ///
-/// This enum deliberately has **no** fallback variant: the subset either
+/// This enum deliberately has no fallback variant: the subset either
 /// completes on real KVM, blocks on a missing prerequisite, or fails. It can
 /// never report success via Firecracker/QEMU/TCG.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

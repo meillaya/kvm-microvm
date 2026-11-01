@@ -2,9 +2,9 @@
 //!
 //! Named QA scenario: `cargo test -p microvm-bench --test target_metadata`.
 //!
-//! `<200 ms` is a reference **target**, never a pass/fail gate. The benchmark
-//! artifact must carry `target_ms` as a number and must contain **no `pass`
-//! field at any nesting level** — even when every sample exceeds the target.
+//! `<200 ms` is a reference target, never a pass/fail gate. The benchmark
+//! artifact must carry `target_ms` as a number and must contain no `pass`
+//! field at any nesting level; even when every sample exceeds the target.
 //! Reviewers compare the recorded distribution against `target_ms`; the harness
 //! never reduces that comparison to a boolean.
 

@@ -7,7 +7,7 @@
 //! per-source timestamps, and explicit availability flags.
 //!
 //! # Cardinality
-//! The record carries **no free-form label maps**. The only map is `errors`,
+//! The record carries no free-form label maps. The only map is `errors`,
 //! keyed by the fixed [`MetricErrorKind`] enum, so label cardinality is bounded
 //! by construction. `vm_id` is a validated [`VmId`] (≤ 64 bytes, restricted
 //! charset).
@@ -26,7 +26,7 @@ pub const SCHEMA_VERSION: u32 = 1;
 
 /// The lifecycle phase the VM was in when this record was collected.
 ///
-/// These are the **monotonic boot/restore phases**: a VM boots once
+/// These are the monotonic boot/restore phases: a VM boots once
 /// (`Booting` → `Running`) or restores once (`Restoring` → `Running`), and the
 /// phase only ever advances forward. `Stopped` is terminal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -65,7 +65,7 @@ impl std::fmt::Display for MetricsPhase {
 /// Each marker is `None` until that phase boundary is reached. Durations
 /// ([`boot_time_ns`](Self::boot_time_ns),
 /// [`restore_time_ns`](Self::restore_time_ns)) are derived from marker spans
-/// and are `None` until both endpoints exist — a missing endpoint is reported
+/// and are `None` until both endpoints exist: a missing endpoint is reported
 /// as "not ready yet", never as a zero duration.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PhaseMarkers {
@@ -212,8 +212,7 @@ impl VmMetricsRecord {
     /// Build a record for a backend that has no host-metrics collector
     /// attached (e.g. the in-memory lifecycle service or a mock backend).
     ///
-    /// Every host/guest source is marked [`UnavailableReason::NoBackend`] —
-    /// honest "not collected", never a fabricated zero. The error map is empty
+    /// Every host/guest source is marked [`UnavailableReason::NoBackend`],    /// honest "not collected", never a fabricated zero. The error map is empty
     /// because no collection was attempted.
     pub fn not_collected(
         vm_id: VmId,
@@ -257,7 +256,7 @@ impl VmMetricsRecord {
         self.cgroup.value().map(|c| c.cpu.throttled_usec)
     }
 
-    /// Guest CPU steal percentage, **only** if the guest agent was available.
+    /// Guest CPU steal percentage, only if the guest agent was available.
     pub fn guest_cpu_steal_pct(&self) -> Option<f64> {
         self.guest.value().map(|g| g.cpu_steal_pct)
     }

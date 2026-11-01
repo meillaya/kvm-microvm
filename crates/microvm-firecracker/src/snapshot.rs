@@ -10,33 +10,33 @@
 //! |---|---|
 //! | `PATCH /vm` | Pause / resume the instance (`{"state":"Paused"|"Resumed"}`) |
 //! | `PUT /snapshot/create` | Write a full/diff snapshot (state + memory) |
-//! | `PUT /snapshot/load` | Load a snapshot on a **fresh** process |
+//! | `PUT /snapshot/load` | Load a snapshot on a fresh process |
 //! | `PUT /network-interfaces/{id}` | Rebind the host TAP after load |
 //! | `PUT /vsock` | Rebind the host vsock socket after load |
 //!
 //! # Protocol invariants (enforced here, not assumed)
 //!
-//! 1. **Pause before create.** [`SnapshotCreateRequest::execute`] issues
+//! 1. Pause before create. [`SnapshotCreateRequest::execute`] issues
 //!    `PATCH /vm {"state":"Paused"}` *before* `PUT /snapshot/create`. A create
 //!    against a running VM is rejected by Firecracker; we make the pause
 //!    explicit and ordered.
-//! 2. **Fresh-process load via `mem_backend.backend_path`.** Restore loads on a
+//! 2. Fresh-process load via `mem_backend.backend_path`. Restore loads on a
 //!    brand-new VMM process *before* any ordinary boot configuration, using the
 //!    supported [`MemBackend`] (`backend_path` + `backend_type`). The
 //!    deprecated top-level `mem_file_path` field is never emitted and is
 //!    rejected when ingesting an external spec
 //!    ([`reject_deprecated_mem_file_path`]).
-//! 3. **Rebind, don't assume continuity.** After load, host-side network (TAP)
+//! 3. Rebind, don't assume continuity. After load, host-side network (TAP)
 //!    and vsock resources are reattached through load overrides. Established
-//!    guest network/vsock *connections* are **not** preserved across
+//!    guest network/vsock *connections* are not preserved across
 //!    snapshot/restore; see [`network_connection_continuity_after_restore`] and
 //!    [`vsock_connection_continuity_after_restore`], both of which report
 //!    `false` by contract.
-//! 4. **Explicit resume.** [`SnapshotLoadRequest`] loads with `resume_vm=false`;
+//! 4. Explicit resume. [`SnapshotLoadRequest`] loads with `resume_vm=false`;
 //!    the VM reaches `Resumed` only through [`RestoreProtocol::resume`], which
 //!    issues `PATCH /vm {"state":"Resumed"}` via the supported backend
 //!    contract. There is no backdoor to `Resumed`.
-//! 5. **No fresh-boot configuration on restore.** A restored VM derives its
+//! 5. No fresh-boot configuration on restore. A restored VM derives its
 //!    boot source, drives, and machine shape from the snapshot. Attempting to
 //!    configure them as if the restore were a fresh boot is rejected with
 //!    [`ErrorCode::InvalidTransition`] labelled [`LOAD_PRE_CONFIG`].
@@ -204,7 +204,7 @@ impl SnapshotType {
 
 /// `PUT /snapshot/create` body.
 ///
-/// Deliberately has **no** `mem_file_path` field: the memory destination is
+/// Deliberately has no `mem_file_path` field: the memory destination is
 /// expressed only through [`MemBackend`].
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SnapshotCreateParams {
@@ -226,7 +226,7 @@ pub struct SnapshotCreateParams {
 
 /// `PUT /snapshot/load` body.
 ///
-/// Deliberately has **no** `mem_file_path` field: the memory source is
+/// Deliberately has no `mem_file_path` field: the memory source is
 /// expressed only through [`MemBackend`].
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SnapshotLoadParams {
@@ -382,7 +382,7 @@ impl SnapshotApi for UdsSnapshotApi {
 /// A pause→snapshot-create sequence.
 ///
 /// Bundles the create parameters and executes the required ordering:
-/// `PATCH /vm {"state":"Paused"}` **before** `PUT /snapshot/create`.
+/// `PATCH /vm {"state":"Paused"}` before `PUT /snapshot/create`.
 #[derive(Clone, Debug)]
 pub struct SnapshotCreateRequest {
     params: SnapshotCreateParams,
@@ -551,7 +551,7 @@ impl SnapshotLoadRequest {
 // Connection-continuity contract (explicitly: none)
 // ---------------------------------------------------------------------------
 
-/// Whether guest **network connections** survive snapshot/restore.
+/// Whether guest network connections survive snapshot/restore.
 ///
 /// Always `false` by contract. Rebinding reattaches the host-side TAP device;
 /// it does not preserve established guest TCP/UDP flows. Callers must not
@@ -560,7 +560,7 @@ pub const fn network_connection_continuity_after_restore() -> bool {
     false
 }
 
-/// Whether guest **vsock connections** survive snapshot/restore.
+/// Whether guest vsock connections survive snapshot/restore.
 ///
 /// Always `false` by contract. Rebinding reattaches the host-side vsock
 /// socket; established vsock connections are dropped.
@@ -710,7 +710,7 @@ impl RestoreProtocol {
     /// Rebind a network interface's host TAP after load.
     ///
     /// Only valid from [`RestoreStage::Loaded`]. Reattaches the host-side TAP;
-    /// does **not** preserve guest network connections.
+    /// does not preserve guest network connections.
     pub async fn rebind_network(&self, iface: &NetworkInterface) -> Result<(), MicrovmError> {
         {
             let inner = self.inner.lock().unwrap();
@@ -730,7 +730,7 @@ impl RestoreProtocol {
     /// Rebind the host-side vsock socket after load.
     ///
     /// Only valid from [`RestoreStage::Loaded`]. Reattaches the host socket;
-    /// does **not** preserve guest vsock connections.
+    /// does not preserve guest vsock connections.
     pub async fn rebind_vsock(&self, vsock: &VsockOverride) -> Result<(), MicrovmError> {
         {
             let inner = self.inner.lock().unwrap();
@@ -763,7 +763,7 @@ impl RestoreProtocol {
 
     /// Explicitly resume the loaded VM (`PATCH /vm {"state":"Resumed"}`).
     ///
-    /// Only valid from [`RestoreStage::Loaded`]. This is the **only** path to
+    /// Only valid from [`RestoreStage::Loaded`]. This is the only path to
     /// [`RestoreStage::Resumed`].
     pub async fn resume(&self) -> Result<(), MicrovmError> {
         {

@@ -11,7 +11,7 @@ Each runbook contains runnable commands and explains how to interpret results.
 | [cleanup.md](cleanup.md) | Idempotent resource cleanup, orphan reconciliation, and leak records. |
 | [ci-setup.md](ci-setup.md) | Register the self-hosted KVM runner, required packages, and the deterministic/privileged workflow triggers. |
 
-> **Scope reminder.** These runbooks operate a development/verification
+> Scope reminder. These runbooks operate a development/verification
 > platform. They do not claim to make a host production-ready. Privileged
 > procedures require a capable host and refuse to run (with `blocked` evidence)
 > when prerequisites are absent. See [../security.md](../security.md).
@@ -20,6 +20,7 @@ Each runbook contains runnable commands and explains how to interpret results.
 
 - Commands run from the repository root inside `devenv shell` unless noted.
 - The read-only host probe is `scripts/preflight.sh`; the privileged gate is
-  `scripts/run-privileged-tests.sh`.
-- Exit code `77` always means **blocked**; `2` means **degraded**; `0` means
-  **capable**. See [preflight.md](preflight.md).
+  `scripts/run-privileged-tests.sh`; the suite is
+  `scripts/run-privileged-suite.sh`.
+- Exit code `77` always means blocked; `2` means degraded; `0` means
+  capable. See [preflight.md](preflight.md).

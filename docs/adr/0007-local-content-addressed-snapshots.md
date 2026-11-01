@@ -1,4 +1,4 @@
-# ADR-0007: Local Content-Addressed Snapshots; No Cross-Host Transfer; CRC Is Not Auth
+# ADR-0007: Local content-addressed snapshots; no cross-host transfer; CRC is not auth
 
 ## Status
 
@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-The owner selected **local snapshot integrity**: reproducible, auditable
+The owner selected local snapshot integrity: reproducible, auditable
 snapshots whose integrity is verifiable locally. Firecracker's internal snapshot
 CRC only detects accidental corruption and is not an integrity/authentication
 boundary. Cross-host snapshot portability would require signing/encryption and a
@@ -14,18 +14,18 @@ compatibility negotiation the owner did not request.
 
 ## Decision
 
-- Snapshots are **local, content-addressed, and owner-scoped**. A manifest
-  (`schemas/snapshot-manifest.v1.json`) records **SHA-256** content hashes
+- Snapshots are local, content-addressed, and owner-scoped. A manifest
+  (`schemas/snapshot-manifest.v1.json`) records SHA-256 content hashes
   (Firecracker binary, kernel/rootfs/block devices, guest memory, VM state) plus
   compatibility metadata (VM config, CPU/KVM API, cgroup version, owner tenant,
   quota, immutable-memory requirement).
-- A **pre-restore compatibility gate** validates the manifest against the
-  current host/binary/config and the caller tenant **before** any Firecracker
+- A pre-restore compatibility gate validates the manifest against the
+  current host/binary/config and the caller tenant before any Firecracker
   process is spawned or `/snapshot/load` is issued.
-- **Memory files are immutable**; an immutable-memory violation is rejected.
-- The orchestrator's SHA-256 hashes are the integrity boundary. **Firecracker's
-  CRC is never treated as authentication.**
-- A host-envelope mismatch is a **hard rejection**, not a portability
+- Memory files are immutable; an immutable-memory violation is rejected.
+- The orchestrator's SHA-256 hashes are the integrity boundary. Firecracker's
+  CRC is never treated as authentication.
+- A host-envelope mismatch is a hard rejection, not a portability
   negotiation.
 
 ## Consequences

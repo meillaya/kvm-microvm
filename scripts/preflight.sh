@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/preflight.sh — read-only host capability probe.
+# scripts/preflight.sh: read-only host capability probe.
 #
 # Detects host OS / arch / kernel / Nix version; CPU vendor + VMX/SVM + nested;
 # /dev/kvm device mode/uid/gid + open + (best-effort) KVM_GET_API_VERSION probe;
@@ -22,8 +22,8 @@
 #   This script sources NOTHING from outside the repo (no `. /etc/...` or
 #   `source /path/to/external-script`). /etc/os-release is parsed with grep
 #   and sed, never sourced. The script requires only standard POSIX utilities
-#   plus `jq`, `ip`, `nft`, and `sha256sum`. It NEVER mutates sysctls, NEVER
-#   creates namespaces, NEVER loads kernel modules, and NEVER opens /dev/kvm
+#   plus `jq`, `ip`, `nft`, and `sha256sum`. It never mutates sysctls, never
+#   creates namespaces, never loads kernel modules, and never opens /dev/kvm
 #   with write-only intent.
 #
 # Toolchain limitation (documented):
@@ -185,7 +185,7 @@ probe_nested() {
 
 # Best-effort KVM probe. Pure Bash cannot issue KVM_GET_API_VERSION, so
 # api_version is always -1 from this script. accessible is set to true when
-# the device exists AND `exec 3< /dev/kvm` (O_RDONLY) succeeds — i.e. when the
+# the device exists AND `exec 3< /dev/kvm` (O_RDONLY) succeeds, i.e. when the
 # process can read the device. The schema's strict definition requires O_RDWR
 # + successful ioctl; we honor that intent by also emitting the
 # kvm_api_version_unprobed_in_bash warning whenever accessible=true, so a
@@ -460,7 +460,7 @@ emit_json() {
     fi
 
     # 3) Convenience write to gitignored ${PWD}/.preflight/host.json.
-    #    This is the ONLY path the script writes to outside --json.
+    #    This is the only path the script writes to outside --json.
     if [[ -n "${PWD:-}" ]] && [[ -w "${PWD:-}" || -w "${PWD:-}/.preflight" || ! -e "${PWD:-}/.preflight" ]]; then
         mkdir -p .preflight 2>/dev/null || true
         if [[ -d .preflight ]]; then

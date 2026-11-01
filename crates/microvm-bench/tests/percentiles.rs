@@ -4,7 +4,7 @@
 //!
 //! The harness reports distributions, never a single number. These tests pin the
 //! nearest-rank method and the distribution summary so a fixed input always
-//! yields a fixed p50/p95/p99 — the statistical core is fully deterministic and
+//! yields a fixed p50/p95/p99: the statistical core is fully deterministic and
 //! requires no `/dev/kvm` or Docker daemon.
 
 use microvm_bench::percentiles::{Distribution, Percentiles};

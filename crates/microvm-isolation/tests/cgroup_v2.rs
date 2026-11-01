@@ -5,10 +5,10 @@
 //! cargo test --features privileged --test cgroup_v2 -- --nocapture
 //! ```
 //!
-//! This exercises a **real** unified cgroup-v2 hierarchy on a capable host.
+//! This exercises a real unified cgroup-v2 hierarchy on a capable host.
 //! When the host cannot support it (no cgroup2 mount, missing controllers, or
 //! insufficient privilege to delegate), the test reports a stable `blocked`
-//! token and passes rather than failing — matching the platform's privileged
+//! token and passes rather than failing: matching the platform's privileged
 //! evidence model (`pass` / `blocked` / `failed`). It never spawns Firecracker
 //! and always tears down any cgroup it creates.
 

@@ -4,13 +4,13 @@
 //! [`LocalFunctionRestorer`] drives the same snapshot/restore protocol the
 //! privileged Firecracker backend would, but entirely in-process: it exercises
 //! the real [`HttpFunction`] handler for guest-readiness and request handling and
-//! records **real host-monotonic** timestamps via [`SystemClock`]. This lets the
+//! records real host-monotonic timestamps via [`SystemClock`]. This lets the
 //! `microvm-demo` binary produce a concrete cold/warm report on any host, with no
 //! `/dev/kvm`, no Firecracker, and no network.
 //!
 //! # Honesty boundary
 //! This restorer is a *model*, not a Firecracker restore. It measures the
-//! function-handling path in-process; it does **not** measure real VM boot or
+//! function-handling path in-process; it does not measure real VM boot or
 //! snapshot-restore latency. A privileged Firecracker-backed restorer (out of
 //! scope for this deterministic crate) would implement the same [`VmRestorer`]
 //! trait and report [`LaneOutcome::Blocked`] when `/dev/kvm` or the binary is

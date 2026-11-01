@@ -1,6 +1,6 @@
 //! Monotonic phase recording for benchmark measurements (requirement 3).
 //!
-//! Every benchmark sample is timed with a **host-monotonic** clock so durations
+//! Every benchmark sample is timed with a host-monotonic clock so durations
 //! are immune to wall-clock jumps (NTP, suspend/resume). [`PhaseRecorder`]
 //! records an ordered sequence of named phase boundaries and enforces one
 //! invariant: a phase timestamp must never precede the previous one. Violating

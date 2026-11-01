@@ -1,13 +1,13 @@
 //! HTTP route matching and request dispatch for the REST API.
 //!
 //! Routes match the OpenAPI spec (todo 8):
-//! - `POST /vms` — create a VM
-//! - `GET /vms/{vm_id}` — get VM status
-//! - `POST /vms/{vm_id}/start` — start a VM
-//! - `POST /vms/{vm_id}/stop` — stop a VM
-//! - `POST /vms/{vm_id}/snapshot` — snapshot a VM
-//! - `GET /vms/{vm_id}/metrics` — get VM metrics
-//! - `POST /snapshots/{snapshot_id}/restore` — restore from snapshot
+//! - `POST /vms`: create a VM
+//! - `GET /vms/{vm_id}`: get VM status
+//! - `POST /vms/{vm_id}/start`: start a VM
+//! - `POST /vms/{vm_id}/stop`: stop a VM
+//! - `POST /vms/{vm_id}/snapshot`: snapshot a VM
+//! - `GET /vms/{vm_id}/metrics`: get VM metrics
+//! - `POST /snapshots/{snapshot_id}/restore`: restore from snapshot
 //!
 //! Business policy (state machine, quota, authorization) is delegated to the
 //! [`LifecycleService`] backend. This module handles only transport concerns:

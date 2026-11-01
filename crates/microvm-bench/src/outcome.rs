@@ -1,11 +1,11 @@
 //! Lane execution outcomes and process exit codes.
 //!
-//! # This is NOT a performance pass/fail (requirement 10)
-//! [`LaneOutcome`] describes **whether a benchmark lane could run**, not whether
+//! # This is not a performance pass/fail (requirement 10)
+//! [`LaneOutcome`] describes whether a benchmark lane could run, not whether
 //! a latency target was met. The harness deliberately has no notion of a
 //! benchmark "passing" or "failing" against `<200 ms`: `target_ms` is metadata
-//! only, and the serialized benchmark JSON carries **no `pass` field at any
-//! level** (enforced by `schemas/evidence-benchmark.v1.json`). A reviewer
+//! only, and the serialized benchmark JSON carries no `pass` field at any
+//! level (enforced by `schemas/evidence-benchmark.v1.json`). A reviewer
 //! compares the recorded p50/p95/p99 distribution against the declared
 //! `target_ms`; the harness never reduces that comparison to a boolean.
 //!
@@ -143,10 +143,10 @@ impl LaneOutcome {
 ///
 /// | Code | Meaning |
 /// |------|---------|
-/// | 0 | Success — every requested lane ran and produced samples |
-/// | 1 | General error — a lane attempted and failed, or I/O error |
-/// | 2 | Usage error — bad flags or malformed arguments |
-/// | 77 | Blocked — a privileged lane could not run (missing KVM/Docker/…) |
+/// | 0 | Success: every requested lane ran and produced samples |
+/// | 1 | General error: a lane attempted and failed, or I/O error |
+/// | 2 | Usage error: bad flags or malformed arguments |
+/// | 77 | Blocked: a privileged lane could not run (missing KVM/Docker/…) |
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(i32)]
 pub enum BenchExitCode {

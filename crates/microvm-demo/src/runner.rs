@@ -2,18 +2,18 @@
 //! completed outcomes (plan todo 28).
 //!
 //! For one run the runner:
-//! 1. **Probes** the restorer. A blocked probe yields a blocked report (null cold
-//!    call, empty warm distribution, recorded reason) — samples are never
+//! 1. Probes the restorer. A blocked probe yields a blocked report (null cold
+//!    call, empty warm distribution, recorded reason): samples are never
 //!    fabricated.
-//! 2. **Cold-starts** the function: spawn → readiness → snapshot → first request,
+//! 2. Cold-starts the function: spawn → readiness → snapshot → first request,
 //!    recording the cold first-call latency and phase durations.
-//! 3. **Fills the warm pool** by restoring through the orchestrator, then serves
+//! 3. Fills the warm pool by restoring through the orchestrator, then serves
 //!    `N` warm requests, recording successes and failures separately.
-//! 4. **Cleans up** every pooled VM and discards the snapshot, recording the
+//! 4. Cleans up every pooled VM and discards the snapshot, recording the
 //!    cleanup evidence.
 //!
-//! # Outcome semantics (NOT a performance verdict)
-//! [`DemoOutcome`] describes whether the demo **ran**, not whether a latency
+//! # Outcome semantics (not a performance verdict)
+//! [`DemoOutcome`] describes whether the demo ran, not whether a latency
 //! target was met. `Completed` means the lane produced measurements; `Blocked`
 //! means a prerequisite was unavailable. There is no notion of the demo "passing"
 //! or "failing" against `<200 ms`; the report carries numbers only.

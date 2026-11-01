@@ -1,4 +1,4 @@
-//! Host prerequisite verification, run **before** any child process is created.
+//! Host prerequisite verification, run before any child process is created.
 //!
 //! The boot adapter must fail closed when the host lacks the capabilities a
 //! Firecracker VM needs: a KVM device, a TUN device (when networking is

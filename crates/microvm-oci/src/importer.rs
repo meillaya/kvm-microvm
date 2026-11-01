@@ -1,10 +1,10 @@
 //! The constrained local OCI importer.
 //!
-//! [`OciImporter`] opens a **local** OCI image layout, verifies the digest of
+//! [`OciImporter`] opens a local OCI image layout, verifies the digest of
 //! the config blob and of *every* layer, refuses remote references and any
 //! forbidden runtime knob, selects a supported platform, and translates the
 //! result into a typed [`MicroVmSpec`]. It performs no network I/O and has no
-//! remote client dependency; it is a constrained import surface, **not** an OCI
+//! remote client dependency; it is a constrained import surface, not an OCI
 //! runtime.
 //!
 //! Layout convention (constrained subset of an [OCI image layout]):
@@ -94,7 +94,7 @@ impl OciImporter {
         let resources = MicroVmResources::from_labels(&image_config.labels())?;
         let resource_spec = resources.to_resource_spec()?;
 
-        // Verify the digest and size of EVERY layer (not just kernel/rootfs).
+        // Verify the digest and size of every layer, not merely kernel and rootfs.
         for layer in &manifest.layers {
             self.verify_blob(layer)?;
         }

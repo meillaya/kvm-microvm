@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# prepare-bench-artifacts.sh — build guest artifacts and run the full
+# prepare-bench-artifacts.sh: build guest artifacts and run the full
 # Firecracker-vs-Docker benchmark comparison.
 #
 # Usage (from inside devenv shell, with sudo):
@@ -11,7 +11,7 @@
 #      (scripts/build-guest-image.sh) -> guest/vmlinux, guest/rootfs.ext4,
 #      guest/payload.sha256
 #   2. Extracts the busybox payload from the guest rootfs and computes its
-#      SHA-256 — the single payload hash both benchmark lanes are pinned to
+#      SHA-256: the single payload hash both benchmark lanes are pinned to
 #   3. Boots a Firecracker VM from that guest image, waits for readiness, and
 #      takes a full snapshot (snapshot state file + guest memory file)
 #   4. Verifies the snapshot and memfile exist and are non-empty (fails closed

@@ -4,7 +4,7 @@ use microvm_errors::ErrorCode;
 use microvm_lifecycle::{transition, VmState};
 
 // ---------------------------------------------------------------------------
-// Legal transitions — each gets its own test
+// Legal transitions: each gets its own test
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -120,7 +120,7 @@ fn any_state_to_failed_is_legal() {
 }
 
 // ---------------------------------------------------------------------------
-// Illegal transitions — representative set
+// Illegal transitions: representative set
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -254,7 +254,7 @@ fn failed_to_configured_is_illegal() {
 }
 
 // ---------------------------------------------------------------------------
-// Exhaustive matrix — verify the full 8×8 transition table
+// Exhaustive matrix: verify the full 8×8 transition table
 // ---------------------------------------------------------------------------
 
 /// The complete set of legal (from, to) pairs, including any→Failed.
@@ -326,7 +326,7 @@ fn illegal_transition_error_carries_context() {
 
 #[test]
 fn illegal_transition_no_backend_call() {
-    // transition() is a pure function — it returns InvalidTransition
+    // transition() is a pure function: it returns InvalidTransition
     // without any side effects. We verify this by calling it repeatedly
     // and getting the same result.
     for _ in 0..100 {

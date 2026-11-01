@@ -67,7 +67,7 @@ impl fmt::Display for SnapshotComponent {
 /// A typed snapshot integrity or compatibility failure.
 ///
 /// Produced by [`crate::gate::CompatibilityGate::validate`] and
-/// [`crate::manifest::SnapshotManifest::verify_artifacts`]. Convertible into
+/// [`crate::manifest::SnapshotManifest::verify_artifacts`]; it converts into
 /// the platform's [`MicrovmError`] via [`From`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SnapshotError {
@@ -121,7 +121,7 @@ pub enum SnapshotError {
     /// This is the typed integrity failure: a single flipped byte in the
     /// memory, VM-state, kernel, rootfs, or a block-device file produces this
     /// variant before any child process is spawned. It is detected via the
-    /// orchestrator's own SHA-256 digests, NOT via Firecracker's CRC.
+    /// orchestrator's own SHA-256 digests, not via Firecracker's CRC.
     Integrity {
         /// The component whose hash mismatched.
         component: SnapshotComponent,

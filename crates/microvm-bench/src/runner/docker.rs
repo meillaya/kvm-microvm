@@ -1,9 +1,9 @@
 //! The Docker comparison lane.
 //!
 //! Measures the pinned payload under Docker Engine so the harness can publish a
-//! Firecracker-vs-Docker distribution **for identical artifact content**
+//! Firecracker-vs-Docker distribution for identical artifact content
 //! (requirements 1, 7, 9). The lane is blocked with [`BlockedReason::DockerMissing`]
-//! when the `docker` binary or daemon is unavailable — it never fabricates
+//! when the `docker` binary or daemon is unavailable: it never fabricates
 //! samples (requirement 11).
 //!
 //! The measured quantity is the wall-time (host-monotonic) to run the pinned

@@ -1,10 +1,10 @@
 //! The Firecracker snapshot/restore benchmark lane.
 //!
-//! Measures the host-monotonic time to restore a **prepared** snapshot into a
+//! Measures the host-monotonic time to restore a prepared snapshot into a
 //! fresh Firecracker process: spawn → API-socket-ready → `PUT /snapshot/load`
 //! → `PATCH /vm {"state":"Resumed"}`. This is the snapshot/restore distribution
 //! the plan asks for, timed with a monotonic clock (requirement 3) and compared
-//! against the Docker lane running the **same pinned payload** (requirements 1,
+//! against the Docker lane running the same pinned payload (requirements 1,
 //! 7, 9).
 //!
 //! The lane reuses [`microvm_firecracker`] for process launch and the snapshot
@@ -13,8 +13,8 @@
 //! binary, or the prepared snapshot artifacts are unavailable, and never
 //! fabricates samples (requirement 11).
 //!
-//! Per the Firecracker snapshot docs, there is **no universal restore-latency
-//! SLA**; [`SNAPSHOT_RESTORE_TARGET_MS`] is a reference target recorded as
+//! Per the Firecracker snapshot docs, there is no universal restore-latency
+//! SLA; [`SNAPSHOT_RESTORE_TARGET_MS`] is a reference target recorded as
 //! metadata only, never a pass/fail gate (requirement 10).
 
 use crate::host::{drop_page_cache, firecracker_lane_block, HostProbe};
@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
-/// Reference restore-latency target in ms (metadata only — never a gate).
+/// Reference restore-latency target in ms (metadata only; never a gate).
 ///
 /// Mirrors the plan's documented `<200 ms` reference. Firecracker publishes no
 /// universal SLA, so this is recorded in `target_ms` for reviewer context.

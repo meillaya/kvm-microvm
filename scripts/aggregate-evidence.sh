@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# aggregate-evidence.sh — evidence reducer for the kvm-microvm-orchestrator plan.
+# aggregate-evidence.sh: evidence reducer for the kvm-microvm-orchestrator plan.
 #
 # Plan todo 33: "Aggregate evidence and enforce deterministic/privileged/benchmark
 # outcome semantics." This tool is the evidence reducer that todo 33 calls for
@@ -12,9 +12,9 @@
 #      benchmark | meta (environment / schema / aggregation / release tasks).
 #   3. Extracts a lane-aware outcome from each evidence file using the project's
 #      fail-closed outcome vocabulary (schemas/README.md):
-#        - deterministic : pass | fail            (there is NO blocked state)
+#        - deterministic : pass | fail            (there is no blocked state)
 #        - privileged    : pass | blocked | fail  (anti-mock: no pass without real substrate)
-#        - benchmark     : published | blocked | fail (anti-boolean: NEVER a pass field)
+#        - benchmark     : published | blocked | fail (anti-boolean: never a pass field)
 #        - meta          : pass | blocked | fail
 #   4. Validates the dedicated lane artifacts against their JSON schemas' fail-closed
 #      invariants (class discriminator, additionalProperties, anti-mock, anti-boolean,
@@ -22,10 +22,10 @@
 #   5. Emits a unified verification matrix at summary.json.
 #
 # Fail-closed guarantees (the whole point of todo 33)
-#   * Blocked evidence is NEVER erased: an explicit blocked signal always yields a
+#   * Blocked evidence is never erased: an explicit blocked signal always yields a
 #     blocked outcome; a privileged todo is only `pass` when affirmative real-substrate
 #     proof is present, otherwise it is reported blocked (never promoted to pass).
-#   * Passes are NEVER fabricated: a privileged `pass` requires real_boot/real-run
+#   * Passes are never fabricated: a privileged `pass` requires real_boot/real-run
 #     proof; a benchmark never records `pass` (it records published distributions).
 #   * A missing evidence artifact is a failure (todo 33 acceptance: "missing artifact
 #     is a failure") and, in strict mode, makes the reducer exit non-zero.
@@ -155,7 +155,7 @@ read -r -d '' EXTRACTOR_JQ <<'JQ' || true
       end
     elif $lane == "privileged" then
       # Anti-mock is absolute (schema evidence-privileged.v1.json allOf rule): when
-      # host_preflight.kvm_ok is false, NO privileged run may record pass — even a
+      # host_preflight.kvm_ok is false, no privileged run may record pass; even a
       # claimed real boot, which would be contradictory evidence of a mock. This check
       # precedes real-substrate proof so a fabricated real_boot cannot evade it.
       if $sig.kvm_not_ok then {outcome:"blocked", reason:"kvm_not_ok", anti_mock:true, note:"anti-mock: privileged pass forbidden when host_preflight.kvm_ok is false"}
@@ -461,7 +461,7 @@ jq -n \
 # Human-readable report + exit code
 # ---------------------------------------------------------------------------
 echo "==================================================================="
-echo " kvm-microvm-orchestrator — verification matrix (evidence reducer)"
+echo " kvm-microvm-orchestrator: verification matrix (evidence reducer)"
 echo "==================================================================="
 jq -r '
   "generated_at: \(.generated_at)   git_head: \(.git_head[0:12])   strict: \(.strict_mode)",

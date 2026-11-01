@@ -2,10 +2,10 @@
 //! Docker comparison (plan todo 27).
 //!
 //! # Commands
-//! - `snapshot-restore` — measure Firecracker snapshot/restore and Docker start
-//!   for the **same pinned payload**, under cold and warm page-cache conditions,
+//! - `snapshot-restore`: measure Firecracker snapshot/restore and Docker start
+//!   for the same pinned payload, under cold and warm page-cache conditions,
 //!   writing a schema-conformant benchmark JSON.
-//! - `warm-http` — reserved for plan todo 28 (warm HTTP-function microVM demo).
+//! - `warm-http`: reserved for plan todo 28 (warm HTTP-function microVM demo).
 //!
 //! # Exit codes (stable contract)
 //! | Code | Meaning |

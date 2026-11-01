@@ -1,24 +1,24 @@
 //! Scope-fidelity suite: structural absence of TCP/rootless/VFIO/live-migration.
 //!
 //! The platform is a constrained, local, Unix-socket-only microVM orchestrator.
-//! This suite proves — behaviorally first, with a comment-aware source scan as
-//! a secondary layer — that the forbidden scope knobs do not exist in the
+//! This suite proves: behaviorally first, with a comment-aware source scan as
+//! a secondary layer, that the forbidden scope knobs do not exist in the
 //! product surface:
 //!
-//! 1. **CLI flags (behavioral):** the real clap parser rejects `--tcp`,
+//! 1. CLI flags (behavioral): the real clap parser rejects `--tcp`,
 //!    `--rootless`, `--vfio`, `--live-migration`, `--mount`, and `--cap-add`
 //!    as unknown arguments on every subcommand, while accepting the legitimate
 //!    flags. A flag that does not parse cannot be exercised.
-//! 2. **Config surface (behavioral):** the serialized [`BootConfig`],
+//! 2. Config surface (behavioral): the serialized [`BootConfig`],
 //!    [`MicroVmSpec`], [`ResourceSpec`], and [`NetworkBootConfig`] carry no
 //!    `tcp`/`rootless`/`vfio`/`migration`/`port`/`listen`/`bind` keys, and
 //!    [`NetworkPolicy`] is exhaustively `{None, NatOnly, EgressAllowed}`.
-//! 3. **Source scan (secondary, comment-aware):** no TCP-listener type appears
+//! 3. Source scan (secondary, comment-aware): no TCP-listener type appears
 //!    in the control-plane crates, and no `rootless`/`vfio`/`live-migration`
 //!    identifier appears in any product crate's code (doc comments documenting
 //!    their absence are stripped before scanning).
 //!
-//! The scan is explicitly **not** the sole proof; it corroborates the
+//! The scan is explicitly not the sole proof; it corroborates the
 //! behavioral evidence. The Firecracker backend's outbound guest-health TCP
 //! *client* ([`microvm_firecracker::TcpHealthProbe`]) is a scoped readiness
 //! probe into the guest, not a control-API listener, and is excluded from the
@@ -34,7 +34,7 @@ use std::path::PathBuf;
 
 // -- 1. CLI flags: forbidden flags do not parse -----------------------------
 
-/// The forbidden scope flags that must NOT exist on any subcommand.
+/// The forbidden scope flags that must not exist on any subcommand.
 const FORBIDDEN_FLAGS: &[&str] = &[
     "--tcp",
     "--rootless",
@@ -168,7 +168,7 @@ fn network_boot_config_is_policy_only_and_rejects_none() {
     assert!(NetworkBootConfig::new(NetworkPolicy::None).is_err());
     let cfg = NetworkBootConfig::new(NetworkPolicy::NatOnly).unwrap();
     let json = serde_json::to_value(cfg).unwrap();
-    // The only field is `policy` — no port/host/tcp knob exists.
+    // The only field is `policy`; no port/host/tcp knob exists.
     assert_no_forbidden_keys(&json, "NetworkBootConfig");
     let obj = json.as_object().unwrap();
     assert!(obj.contains_key("policy"), "network config is policy-only");

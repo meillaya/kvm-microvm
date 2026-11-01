@@ -8,12 +8,12 @@
 //!
 //! # Architecture
 //!
-//! - [`config::SocketConfig`] — configurable socket path, mode, and ownership.
-//! - [`peer::PeerCredentials`] — UID/GID extracted via `SO_PEERCRED`.
-//! - [`peer::PeerAuthenticator`] — maps peer credentials to a [`Principal`].
-//! - [`error`] — stable mapping from [`MicrovmError`] to HTTP status/body.
-//! - [`router`] — route matching and request dispatch to the service.
-//! - [`server::RestServer`] — Unix socket listener and HTTP/1.1 serving loop.
+//! - [`config::SocketConfig`]: configurable socket path, mode, and ownership.
+//! - [`peer::PeerCredentials`]: UID/GID extracted via `SO_PEERCRED`.
+//! - [`peer::PeerAuthenticator`]: maps peer credentials to a [`Principal`].
+//! - [`error`]: stable mapping from [`MicrovmError`] to HTTP status/body.
+//! - [`router`]: route matching and request dispatch to the service.
+//! - [`server::RestServer`]: Unix socket listener and HTTP/1.1 serving loop.
 //!
 //! # Security invariants
 //!

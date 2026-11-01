@@ -1,4 +1,4 @@
-# ADR-0002: Firecracker-First Runtime Adapter
+# ADR-0002: Firecracker-first runtime adapter
 
 ## Status
 
@@ -13,14 +13,14 @@ path, never as a production replacement (see ADR-0010).
 
 ## Decision
 
-The primary runtime adapter is **Firecracker-first**:
+The primary runtime adapter is Firecracker-first:
 
-- Use a **pinned release / static binary**, verified by SHA-256, ELF form, and
+- Use a pinned release / static binary, verified by SHA-256, ELF form, and
   seccomp mode before use (binary provenance is owned by the orchestrator).
-- Validate **jailer argv**; unrestricted subprocess argument passthrough is not
+- Validate jailer argv; unrestricted subprocess argument passthrough is not
   permitted.
-- Provide **process supervision** and **readiness signaling** that **fail
-  closed** on startup.
+- Provide process supervision and readiness signaling that fail
+  closed on startup.
 - Always pass `--cgroup-version=2` explicitly (see ADR-0005).
 
 ## Consequences
@@ -28,7 +28,7 @@ The primary runtime adapter is **Firecracker-first**:
 - The platform inherits Firecracker's microVM model, snapshot protocol, and
   jailer process jail, while owning the outer validation/auth/provenance/cleanup
   boundary (see ADR-0012).
-- The orchestrator does **not** treat Firecracker's unauthenticated UDS API,
+- The orchestrator does not treat Firecracker's unauthenticated UDS API,
   trusted jailer paths, release-build seccomp, or snapshot CRC as sufficient
   outer security.
 - Runtime behavior depends on a pinned binary being present; an absent or

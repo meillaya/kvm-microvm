@@ -6,13 +6,13 @@
 //!
 //! # Security invariants
 //!
-//! - **Unix socket only.** The server exclusively uses
+//! - Unix socket only. The server exclusively uses
 //!   [`tokio::net::UnixListener`] and tonic's `serve_with_incoming`; no network
 //!   address is ever bound.
-//! - **Peer credentials first.** `SO_PEERCRED` is read before any
+//! - Peer credentials first. `SO_PEERCRED` is read before any
 //!   authorization decision; unauthenticated peers are rejected by the service
 //!   with `PermissionDenied`.
-//! - **Reflection disabled.** No gRPC server reflection service is registered
+//! - Reflection disabled. No gRPC server reflection service is registered
 //!   (and the `tonic-reflection` crate is not a dependency), so the production
 //!   socket does not expose `list`/introspection. See [`REFLECTION_ENABLED`].
 
@@ -211,7 +211,7 @@ impl GrpcServer {
 
         let grpc_service = MicrovmGrpcService::new(Arc::clone(&self.service));
 
-        // Reflection is intentionally NOT registered here.
+        // Reflection is intentionally not registered here.
         Server::builder()
             .add_service(MicrovmServiceServer::new(grpc_service))
             .serve_with_incoming(incoming)

@@ -1,9 +1,9 @@
 //! Deterministic percentile and distribution statistics for benchmark samples.
 //!
-//! The harness reports **distributions**, never a single number. Every
+//! The harness reports distributions, never a single number. Every
 //! benchmark condition (cold/warm) is summarised by its sample count, p50/p95/p99
 //! (nearest-rank), and min/max. A condition with zero samples carries `null`
-//! percentiles — the harness never fabricates or zero-fills a statistic.
+//! percentiles: the harness never fabricates or zero-fills a statistic.
 //!
 //! # Method: nearest-rank
 //! For `N` sorted samples, the `p`-th percentile is the value at 1-based rank
@@ -33,7 +33,7 @@ impl Percentiles {
     ///
     /// Returns `None` when `samples` is empty. Samples are sorted ascending;
     /// the input slice is not mutated. Non-finite samples (NaN/infinity) are a
-    /// programming error and are rejected via `debug_assert` — the harness only
+    /// programming error and are rejected via `debug_assert`: the harness only
     /// ever feeds measured, finite durations.
     pub fn compute(samples: &[f64]) -> Option<Self> {
         if samples.is_empty() {
@@ -69,15 +69,15 @@ fn nearest_rank(sorted: &[f64], p: f64) -> f64 {
 /// Serializes to the `cold`/`warm` object shape in
 /// `schemas/evidence-benchmark.v1.json`: `samples`, `p50`, `p95`, `p99`,
 /// `min_ms`, `max_ms`. When `samples == 0` every statistic is `None`
-/// (serialized as `null`) — a blocked or skipped condition is reported as
+/// (serialized as `null`): a blocked or skipped condition is reported as
 /// absent data, never as a measured zero.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Distribution {
     /// Number of successful samples collected for this condition.
     pub samples: usize,
     /// Number of sample attempts that failed and were discarded (requirement 6).
-    /// Failed samples are recorded here and **never** counted in `samples` or
-    /// the percentiles — a failure is visible, not silently dropped or zero-filled.
+    /// Failed samples are recorded here and never counted in `samples` or
+    /// the percentiles: a failure is visible, not silently dropped or zero-filled.
     #[serde(default)]
     pub failures: usize,
     /// 50th percentile in milliseconds, or `null` when `samples == 0`.

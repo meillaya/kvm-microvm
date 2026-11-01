@@ -1,7 +1,7 @@
 //! Validated boot configuration for a Firecracker VM.
 //!
 //! A [`BootConfig`] carries everything the Firecracker API needs to boot a
-//! guest: the kernel and rootfs artifact locations (as **relative** paths
+//! guest: the kernel and rootfs artifact locations (as relative paths
 //! within a tenant artifact root), their expected SHA-256 digests, the machine
 //! shape (vCPU count, memory), optional kernel boot arguments, and an optional
 //! network attachment.

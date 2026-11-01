@@ -3,11 +3,11 @@
 //!
 //! The demo models the warm-function lifecycle as an ordered phase protocol:
 //!
-//! - **Cold path** (one-time, per function version):
+//! - Cold path (one-time, per function version):
 //!   `spawn -> socket_ready -> configured -> guest_ready -> snapshot_ready -> request`.
-//!   The snapshot is taken **after service readiness** (`guest_ready`), exactly
+//!   The snapshot is taken after service readiness (`guest_ready`), exactly
 //!   as requirement 2 demands.
-//! - **Warm path** (per pooled instance):
+//! - Warm path (per pooled instance):
 //!   `spawn -> socket_ready -> configured -> restore_ready -> request`.
 //!   A pre-restored VM skips guest boot and reaches `restore_ready` directly.
 //!
@@ -55,7 +55,7 @@ pub enum DemoPhase {
     Configured,
     /// The guest HTTP service has signalled readiness (`GET /health` -> 200).
     GuestReady,
-    /// A snapshot has been taken **after** service readiness (cold path).
+    /// A snapshot has been taken after service readiness (cold path).
     SnapshotReady,
     /// A pre-restored VM has reached readiness from a snapshot (warm path).
     RestoreReady,
@@ -113,10 +113,10 @@ impl std::fmt::Display for DemoPhase {
 /// An ordered, monotonic record of phase timestamps for one instance timeline.
 ///
 /// Invariants enforced by [`PhaseLog::record`]:
-/// 1. **Strictly increasing rank** — phases advance forward; `SnapshotReady` and
+/// 1. Strictly increasing rank: phases advance forward; `SnapshotReady` and
 ///    `RestoreReady` are mutually exclusive (same rank, so the second is
 ///    rejected), and a phase is never recorded twice.
-/// 2. **Non-decreasing time** — a timestamp never precedes the previous one.
+/// 2. Non-decreasing time: a timestamp never precedes the previous one.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PhaseLog {
     entries: Vec<(DemoPhase, u64)>,

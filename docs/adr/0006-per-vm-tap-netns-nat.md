@@ -1,4 +1,4 @@
-# ADR-0006: Per-VM TAP in Isolated netns with Controlled nftables NAT
+# ADR-0006: Per-VM TAP in isolated netns with controlled nftables NAT
 
 ## Status
 
@@ -12,15 +12,15 @@ unrestricted egress would break the untrusted multi-tenant contract.
 
 ## Decision
 
-- Each VM gets a **TAP** device inside an **isolated network namespace**.
-- **Controlled nftables NAT** (a dedicated table) provides egress under a
+- Each VM gets a TAP device inside an isolated network namespace.
+- Controlled nftables NAT (a dedicated table) provides egress under a
   per-VM ruleset generated as a pure function of the VM's network config.
-- **Guest egress is enabled only by explicit VM network policy** (`none`,
+- Guest egress is enabled only by explicit VM network policy (`none`,
   `nat-only`, `egress-allowed`).
-- **Inter-VM traffic and unsolicited inbound traffic are denied.**
+- Inter-VM traffic and unsolicited inbound traffic are denied.
 - An address allocator assigns per-VM addresses from a bounded slot range;
   interface names and slots are bounded (`IFNAMSIZ`, `MAX_SLOTS`).
-- Network setup is **idempotent**; teardown is deterministic and leaves no owned
+- Network setup is idempotent; teardown is deterministic and leaves no owned
   netns, TAP, or nft table behind.
 
 ## Consequences

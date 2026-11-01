@@ -2,20 +2,20 @@
 //! tests (plan todo 18).
 //!
 //! Both transports are driven end-to-end over real Unix domain sockets and are
-//! backed by the **same** [`VmLifecycleService`] instance, so the same request
+//! backed by the same [`VmLifecycleService`] instance, so the same request
 //! reaches the same service result regardless of transport. These tests assert:
 //!
-//! - **Operation parity**: every lifecycle operation has one REST and one gRPC
+//! - Operation parity: every lifecycle operation has one REST and one gRPC
 //!   happy fixture, and the normalized results match.
-//! - **Error parity**: every operation has an invalid/unauthorized fixture, and
+//! - Error parity: every operation has an invalid/unauthorized fixture, and
 //!   the stable `error_code` (plus the transport-specific status/code) matches
 //!   across transports; the structured error body is byte-identical.
-//! - **Socket hardening**: both sockets are mode `0660`; an insecure
+//! - Socket hardening: both sockets are mode `0660`; an insecure
 //!   (world-writable) mode is rejected; neither transport binds any TCP endpoint.
-//! - **Audit**: a denied request writes exactly one `Denied` audit event.
+//! - Audit: a denied request writes exactly one `Denied` audit event.
 //!
 //! Authorization is delegated entirely to the service; nothing here duplicates
-//! or weakens it — the tests only assert that both adapters enforce it.
+//! or weakens it: the tests only assert that both adapters enforce it.
 
 mod common;
 

@@ -1,4 +1,4 @@
-//! Deterministic prerequisite tests: missing host capabilities fail **before**
+//! Deterministic prerequisite tests: missing host capabilities fail before
 //! any child process is created, both at the checker level and wired into the
 //! backend.
 

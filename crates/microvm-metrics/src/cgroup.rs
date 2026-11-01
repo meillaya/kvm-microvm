@@ -3,8 +3,8 @@
 //!
 //! # Determinism
 //! The parsers ([`parse_cpu_stat`], [`parse_memory_events`], [`parse_io_stat`],
-//! [`parse_single_u64`]) are **pure functions of file contents** — no
-//! filesystem access — so they are fully reproducible in tests. The
+//! [`parse_single_u64`]) are pure functions of file contents: no
+//! filesystem access, so they are fully reproducible in tests. The
 //! filesystem-facing [`read_cgroup_metrics`] takes a configurable cgroup leaf
 //! directory and maps every failure to a bounded [`UnavailableReason`] (never
 //! a panic, never a zero-fill); the [`MetricsCollector`](crate::MetricsCollector)
@@ -220,7 +220,7 @@ fn read_to_string(path: &Path) -> Result<String, UnavailableReason> {
 /// `memory.events` and `io.stat` are optional (absent => zeroed events/IO,
 /// which is a legitimate "nothing happened yet" reading). Any missing required
 /// file, I/O failure, or parse failure maps to a bounded [`UnavailableReason`]
-/// — this function never panics and never fabricates a zero for a source it
+///: this function never panics and never fabricates a zero for a source it
 /// could not read.
 pub fn read_cgroup_metrics(
     cgroup_dir: &Path,

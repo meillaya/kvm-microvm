@@ -12,7 +12,7 @@
 //!
 //! The deterministic rejection scenarios (debug build, wrong hash) never need
 //! root: they build synthetic binaries in a tempdir and assert the gate rejects
-//! them with [`ErrorCode::BinaryProvenanceError`] **before** any spawn. This
+//! them with [`ErrorCode::BinaryProvenanceError`] before any spawn. This
 //! module never constructs a `std::process::Command`, so a rejection guarantees
 //! no child process exists.
 //!
@@ -247,7 +247,7 @@ fn provenance_rejects_debug_and_wrong_hash_without_spawning() {
         debug_path.display()
     );
 
-    // 2. A clean release form whose hash does NOT match the pinned manifest.
+    // 2. A clean release form whose hash does not match the pinned manifest.
     let clean_bytes = synth_binary(false, b"1.16.1");
     let wrong_path = tmp.path().join("firecracker-wronghash");
     std::fs::write(&wrong_path, &clean_bytes).unwrap();
@@ -342,7 +342,7 @@ fn seccomp_status_is_parseable_for_a_real_pid() {
     }
     let status = std::fs::read_to_string(status_path).expect("/proc/self/status readable");
     // We only assert the parser yields a mode; the current process is typically
-    // mode 0 (no filter) here, which is NOT the post-exec Firecracker state.
+    // mode 0 (no filter) here, which is not the post-exec Firecracker state.
     match parse_seccomp_mode(&status) {
         Some(mode) => println!("pass: seccomp_parseable self_mode={mode} (filter=2 post-exec)"),
         None => blocked("seccomp_field_absent"),

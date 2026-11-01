@@ -5,7 +5,7 @@
 //! and its jailer treat operator-supplied paths as trusted and (as of v1.16.1)
 //! reverted `O_NOFOLLOW` for some path operations, so the orchestrator must do
 //! its own path validation rather than relying on the runtime. Every artifact is
-//! therefore opened **relative to a held directory descriptor** for a per-tenant
+//! therefore opened relative to a held directory descriptor for a per-tenant
 //! root using `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS |
 //! RESOLVE_NO_MAGICLINKS)`, with a component-wise `openat(O_NOFOLLOW)` fallback
 //! for kernels that lack `openat2`.

@@ -1,7 +1,7 @@
 //! Demo report invariants (plan todo 28).
 //!
 //! The report carries cold first-call, warm p50/p95/p99, warmup count, restore
-//! accounting, host metadata, and cleanup evidence. It has **no** pass/fail gate
+//! accounting, host metadata, and cleanup evidence. It has no pass/fail gate
 //! at any depth, and a blocked report carries nulls + a recorded reason rather
 //! than fabricated samples.
 

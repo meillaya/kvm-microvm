@@ -1,6 +1,6 @@
 //! Feature-gated real-KVM runner for the educational direct-KVM subset.
 //!
-//! This module is compiled **only** with the `direct-kvm` feature. It is the
+//! This module is compiled only with the `direct-kvm` feature. It is the
 //! sole place in the crate that performs KVM ioctls:
 //!
 //! 1. Probe `/dev/kvm` (API version 12 + `KVM_CAP_USER_MEMORY`).
@@ -11,11 +11,11 @@
 //! 4. `KVM_RUN` loop feeding the pure [`ExitDispatcher`].
 //! 5. Clean shutdown: deregister the slot, drop the vCPU/VM fds, `munmap`.
 //!
-//! **Thread contract (requirement 8):** the vCPU is created and run on the
+//! Thread contract (requirement 8): the vCPU is created and run on the
 //! thread that constructed the [`VmRunner`]; `run()` asserts this. KVM vCPU fds
 //! must not migrate between threads, and the educational subset never spawns.
 //!
-//! **No fallback (requirement 5):** a missing/incompatible `/dev/kvm` yields
+//! No fallback (requirement 5): a missing/incompatible `/dev/kvm` yields
 //! [`RunOutcome::Blocked`]; this module never references Firecracker/QEMU/TCG
 //! and never converts a blocked or failed boot into a pass.
 
@@ -105,7 +105,7 @@ impl Drop for GuestMemory {
 /// drives one vCPU through the marker guest.
 ///
 /// Construct with [`VmRunner::new`] (or [`run_subset_boot_at`]) and call
-/// [`VmRunner::run`] on the **same thread**.
+/// [`VmRunner::run`] on the same thread.
 pub struct VmRunner {
     kvm: Kvm,
     vm: VmFd,
@@ -465,7 +465,7 @@ pub fn run_subset_boot() -> RunOutcome {
 ///
 /// This is the single entry point used by the privileged test and any host
 /// tooling. It opens the device exactly once and maps every error to a
-/// structured outcome (blocked or failed) — never a fallback, never a panic.
+/// structured outcome (blocked or failed); never a fallback, never a panic.
 #[must_use]
 pub fn run_subset_boot_at(device: &str) -> RunOutcome {
     match VmRunner::new(device) {

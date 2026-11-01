@@ -4,14 +4,14 @@
 //! the direct-KVM subset?* It requires `KVM_GET_API_VERSION == 12` (the stable
 //! KVM ABI) and the `KVM_CAP_USER_MEMORY` capability.
 //!
-//! The **validation logic is pure** (`validate_api_version`,
+//! The validation logic is pure (`validate_api_version`,
 //! `validate_capabilities`, [`ProbeError::blocked_reason`]) and is tested in the
 //! default no-feature lane without `/dev/kvm`. The actual ioctl-backed probe
 //! ([`open_and_probe`]) is behind the `direct-kvm` feature and is the only part
 //! that opens `/dev/kvm`.
 //!
-//! A failed probe maps 1:1 to a structured [`BlockedReason`] — a missing or
-//! incompatible `/dev/kvm` **blocks** the subset; it never passes and never
+//! A failed probe maps 1:1 to a structured [`BlockedReason`]: a missing or
+//! incompatible `/dev/kvm` blocks the subset; it never passes and never
 //! falls back to another backend.
 
 use crate::outcome::{BlockedReason, RunOutcome};

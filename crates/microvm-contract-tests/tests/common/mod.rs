@@ -1,8 +1,8 @@
 //! Shared harness for the REST/gRPC transport contract tests (plan todo 18).
 //!
 //! The harness builds the composed [`VmLifecycleService`] over a deterministic
-//! scripted backend (standing in for the Firecracker runtime — no KVM, root, or
-//! real Firecracker binary is required), then drives the **same** service
+//! scripted backend (standing in for the Firecracker runtime; no KVM, root, or
+//! real Firecracker binary is required), then drives the same service
 //! instance through both the REST and gRPC Unix-socket adapters. This lets the
 //! tests assert that the same request reaches the same service result on either
 //! transport, that error codes agree, that the socket stays hardened, and that
@@ -54,8 +54,8 @@ pub const TENANT: &str = "acme";
 /// double for [`VmLifecycleService`].
 ///
 /// It plays the role the Firecracker backend plays in production: the thing the
-/// supervised service wraps. All supervision policy under test — authorization,
-/// quota, idempotency, state mirroring, and audit — lives in
+/// supervised service wraps. All supervision policy under test: authorization,
+/// quota, idempotency, state mirroring, and audit: lives in
 /// [`VmLifecycleService`], not here. Identifiers are derived deterministically
 /// from the request so the same fixture yields the same result on both
 /// transports.

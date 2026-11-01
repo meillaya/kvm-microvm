@@ -8,19 +8,19 @@
 //! vsock).
 //!
 //! Coverage:
-//! - **Schema validation**: the serialized [`VmMetricsRecord`] carries every
+//! - Schema validation: the serialized [`VmMetricsRecord`] carries every
 //!   stable field (boot time, memory usage, CPU usage/throttling, guest CPU
 //!   steal when available, RX/TX throughput, source timestamps, availability
 //!   flags) and round-trips losslessly.
-//! - **cgroup file parsing**: real cgroup-v2 file contents are parsed into
+//! - cgroup file parsing: real cgroup-v2 file contents are parsed into
 //!   [`CgroupMetrics`].
-//! - **Availability flags**: an available source serializes `{available:true,
+//! - Availability flags: an available source serializes `{available:true,
 //!   value}`; a missing source serializes `{available:false, reason}` and is
 //!   *never* zero-filled.
-//! - **Missing data handling**: removing the cgroup and the guest agent
-//!   mid-sampling yields unavailable fields plus bounded error counters — not
+//! - Missing data handling: removing the cgroup and the guest agent
+//!   mid-sampling yields unavailable fields plus bounded error counters: not
 //!   zeros, not panics.
-//! - **Cleanup stops sampling**: after [`MetricsCollector::stop_sampling`],
+//! - Cleanup stops sampling: after [`MetricsCollector::stop_sampling`],
 //!   sampling returns `artifact_not_found` and reads nothing.
 
 use chrono::{TimeZone, Utc};
@@ -306,7 +306,7 @@ fn not_collected_record_marks_all_sources_unavailable_never_zero() {
             "{source} must have no value"
         );
     }
-    // Convenience accessors report None — never a fabricated zero.
+    // Convenience accessors report None; never a fabricated zero.
     assert_eq!(record.memory_current_bytes(), None);
     assert_eq!(record.cpu_usage_usec(), None);
     assert_eq!(record.guest_cpu_steal_pct(), None);

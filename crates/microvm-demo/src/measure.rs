@@ -2,16 +2,16 @@
 //! requirement 4).
 //!
 //! [`ColdWarmMeasurement`] summarises the demo's two latency regimes:
-//! - the **cold first call** — the one-time `spawn -> request` cost that includes
+//! - the cold first call: the one-time `spawn -> request` cost that includes
 //!   booting to readiness and taking the snapshot;
-//! - the **warm request distribution** — p50/p95/p99 over requests served by
+//! - the warm request distribution: p50/p95/p99 over requests served by
 //!   pre-restored pool VMs, computed with the microvm-bench harness's
 //!   nearest-rank [`Distribution`].
 //!
 //! The measurement reuses the benchmark harness for statistics (requirement 6):
 //! warm samples are summarised by [`Distribution::from_samples_with_failures`],
 //! so failed warm attempts are recorded and excluded from the percentiles, never
-//! zero-filled. There is **no** pass/fail gate here: the structure reports numbers
+//! zero-filled. There is no pass/fail gate here: the structure reports numbers
 //! and counts, never a verdict.
 
 use microvm_bench::Distribution;

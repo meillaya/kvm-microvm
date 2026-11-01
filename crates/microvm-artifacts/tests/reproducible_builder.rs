@@ -208,7 +208,7 @@ fn manifest_records_version_arch_boot_args_and_provenance() {
 }
 
 // ---------------------------------------------------------------------------
-// Artifacts open ONLY through the PathResolver (todo 9)
+// Artifacts open only through the PathResolver (todo 9)
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -408,7 +408,7 @@ fn malformed_sources_are_rejected_before_output() {
 
 #[test]
 fn malformed_rootfs_is_rejected_before_any_kernel_output() {
-    // A valid kernel must NOT be written when the rootfs source is malformed:
+    // A valid kernel must not be written when the rootfs source is malformed:
     // all sources are validated before any output is produced.
     let src = TempDir::new().unwrap();
     let good_kernel = src.path().join("vmlinux");

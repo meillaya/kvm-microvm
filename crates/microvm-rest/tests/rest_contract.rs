@@ -691,11 +691,11 @@ fn server_uses_unix_listener_not_tcp() {
     );
     assert!(
         !server_src.contains("TcpListener"),
-        "server must NOT use TcpListener"
+        "server must not use TcpListener"
     );
     assert!(
         !server_src.contains("TcpStream"),
-        "server must NOT use TcpStream"
+        "server must not use TcpStream"
     );
 }
 

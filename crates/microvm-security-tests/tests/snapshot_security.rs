@@ -10,10 +10,10 @@
 //! CPU arch/model/flag incompatibility, a KVM API mismatch, a cgroup-v1
 //! manifest, a non-immutable memory file, and a quota overflow. Every probe
 //! observes the typed [`microvm_snapshots::SnapshotError`] (and its stable
-//! [`ErrorCode`]) the gate returns **before** any Firecracker load.
+//! [`ErrorCode`]) the gate returns before any Firecracker load.
 //!
-//! The crate performs no I/O — the backend supplies digests and the host
-//! envelope as data — so every probe is deterministic.
+//! The crate performs no I/O: the backend supplies digests and the host
+//! envelope as data, so every probe is deterministic.
 
 mod common;
 

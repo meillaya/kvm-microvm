@@ -1,19 +1,19 @@
 //! Per-VM network namespace, TAP device, and nftables NAT management.
 //!
 //! This module owns the orchestrator's network isolation boundary. Each VM
-//! receives a dedicated **network namespace** containing a single TAP device.
+//! receives a dedicated network namespace containing a single TAP device.
 //! The host side of the TAP is addressed from a deterministic /24 subnet, and
-//! NAT is applied via a generated **nftables** ruleset whose shape depends on
+//! NAT is applied via a generated nftables ruleset whose shape depends on
 //! the VM's [`NetworkPolicy`].
 //!
 //! # Model
-//! - One **network namespace** per VM (`/var/run/netns/microvm-<vm-id>`).
-//! - One **TAP device** per VM inside its namespace, named `tap<slot>` (TAP
+//! - One network namespace per VM (`/var/run/netns/microvm-<vm-id>`).
+//! - One TAP device per VM inside its namespace, named `tap<slot>` (TAP
 //!   names are limited to 15 bytes by `IFNAMSIZ`).
-//! - A deterministic **address allocator** hands out host/guest pairs from a
+//! - A deterministic address allocator hands out host/guest pairs from a
 //!   configurable /24 subnet (default `172.30.0.0/24`). The gateway is always
 //!   `.1`; VMs start at `.2`.
-//! - A pure **nftables ruleset generator** (`nft_ruleset`) renders the exact
+//! - A pure nftables ruleset generator (`nft_ruleset`) renders the exact
 //!   `nft -f` script the operator loads. `NatOnly` restricts forwarding to
 //!   the host subnet; `EgressAllowed` masquerades to all destinations.
 //!
@@ -25,7 +25,7 @@
 //!
 //! # Determinism
 //! [`NetConfig`] validation, [`AddressAllocator`] slot arithmetic, and
-//! [`nft_ruleset`] generation are **pure** — no filesystem, netlink, or
+//! [`nft_ruleset`] generation are pure; no filesystem, netlink, or
 //! process calls. [`NetManager`] path computation is pure; its filesystem
 //! operations take a configurable root and are exercised against a temporary
 //! directory in the default test run. Actual namespace and TAP creation
@@ -69,7 +69,7 @@ pub const MAX_SLOTS: u8 = 253;
 /// Per-VM network configuration: the TAP device, addressing, and policy.
 ///
 /// All fields are validated at construction time. The configuration is
-/// deterministic and serializable — it can be produced by the
+/// deterministic and serializable: it can be produced by the
 /// [`AddressAllocator`] or deserialized from a transport boundary.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NetConfig {
@@ -408,7 +408,7 @@ impl AddressAllocator {
 /// 4. For [`NetworkPolicy::EgressAllowed`], the masquerade applies to all
 ///    destinations.
 ///
-/// This function is **pure**: it performs no I/O and always produces the
+/// This function is pure: it performs no I/O and always produces the
 /// same output for the same input.
 ///
 /// # Panics
@@ -495,7 +495,7 @@ pub fn nft_ruleset(configs: &[NetConfig]) -> String {
 
 /// Manages per-VM network namespace lifecycle and TAP device paths.
 ///
-/// Path computation and namespace naming are **pure**. Filesystem operations
+/// Path computation and namespace naming are pure. Filesystem operations
 /// (creating the netns mount-point file, writing the nftables script) take a
 /// configurable root so they can be exercised against a temporary directory
 /// without root. Actual `ip netns add`, `ip tuntap add`, and `nft -f`

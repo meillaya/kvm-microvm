@@ -6,7 +6,7 @@
 //! maps onto a stable [`ErrorCode`] and converts losslessly into a
 //! [`MicrovmError`] for transport across the Unix-socket APIs.
 //!
-//! The importer is a **constrained local import** surface, not an OCI runtime;
+//! The importer is a constrained local import surface, not an OCI runtime;
 //! the variants deliberately encode the things it refuses to do: pull remote
 //! references, apply host mounts, add capabilities, honour privileged/host
 //! namespaces, or apply arbitrary host process controls.

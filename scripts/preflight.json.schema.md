@@ -1,10 +1,10 @@
-# scripts/preflight.json.schema.md — JSON shape emitted by `scripts/preflight.sh`
+# Preflight JSON shape
 
-`scripts/preflight.sh` is a **read-only** host capability probe. Every
+`scripts/preflight.sh` is a read-only host capability probe. Every
 invocation that reaches `main()` emits a single JSON object whose shape
 matches the JSON Schema at
-[`schemas/evidence-host-preflight.v1.json`](../../schemas/evidence-host-preflight.v1.json)
-(committed by plan todo 3).
+[`schemas/evidence-host-preflight.v1.json`](../schemas/evidence-host-preflight.v1.json)
+(see `schemas/README.md`).
 
 The script:
 
@@ -88,7 +88,7 @@ The script:
 }
 ```
 
-## Toolchain note (Wave 0 limitation)
+## Toolchain limitation
 
 Pure Bash cannot issue `ioctl(2)`. The preflight script therefore cannot
 actually run `KVM_GET_API_VERSION` (or `TUNGETFEATURES`) from inside Bash.
@@ -99,14 +99,14 @@ gap. A future privileged-host runner should ship a small companion
 `kvm-probe` binary (one-line C program calling `open(O_RDONLY|O_CLOEXEC)`
 then `ioctl(fd, KVM_GET_API_VERSION, 0)`) to refine `api_version` and
 re-classify `accessible` against the schema's strict O_RDWR+ioctl
-semantics. This is a documented, expected gap for Wave 0; the script
+semantics. This is a documented gap; the script
 continues to emit a complete, schema-valid JSON object on every invocation
 so downstream tooling can always parse the file.
 
 ## Example payload
 
 The full positive reference fixture lives at
-[`schemas/examples/host-preflight-ok.json`](../../schemas/examples/host-preflight-ok.json).
+[`schemas/examples/host-preflight-ok.json`](../schemas/examples/host-preflight-ok.json).
 A truncated example:
 
 ```json
@@ -163,7 +163,7 @@ python3 -m jsonschema \
 
 If `jsonschema` is not installed (for example on a lean container image),
 the script still emits a schema-shaped JSON object; validation is deferred
-to the CI lane (`devenv shell -- bash scripts/preflight.sh --strict && devenv shell -- bash scripts/run-privileged-tests.sh`) where the toolchain
+to the CI lane (`devenv shell -- bash scripts/preflight.sh --strict && devenv shell -- bash scripts/run-privileged-suite.sh`) where the toolchain
 is fully provisioned.
 
 ## Stable token vocabulary
@@ -171,16 +171,16 @@ is fully provisioned.
 The `blockers` and `warnings` arrays use stable machine-readable tokens so
 the privileged lane can branch without parsing `blocked_reason`:
 
-| Token                                    | Kind    | Meaning                                                                  |
-|------------------------------------------|---------|--------------------------------------------------------------------------|
-| `cpu_virt_unavailable`                   | blocker | `/proc/cpuinfo` flags do not include VMX or SVM.                         |
-| `kvm_unavailable`                        | blocker | `/dev/kvm` is missing or unreadable by this process.                     |
-| `kvm_api_version_unprobed_in_bash`       | warning | KVM open succeeded; `KVM_GET_API_VERSION` not issued (pure-Bash gap).   |
-| `tun_unavailable`                        | blocker | `/dev/net/tun` is missing or unreadable by this process.                 |
-| `cgroup_v2_missing`                      | blocker | `/sys/fs/cgroup/cgroup.controllers` is not present.                      |
-| `cgroup_v2_controller_missing:<name>`    | blocker | A required controller (`cpu`, `memory`, `pids`) is not exposed.          |
-| `firecracker_binary_missing`             | blocker | Firecracker binary not found at standard paths or on `PATH`.            |
-| `jailer_binary_missing`                  | blocker | Jailer binary not found at standard paths or on `PATH`.                  |
-| `nested_unavailable`                     | warning | Nested virtualization not advertised by `/sys/module/kvm_*/parameters/`.|
-| `nft_cli_unavailable`                    | warning | `nft` not found on `PATH`.                                               |
-| `jq_missing`                             | blocker | `jq` is required and not installed.                                      |
+| Token                                 | Kind    | Meaning                                                                  |
+| ------------------------------------- | ------- | ------------------------------------------------------------------------ |
+| `cpu_virt_unavailable`                | blocker | `/proc/cpuinfo` flags do not include VMX or SVM.                         |
+| `kvm_unavailable`                     | blocker | `/dev/kvm` is missing or unreadable by this process.                     |
+| `kvm_api_version_unprobed_in_bash`    | warning | KVM open succeeded; `KVM_GET_API_VERSION` not issued (pure-Bash gap).    |
+| `tun_unavailable`                     | blocker | `/dev/net/tun` is missing or unreadable by this process.                 |
+| `cgroup_v2_missing`                   | blocker | `/sys/fs/cgroup/cgroup.controllers` is not present.                      |
+| `cgroup_v2_controller_missing:<name>` | blocker | A required controller (`cpu`, `memory`, `pids`) is not exposed.          |
+| `firecracker_binary_missing`          | blocker | Firecracker binary not found at standard paths or on `PATH`.             |
+| `jailer_binary_missing`               | blocker | Jailer binary not found at standard paths or on `PATH`.                  |
+| `nested_unavailable`                  | warning | Nested virtualization not advertised by `/sys/module/kvm_*/parameters/`. |
+| `nft_cli_unavailable`                 | warning | `nft` not found on `PATH`.                                               |
+| `jq_missing`                          | blocker | `jq` is required and not installed.                                      |

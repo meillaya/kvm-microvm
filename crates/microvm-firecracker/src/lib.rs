@@ -9,23 +9,23 @@
 //! fail-closed error mapping into lifecycle states.
 //!
 //! # Modules
-//! - [`config`] — validated [`BootConfig`](config::BootConfig) (digest-bearing,
+//! - [`config`]: validated [`BootConfig`](config::BootConfig) (digest-bearing,
 //!   relative kernel/rootfs paths).
-//! - [`phase`] — [`PhaseTimestamps`](phase::PhaseTimestamps) recording
+//! - [`phase`]: [`PhaseTimestamps`](phase::PhaseTimestamps) recording
 //!   spawn/socket_ready/configured/guest_ready/stopped.
-//! - [`api`] — Firecracker UDS API types, the
+//! - [`api`]: Firecracker UDS API types, the
 //!   [`FirecrackerApi`](api::FirecrackerApi) trait, and the real
 //!   [`UdsApiClient`](api::UdsApiClient).
-//! - [`process`] — [`VmProcess`](process::VmProcess) and the
+//! - [`process`]: [`VmProcess`](process::VmProcess) and the
 //!   [`ProcessLauncher`](process::ProcessLauncher) abstraction.
-//! - [`readiness`] — guest-readiness probing
+//! - [`readiness`]: guest-readiness probing
 //!   ([`GuestReadinessProbe`](readiness::GuestReadinessProbe)).
-//! - [`snapshot`] — snapshot create/load ordering and restore rebinding
+//! - [`snapshot`]: snapshot create/load ordering and restore rebinding
 //!   ([`RestoreProtocol`](snapshot::RestoreProtocol)).
-//! - [`prereq`] — host prerequisite checks that fail before child creation.
-//! - [`backend`] — [`FirecrackerBackend`](backend::FirecrackerBackend), the
+//! - [`prereq`]: host prerequisite checks that fail before child creation.
+//! - [`backend`]: [`FirecrackerBackend`](backend::FirecrackerBackend), the
 //!   `LifecycleService` implementation.
-//! - [`testing`] — deterministic scripted doubles for tests.
+//! - [`testing`]: deterministic scripted doubles for tests.
 //!
 //! # Determinism
 //! Boot-config validation, phase-timestamp recording, prerequisite checks, and

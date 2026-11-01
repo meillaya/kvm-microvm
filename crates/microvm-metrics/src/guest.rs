@@ -1,9 +1,9 @@
 //! Optional guest-agent metrics: CPU steal, load, and RSS (plan todo 23).
 //!
 //! Guest-side metrics are only obtainable when a guest agent is reachable over
-//! the VM's vsock channel. They are **strictly optional**: when no agent is
+//! the VM's vsock channel. They are strictly optional: when no agent is
 //! configured or the agent is unreachable, the whole [`GuestMetrics`] slot is
-//! marked [`Unavailable`](crate::Availability::Unavailable) — it is **never**
+//! marked [`Unavailable`](crate::Availability::Unavailable): it is never
 //! zero-filled, because a measured `0%` steal and an absent agent are very
 //! different facts.
 //!

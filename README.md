@@ -1,96 +1,106 @@
 # kvm-microvm-orchestrator
 
-A Rust-based, **Firecracker-first** microVM control plane that creates, starts,
-stops, snapshots, and restores isolated Linux workloads through REST/JSON and
-gRPC — exposed **only** over protected Unix domain sockets.
+A Rust control plane for Firecracker microVMs. It creates, starts, stops,
+snapshots, and restores Linux workloads through REST/JSON and gRPC. Both
+transports listen only on protected Unix domain sockets.
+
+The project is a development and verification platform. It targets engineers who
+want a small, auditable control plane and a test suite that separates pure
+contract checks from host-dependent KVM checks.
+
+## Run it
+
+You need Nix and devenv. From the repository root:
+
+```bash
+devenv shell
+cargo test --workspace
+```
+
+The deterministic suite runs on Linux. The workspace uses Linux-only `libc`
+constants and paths, so it does not build on macOS. The suite needs no
+`/dev/kvm`, `/dev/net/tun`, or writable cgroupfs. On a Linux host with KVM,
+probe the host and run the privileged suite:
+
+```bash
+bash scripts/preflight.sh --json .preflight/host.json
+sudo -E bash scripts/run-privileged-suite.sh
+```
+
+The preflight exits `0` when the host is capable, `2` when it is degraded, and
+`77` when it is blocked. A blocked host still runs the deterministic lane. See
+[setup](docs/setup.md) for the full sequence and for the guest image pipeline.
+
+## What it does
+
+| Area | Code | Behavior |
+| --- | --- | --- |
+| Lifecycle | `microvm-lifecycle`, `microvm-service` | Validates every VM state transition and applies it through one transport-neutral contract. |
+| Transports | `microvm-rest`, `microvm-grpc`, `microvm-cli` | Expose the same lifecycle operations over Unix sockets, with REST and gRPC parity tests. |
+| Isolation | `microvm-isolation`, `microvm-firecracker` | Builds a cgroup v2 leaf, a jailer argv, and a TAP device in a network namespace before the VM starts. |
+| Snapshots | `microvm-snapshots`, `microvm-artifacts` | Records SHA-256 content hashes and rejects a manifest whose host envelope or owner does not match. |
+| Observability | `microvm-metrics`, `microvm-scheduler` | Reports host and guest metrics with explicit availability, and places VMs on cores without overcommitting. |
+| Guest image | `microvm-guest-health`, `scripts/build-guest-image.sh` | Builds a 64 MiB rootfs around a static health server that acts as init for snapshot and benchmark runs. |
+| Interfaces | `microvm-oci`, `microvm-bench`, `microvm-demo` | Imports digest-pinned local OCI layouts, compares Firecracker with Docker, and runs a warm HTTP-function demo. |
+
+## Measured result
+
+A July 2026 run on an AMD Ryzen 7 5700X measured 100 samples per workload with
+Firecracker v1.16.1 and Docker 29.6.0:
+
+| Workload | Condition | p50 | p95 | p99 | n |
+| --- | --- | --- | --- | --- | --- |
+| Firecracker snapshot/restore | Warm | 6.88 ms | 8.58 ms | 9.35 ms | 100 |
+| Docker cold-start | Warm | 315.7 ms | n/a | n/a | 100 |
+
+The p50 ratio is about 46x. The raw artifacts from that run are local-only and
+are not committed here, so treat the table as a record of one run. The `<200 ms`
+figure is a reference target, not an SLA. See
+[ADR-0011](docs/adr/0011-benchmark-distributions-not-sla.md).
 
 ## Documentation
 
-Operator documentation lives in [`docs/`](docs/README.md):
+| Document | Contents |
+| --- | --- |
+| [docs/README.md](docs/README.md) | Documentation map and scope boundaries. |
+| [docs/setup.md](docs/setup.md) | devenv setup, preflight meanings, deterministic and privileged lanes. |
+| [docs/architecture.md](docs/architecture.md) | Component topology, transport, isolation, state, and interfaces, with figures. |
+| [docs/security.md](docs/security.md) | Threat model, TCB, Unix-socket auth, tenant ownership, and non-claims. |
+| [docs/runbooks/](docs/runbooks/README.md) | Preflight, snapshot, network, cleanup, and CI setup procedures. |
+| [docs/adr/](docs/adr/README.md) | Twelve accepted architecture decisions and scope-out rules. |
+| [docs/design/direct-kvm-subset.md](docs/design/direct-kvm-subset.md) | Pinned contract for the educational direct-KVM backend. |
+| [docs/release-readiness.md](docs/release-readiness.md) | Verification matrix and release-gate status. |
 
-- [`docs/README.md`](docs/README.md) — overview and navigation (start here).
-- [`docs/setup.md`](docs/setup.md) — devenv setup, preflight meanings, deterministic/privileged lanes.
-- [`docs/architecture.md`](docs/architecture.md) — component topology, transport, and isolation model.
-- [`docs/security.md`](docs/security.md) — threat model, TCB, auth, and isolation boundaries.
-- [`docs/runbooks/`](docs/runbooks/README.md) — operational runbooks (preflight, snapshot, network, cleanup).
-- [`docs/adr/`](docs/adr/README.md) — architecture decision records.
-- [`docs/design/direct-kvm-subset.md`](docs/design/direct-kvm-subset.md) — pinned educational direct-KVM contract.
-- [`docs/release-readiness.md`](docs/release-readiness.md) — verification matrix and release-readiness report.
+## Scope
 
-## Quick orientation
+The control plane has no TCP listener. Remote registry pulls, tag-only image
+references, host mounts, host namespaces, and privileged container flags are
+rejected before use. Snapshots stay local and are checked against the host
+envelope before load.
+
+This repository does not claim production readiness, a universal latency
+guarantee, general OCI runtime compatibility, or host security beyond the TCB.
+The [security model](docs/security.md) states each boundary.
+
+## Verification status
+
+The verification matrix covers 34 items. The July 20 baseline recorded 16
+deterministic passes, 1 privileged pass and 11 blocked, and 1 published
+benchmark and 1 blocked. The July 2026 run reported 7 privileged passes and 7
+blocked, and measured the benchmark table above; its raw artifacts are
+local-only. The committed reducer baseline reports 0 semantic violations and
+34/34 coverage. See [release-readiness](docs/release-readiness.md) for both
+snapshots and the blocked reasons.
+
+## Development
+
+Run the same gates as CI before you send a change:
 
 ```bash
-devenv shell                                   # enter the pinned toolchain (firecracker, jailer, docker, rust)
-bash scripts/preflight.sh --json .preflight/host.json   # read-only host probe
-cargo test --workspace                         # deterministic lane (no /dev/kvm needed)
-sudo -E bash scripts/run-privileged-suite.sh   # privileged lane (cgroup, jailer, KVM, security)
-sudo env "PATH=$PATH" bash scripts/prepare-bench-artifacts.sh  # full benchmark pipeline
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
 ```
 
-## Guest image builder
-
-The guest image pipeline produces a Firecracker-compatible kernel + rootfs for
-snapshot/restore benchmarks and integration tests:
-
-- **[`crates/microvm-guest-health`](crates/microvm-guest-health/)** — tiny static
-  HTTP health server compiled to `x86_64-unknown-linux-musl`, baked into the
-  guest rootfs as the init/health endpoint.
-- **[`scripts/build-guest-image.sh`](scripts/build-guest-image.sh)** — builds
-  `guest/vmlinux` (latest Firecracker CI kernel) and `guest/rootfs.ext4`
-  (64 MiB ext4 with busybox + health server), emits `guest/payload.sha256`
-  for reproducibility pinning.
-
-```bash
-bash scripts/build-guest-image.sh   # outputs guest/{vmlinux,rootfs.ext4,payload.sha256}
-```
-
-## Toolchain (via devenv)
-
-`devenv shell` provides all required tools reproducibly via Nix:
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Firecracker | v1.16.1 (static musl) | microVM runtime |
-| Jailer | v1.16.1 (static musl) | Firecracker process jailer |
-| Docker | 29.6.x | Benchmark comparison |
-| Rust | stable (1.95.0 via rust-toolchain.toml) | Build toolchain |
-| nftables | — | Per-VM network policy |
-| e2fsprogs | — | Guest rootfs creation |
-
-## Benchmark results
-
-Measured on AMD Ryzen 7 5700X, 100 samples each, Firecracker v1.16.1 / Docker 29.6.0:
-
-| Workload | Condition | p50 | p95 | p99 | n |
-|----------|-----------|-----|-----|-----|---|
-| Firecracker snapshot/restore | Warm | 6.88 ms | 8.58 ms | 9.35 ms | 100 |
-| Docker cold-start | Warm | 315.7 ms | — | — | 100 |
-
-**~46× faster** (p50 Firecracker restore vs Docker cold-start).
-
-The `<200 ms` figure is a reference target, **not** an SLA. See
-[`docs/adr/0011-benchmark-distributions-not-sla.md`](docs/adr/0011-benchmark-distributions-not-sla.md).
-
-## CI pipeline
-
-Two GitHub Actions workflows:
-
-| Workflow | Runner | Purpose |
-|----------|--------|---------|
-| [`.github/workflows/deterministic.yml`](.github/workflows/deterministic.yml) | `ubuntu-latest` (GitHub-hosted) | `cargo fmt --check`, `clippy -D warnings`, `cargo test --workspace` — no KVM required |
-| [`.github/workflows/privileged.yml`](.github/workflows/privileged.yml) | `[self-hosted, linux, x86_64, kvm]` | Full privileged suite + benchmark artifact upload; PR builds gated on `privileged` label, `workflow_dispatch` always runs |
-
-## Verification matrix
-
-34/34 todos have evidence. Deterministic lane: 16 pass, 0 fail. Privileged
-lane: 7 pass, 7 blocked (host-gated). Benchmark: 1 published, 1 blocked.
-0 semantic violations. See
-[`docs/release-readiness.md`](docs/release-readiness.md).
-
-## What this is NOT
-
-This is a development/verification platform. It does **not** claim production
-readiness, a universal `<200 ms` latency SLA, general OCI runtime compatibility,
-or host security beyond the stated TCB. See
-[`docs/README.md`](docs/README.md#read-this-first-what-this-project-is-not) and
-[`docs/security.md`](docs/security.md#7-what-this-platform-does-not-claim).
+The privileged workflow is described in
+[the CI runbook](docs/runbooks/ci-setup.md).

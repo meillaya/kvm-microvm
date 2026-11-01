@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn known_sha256_vector() {
-        // SHA-256("abc") — RFC 6234 test vector.
+        // SHA-256("abc"). RFC 6234 test vector.
         let d = compute_sha256(&b"abc"[..]).unwrap();
         assert_eq!(
             d.to_hex(),

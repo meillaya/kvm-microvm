@@ -5,8 +5,8 @@
 //! terminal phase reachable from any running point. [`PhaseTimestamps`] records
 //! the wall-clock time each phase completed and enforces two invariants:
 //!
-//! 1. **Ordering** — a phase may only be recorded after its predecessor.
-//! 2. **Monotonicity** — a recorded timestamp must not precede the previous
+//! 1. Ordering: a phase may only be recorded after its predecessor.
+//! 2. Monotonicity: a recorded timestamp must not precede the previous
 //!    phase's timestamp.
 //!
 //! Each phase is recorded at most once. Violating any invariant yields a typed

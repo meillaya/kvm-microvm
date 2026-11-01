@@ -8,7 +8,7 @@
 //! artifacts, and non-regular files. Both the `openat2` fast path and the
 //! portable `O_NOFOLLOW` fallback walk are exercised independently.
 //!
-//! Every probe observes the **typed** [`ErrorCode`] the resolver returns; no
+//! Every probe observes the typed [`ErrorCode`] the resolver returns; no
 //! probe is a source-text scan.
 
 mod common;

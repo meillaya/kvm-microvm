@@ -2,10 +2,10 @@
 //! the sample budget.
 //!
 //! # Reproducibility invariant (requirements 1, 7, 9)
-//! A [`BenchmarkConfig`] holds exactly **one** [`Workload`]. Every lane the
+//! A [`BenchmarkConfig`] holds exactly one [`Workload`]. Every lane the
 //! harness runs (Firecracker snapshot/restore *and* Docker start) is pinned to
 //! that single workload's `payload_sha256`. The harness therefore always
-//! compares **identical artifact content** across runtimes; it never compares
+//! compares identical artifact content across runtimes; it never compares
 //! different images and never treats a single number or a content mismatch as
 //! proof of superiority. The pinned payload hash is recorded in the output JSON
 //! so a reviewer can verify both lanes used the same bytes.
@@ -81,7 +81,7 @@ impl Default for Conditions {
 
 /// A pinned, content-addressed benchmark workload.
 ///
-/// `payload_sha256` is the **single** content hash both the Firecracker and
+/// `payload_sha256` is the single content hash both the Firecracker and
 /// Docker lanes must use (requirement 9). The optional kernel/rootfs/image
 /// hashes further pin the VM-side artifacts so a reviewer can reproduce the
 /// exact bytes measured.

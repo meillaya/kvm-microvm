@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# scripts/run-privileged-tests.sh — privileged-lane placeholder.
+# scripts/run-privileged-tests.sh: strict preflight gate for the privileged lane.
 #
-# Runs the privileged test gate when a privileged host runner is available.
-# For now this only re-runs the strict preflight (scripts/preflight.sh --strict)
-# and exits 0 on success / 77 on failure. Real privileged tests will be added
-# by later waves.
+# This script decides whether the host may run the privileged suite. It runs
+# scripts/preflight.sh --strict and exits 0 on success or 77 when the host is
+# blocked or degraded. The tests themselves live in run-privileged-suite.sh.
 
 set -u
 LC_ALL=C
@@ -31,6 +30,6 @@ if ! bash "$SCRIPT_DIR/preflight.sh" --strict; then
     exit 77
 fi
 
-echo "$PROG: preflight passed; no real privileged tests yet (placeholder)."
-echo "$PROG: future waves will add: jailer e2e, snapshot/restore, cgroup-v2 migration, networking."
+echo "$PROG: preflight passed; run the privileged suite with:"
+echo "  sudo -E bash ${SCRIPT_DIR}/run-privileged-suite.sh"
 exit 0

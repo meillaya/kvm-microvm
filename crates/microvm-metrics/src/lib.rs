@@ -2,13 +2,13 @@
 //! (plan todo 23).
 //!
 //! This crate collects, for each microVM:
-//! - **Host cgroup-v2 metrics** ([`CgroupMetrics`]): CPU usage/throttling,
+//! - Host cgroup-v2 metrics ([`CgroupMetrics`]): CPU usage/throttling,
 //!   memory current/events, block IO, and pids.
-//! - **TAP network counters** ([`NetworkMetrics`]): RX/TX byte counters plus
+//! - TAP network counters ([`NetworkMetrics`]): RX/TX byte counters plus
 //!   derived RX/TX throughput.
-//! - **Monotonic boot/restore phases** ([`PhaseMarkers`], [`MetricsPhase`]):
+//! - Monotonic boot/restore phases ([`PhaseMarkers`], [`MetricsPhase`]):
 //!   host-monotonic spans for boot and restore, with derived durations.
-//! - **Optional guest-agent metrics** ([`GuestMetrics`]): guest CPU steal,
+//! - Optional guest-agent metrics ([`GuestMetrics`]): guest CPU steal,
 //!   load, and RSS, available only when a guest agent is reachable.
 //!
 //! The full snapshot is [`VmMetricsRecord`], whose wire schema is
@@ -18,8 +18,7 @@
 //! Every source is wrapped in [`Availability`]: a source either produced a
 //! value ([`Availability::Available`]) or it is explicitly
 //! [`Availability::Unavailable`] with a bounded [`UnavailableReason`]. A
-//! missing guest agent or a removed cgroup is reported as *unavailable* —
-//! never as a measured `0`.
+//! missing guest agent or a removed cgroup is reported as *unavailable*,//! never as a measured `0`.
 //!
 //! # Bounded cardinality
 //! The record carries no free-form label maps. Error counters are keyed by the
@@ -29,7 +28,7 @@
 //! # Determinism
 //! [`MetricsCollector`] reads from configurable roots (cgroup leaf dir, sysfs
 //! root) plus an injectable [`GuestAgentReader`] and [`Clock`]. Tests exercise
-//! it against a temporary directory and a fixed clock — no privileged host
+//! it against a temporary directory and a fixed clock; no privileged host
 //! capabilities required. Sampling stops after VM cleanup
 //! ([`MetricsCollector::stop_sampling`]).
 //!

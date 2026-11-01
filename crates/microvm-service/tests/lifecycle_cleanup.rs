@@ -5,27 +5,27 @@
 //! host, exercised end-to-end through the composed
 //! [`VmLifecycleService`](microvm_service::VmLifecycleService):
 //!
-//! 1. **Readiness gating** — a VM is *not* `Running` until the guest itself
+//! 1. Readiness gating: a VM is *not* `Running` until the guest itself
 //!    signals readiness. A successful boot records the full
 //!    `spawn -> socket_ready -> configured -> guest_ready -> stopped` phase
 //!    timestamp sequence; a boot whose guest never becomes ready fails with a
 //!    typed guest-not-ready error carrying `phase=guest_ready` context and never
 //!    advances past `Configured`.
-//! 2. **Process supervision** — when a VM's supervisor process dies, the service
+//! 2. Process supervision, when a VM's supervisor process dies, the service
 //!    reconciles the VM to `Failed` and issues teardown for every owned resource
 //!    (process kill, nft table, TAP, netns) in strict reverse-creation order.
-//! 3. **Resource cleanup** — on stop (and on failed boot, and on supervisor
+//! 3. Resource cleanup: on stop (and on failed boot, and on supervisor
 //!    death) every per-VM resource disappears: the API socket, the cgroup leaf,
 //!    and the network namespace mount point are gone, and the privileged teardown
 //!    commands (process/nft/TAP/netns) are issued exactly once and in order.
 //!
 //! # Lanes
-//! - **Deterministic** (default `cargo test`): the service is driven over a fully
+//! - Deterministic (default `cargo test`): the service is driven over a fully
 //!   scripted [`FirecrackerBackend`](microvm_firecracker::FirecrackerBackend)
 //!   (scripted launcher/API/readiness/prereq/cleanup doubles over temporary
 //!   directories). No KVM, root, or real Firecracker binary is required, and no
 //!   QEMU TCG or mock stands in for a KVM/Firecracker pass.
-//! - **Privileged** (`cargo test --features privileged --test lifecycle_cleanup`):
+//! - Privileged (`cargo test --features privileged --test lifecycle_cleanup`):
 //!   a real Firecracker/jailer boot through the service with post-stop cleanup
 //!   verification. On an incapable host it reports a stable `blocked` token and
 //!   passes rather than failing or mocking.
@@ -363,7 +363,7 @@ async fn stopped_vm_is_not_reconciled() {
 ///
 /// This is the privileged evidence for todo 19: it boots a real guest on a
 /// capable host, asserts the VM is `Running` only after the guest-ready phase,
-/// stops it, and then proves every per-VM resource disappeared — no Firecracker
+/// stops it, and then proves every per-VM resource disappeared; no Firecracker
 /// or jailer process, no cgroup leaf, no TAP/netns, no API socket. On an
 /// incapable host (no KVM, no cgroup-v2, missing pinned binaries or boot
 /// artifacts) it reports a stable `blocked` token and passes rather than failing

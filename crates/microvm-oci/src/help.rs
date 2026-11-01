@@ -1,9 +1,9 @@
 //! Canonical `microvm run` help/documentation text.
 //!
-//! The `microvm run` command is a **constrained local import** surface. These
+//! The `microvm run` command is a constrained local import surface. These
 //! constants are the single source of truth for its help output so the CLI
 //! (todo 26) and the documentation always describe it accurately: it imports a
-//! local, digest-pinned OCI-like layout into a typed microVM spec. It is **not**
+//! local, digest-pinned OCI-like layout into a typed microVM spec. It is not
 //! an OCI runtime and does not claim OCI runtime compatibility.
 
 /// One-line description for `microvm run --help`.
@@ -34,7 +34,7 @@ requests host mounts, host network/PID/IPC sharing, privileged mode, capability
 additions, or arbitrary host process controls. Container process metadata
 (Cmd/Entrypoint/Env) is ignored, never applied to the host.
 
-This tool does NOT provide OCI runtime compatibility and makes no claim of
+This tool does not provide OCI runtime compatibility and makes no claim of
 general OCI runtime conformance; OCI input is only a constrained image/import
 format.";
 
@@ -62,7 +62,7 @@ mod tests {
     fn help_disclaims_oci_runtime_compatibility() {
         let text = run_help_text();
         let lower = text.to_ascii_lowercase();
-        // Must explicitly state it is NOT an OCI runtime.
+        // Must explicitly state it is not an OCI runtime.
         assert!(
             lower.contains("not an oci runtime"),
             "must disclaim OCI runtime"

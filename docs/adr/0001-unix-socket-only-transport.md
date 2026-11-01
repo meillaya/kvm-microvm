@@ -1,4 +1,4 @@
-# ADR-0001: Unix-Socket-Only Transport (No TCP)
+# ADR-0001: Unix-socket-only transport (no TCP)
 
 ## Status
 
@@ -15,9 +15,9 @@ surface and contradict that contract.
 
 ## Decision
 
-Both control transports — REST/JSON and gRPC — are served **exclusively over
-protected Unix domain sockets**. There is **no** TCP, loopback, or remote
-listener anywhere in the platform.
+Both control transports, REST/JSON and gRPC, are served only over protected
+Unix domain sockets. There is no TCP, loopback, or remote listener anywhere in
+the platform.
 
 - Documented socket paths: CLI `--socket` default `/run/microvm/api/rest.sock`;
   gRPC `unix:///run/microvm/api.sock` (see
@@ -31,8 +31,8 @@ listener anywhere in the platform.
 
 - The control plane is reachable only by local principals with filesystem access
   to the socket, which is the intended local-only posture.
-- Any TCP exposure is a **scope change** and is enforced absent by contract
-  tests (`microvm-contract-tests` socket-hardening battery).
+- Any TCP exposure is a scope change, and contract tests
+  (`microvm-contract-tests` socket-hardening battery) enforce its absence.
 - Remote administration requires a separate, explicitly-designed front door
   (out of scope here), not a TCP listener on the lifecycle API.
 

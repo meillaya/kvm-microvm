@@ -16,10 +16,10 @@
 //! ```
 //!
 //! # Lanes
-//! - `full_lifecycle_over_grpc_unix_socket` — deterministic, fully-scripted
+//! - `full_lifecycle_over_grpc_unix_socket`: deterministic, fully-scripted
 //!   inner backend (no real Firecracker); exercises the whole flow including
 //!   snapshot/restore and resource cleanup.
-//! - `composed_firecracker_boot_stop_cleanup_over_grpc` — deterministic, genuine
+//! - `composed_firecracker_boot_stop_cleanup_over_grpc`: deterministic, genuine
 //!   [`FirecrackerBackend`](microvm_firecracker::FirecrackerBackend) wired with
 //!   scripted doubles; proves a real composed boot through the gRPC API and
 //!   post-stop cleanup.

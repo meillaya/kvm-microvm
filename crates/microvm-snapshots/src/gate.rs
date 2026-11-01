@@ -1,8 +1,8 @@
 //! Pre-restore compatibility gate.
 //!
 //! [`CompatibilityGate`] validates a [`SnapshotManifest`] against the current
-//! host, the pinned Firecracker binary, and the caller tenant's quota **before
-//! any Firecracker process is spawned or `/snapshot/load` is issued**. Every
+//! host, the pinned Firecracker binary, and the caller tenant's quota before
+//! any Firecracker process is spawned or `/snapshot/load` is issued. Every
 //! failure is a typed [`SnapshotError`] mapping to a stable [`ErrorCode`].
 //!
 //! # Checks (in order, all fail-closed before Firecracker load)
@@ -15,11 +15,11 @@
 //! 7. Memory file declared immutable ([`SnapshotError::MemoryNotImmutable`]).
 //! 8. Required resources fit the tenant quota ([`SnapshotError::QuotaOverflow`]).
 //!
-//! # What the gate does NOT do
-//! - It does **not** treat Firecracker's internal snapshot CRC as
+//! # What the gate does not do
+//! - It does not treat Firecracker's internal snapshot CRC as
 //!   authentication; integrity is the orchestrator's own SHA-256 check
 //!   ([`SnapshotManifest::verify_artifacts`]).
-//! - It does **not** invent cross-host compatibility: the host envelope is a
+//! - It does not invent cross-host compatibility: the host envelope is a
 //!   local same-host record, and a mismatch is a hard rejection.
 
 use crate::error::SnapshotError;

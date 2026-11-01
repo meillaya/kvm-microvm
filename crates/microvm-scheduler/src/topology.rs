@@ -1,10 +1,10 @@
 //! Host CPU/memory topology and NUMA metadata (plan todo 24).
 //!
-//! [`HostTopology`] is the **preflight-supplied** description of a single host:
+//! [`HostTopology`] is the preflight-supplied description of a single host:
 //! total logical CPU count, total memory, and an *optional* set of NUMA nodes.
 //! The scheduler is a pure bin-packer over this topology; the NUMA nodes (when
 //! present) are the bins. When no NUMA topology is supplied the host is treated
-//! as one flat bin and the scheduler makes **no** NUMA-awareness claim.
+//! as one flat bin and the scheduler makes no NUMA-awareness claim.
 //!
 //! This module performs no I/O. Topology is validated at construction time and
 //! is safe to serialize across transport boundaries.

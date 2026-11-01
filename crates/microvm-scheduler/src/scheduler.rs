@@ -1,25 +1,25 @@
 //! The deterministic core-aware bin-packing scheduler (plan todo 24).
 //!
-//! The [`Scheduler`] packs VM reservations into **bins**: the host's NUMA nodes
+//! The [`Scheduler`] packs VM reservations into bins: the host's NUMA nodes
 //! when preflight NUMA topology is present, or a single flat bin covering the
-//! whole host otherwise. It uses **first-fit-decreasing** (FFD) ordering for
-//! batch placement and **first-fit** for single placement, with per-tenant
+//! whole host otherwise. It uses first-fit-decreasing (FFD) ordering for
+//! batch placement and first-fit for single placement, with per-tenant
 //! admission control.
 //!
 //! # Purity and the record-before-mutate contract
 //! The scheduler is pure: it holds only the topology, the quota policy, and an
-//! in-memory placement ledger. It performs **no I/O** and never touches
+//! in-memory placement ledger. It performs no I/O and never touches
 //! cgroups, TAP devices, or Firecracker. [`Scheduler::schedule`] and
 //! [`Scheduler::plan_batch`] are read-only queries (`&self`) that compute a
 //! placement without mutating the ledger. A placement only affects subsequent
-//! decisions once it is **recorded** ([`Scheduler::record`] or
-//! [`Scheduler::place`]). Callers must record a placement **before** mutating VM
+//! decisions once it is recorded ([`Scheduler::record`] or
+//! [`Scheduler::place`]). Callers must record a placement before mutating VM
 //! lifecycle state, so the ledger is the single source of truth for reserved
 //! resources.
 //!
 //! # Hard limits never overcommit
 //! Reservations are accounted in full up front. A bin accepts a request only if
-//! it has enough *free* CPUs **and** enough *free* memory; tenant quota is
+//! it has enough *free* CPUs and enough *free* memory; tenant quota is
 //! checked before any placement. Observed runtime metrics never relax these
 //! hard limits (see [`crate::metrics`]).
 //!
@@ -65,7 +65,7 @@ impl BinState {
 /// Outcome of selecting a bin and CPU set for a request (no mutation yet).
 ///
 /// The owning bin is re-derived from `cpus` at apply time ([`apply_exact`]), so
-/// it is not stored here — keeping a single source of truth.
+/// it is not stored here: keeping a single source of truth.
 struct Selection {
     cpus: Vec<u32>,
     numa_node: Option<u32>,
@@ -128,7 +128,7 @@ impl Scheduler {
     // -- read-only queries --------------------------------------------------
 
     /// Compute a placement for a single request against the current ledger,
-    /// **without** mutating the scheduler (pure query).
+    /// without mutating the scheduler (pure query).
     ///
     /// The returned placement does not affect subsequent scheduling until it is
     /// [`record`](Self::record)ed.
@@ -149,7 +149,7 @@ impl Scheduler {
         )
     }
 
-    /// Compute placements for a batch of requests using **first-fit-decreasing**
+    /// Compute placements for a batch of requests using first-fit-decreasing
     /// ordering, without mutating the scheduler (pure query).
     ///
     /// Requests are sorted by `(vcpu desc, memory desc, vm_id asc)` and placed
@@ -187,7 +187,7 @@ impl Scheduler {
 
     // -- mutating operations (ledger only; never host resources) ------------
 
-    /// Schedule **and** record a request atomically.
+    /// Schedule and record a request atomically.
     ///
     /// This is the common path: the placement is committed to the ledger before
     /// the caller mutates VM lifecycle state.

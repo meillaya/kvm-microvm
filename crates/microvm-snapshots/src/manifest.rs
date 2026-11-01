@@ -10,19 +10,19 @@
 //! version), the owning tenant, the quota the restored VM will consume, and
 //! the immutable-memory requirement.
 //!
-//! # Trust model (what this manifest does NOT claim)
+//! # Trust model (what this manifest does not claim)
 //! - The SHA-256 digests are the orchestrator's own content hashes. Firecracker's
 //!   internal snapshot CRC is only accidental-corruption detection and is
-//!   **never** treated as authentication.
-//! - The host envelope is a **local same-host** compatibility record. This
-//!   manifest makes **no cross-host portability claim**; cross-host transfer,
+//!   never treated as authentication.
+//! - The host envelope is a local same-host compatibility record. This
+//!   manifest makes no cross-host portability claim; cross-host transfer,
 //!   signing, or encryption is out of scope.
 //!
 //! # Integrity verification
 //! [`SnapshotManifest::verify_artifacts`] compares caller-supplied *actual*
 //! digests (computed from on-disk content by the backend) against the recorded
 //! digests, returning a typed [`SnapshotError::Integrity`] on the first
-//! mismatch — before any Firecracker process is spawned.
+//! mismatch: before any Firecracker process is spawned.
 
 use crate::error::{SnapshotComponent, SnapshotError};
 use chrono::{DateTime, Utc};
@@ -47,8 +47,8 @@ pub const SNAPSHOT_SCHEMA_ID: &str =
 /// The exact Firecracker binary a snapshot was created with.
 ///
 /// The `sha256` is the orchestrator's content hash of the pinned release/static
-/// binary (provenance). It is **not** Firecracker's internal snapshot CRC and
-/// is **not** an authentication primitive.
+/// binary (provenance). It is not Firecracker's internal snapshot CRC and
+/// is not an authentication primitive.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FirecrackerBinary {
     /// Firecracker semantic version string, e.g. `"1.16.1"`.
@@ -280,8 +280,8 @@ pub struct SnapshotQuota {
 
 /// Memory-file handling requirements.
 ///
-/// The memory file is **required** to be immutable and **must be retained for
-/// as long as the restored VM runs** (Firecracker maps it for the life of the
+/// The memory file is required to be immutable and must be retained for
+/// as long as the restored VM runs (Firecracker maps it for the life of the
 /// process). The [`crate::gate::CompatibilityGate`] rejects a manifest that
 /// does not declare `immutable == true`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

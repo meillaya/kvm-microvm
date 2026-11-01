@@ -3,7 +3,7 @@
 //! The scheduler enforces the quota dimensions it packs: vCPUs, memory, and VM
 //! count. (Disk quota is an artifact/lifecycle concern, not a core-aware
 //! bin-packing concern, so it is intentionally out of scope here.) Quota is
-//! checked **before** any placement is recorded, mirroring the lifecycle
+//! checked before any placement is recorded, mirroring the lifecycle
 //! contract that over-quota requests are rejected without side effects.
 
 use microvm_types::TenantId;
@@ -36,7 +36,7 @@ pub struct TenantUsage {
 
 /// A quota policy: a quota per tenant.
 ///
-/// Tenants without an entry are **fail-closed**: a placement request for an
+/// Tenants without an entry are fail-closed: a placement request for an
 /// unconfigured tenant is rejected with `NoQuotaForTenant`.
 pub type QuotaPolicy = BTreeMap<TenantId, TenantQuota>;
 

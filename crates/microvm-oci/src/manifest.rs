@@ -32,7 +32,7 @@ pub struct OciDescriptor {
     pub digest: String,
     /// Declared blob size in bytes.
     pub size: u64,
-    /// Remote retrieval URLs. **Forbidden**: the importer is local-only.
+    /// Remote retrieval URLs. Forbidden: the importer is local-only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub urls: Option<Vec<String>>,
     /// Arbitrary metadata; used to mark a layer's guest media role.

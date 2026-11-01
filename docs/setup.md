@@ -1,77 +1,67 @@
-# Setup, Preflight, and Test Lanes
+# Setup, preflight, and test lanes
 
 This page explains how to set up the development environment, what the host
-preflight result means, and how to run the two verification lanes
-(**deterministic** and **privileged**). Every command here is runnable as
-written from the repository root.
+preflight result means, and how to run the deterministic and privileged lanes.
+Run every command from the repository root.
 
-> **Scope reminder.** This is a development/verification platform, not a
-> production deployment guide. No command here claims to make a host
-> production-ready. See [security.md](security.md) for the trust boundaries.
-
----
+This is a development and verification platform. The commands below do not make
+a host production-ready. See [security.md](security.md) for the trust
+boundaries.
 
 ## 1. Prerequisites
 
 | Requirement | Why | Notes |
 | --- | --- | --- |
-| Linux x86_64 host | KVM target architecture | aarch64 is a documented secondary/future target, not the primary. |
-| [Nix](https://nixos.org/) + [devenv](https://devenv.sh/) | Reproducible toolchain | `devenv.yaml` requires devenv `>=2.1`. |
-| `/dev/kvm` (privileged lane only) | Real virtualization | Deterministic lane does **not** need it. |
-| `/dev/net/tun` (privileged lane only) | TAP networking | Deterministic lane does **not** need it. |
-| cgroup v2 unified hierarchy (privileged lane only) | Resource limits | Needs `cpu`, `memory`, `pids` controllers. |
-| Pinned Firecracker + jailer (privileged lane only) | Runtime adapter | Verified by SHA-256 before use. |
+| Linux x86_64 host | KVM target architecture | aarch64 is a documented secondary target. |
+| [Nix](https://nixos.org/) and [devenv](https://devenv.sh/) | Reproducible toolchain | `devenv.yaml` requires devenv `>=2.1`. |
+| `/dev/kvm` (privileged lane) | Real virtualization | The deterministic lane does not need it. |
+| `/dev/net/tun` (privileged lane) | TAP networking | The deterministic lane does not need it. |
+| cgroup v2 unified hierarchy (privileged lane) | Resource limits | Needs the `cpu`, `memory`, and `pids` controllers. |
+| Pinned Firecracker and jailer (privileged lane) | Runtime adapter | Verified by SHA-256 before use. |
 
-The deterministic lane runs on **any** host (including macOS for development and
-ordinary CI containers) because it never touches `/dev/kvm`, `/dev/net/tun`, or
-a writable cgroupfs.
-
----
+The deterministic lane runs on Linux, including ordinary CI containers. It
+never touches `/dev/kvm`, `/dev/net/tun`, or a writable cgroupfs. Several crates
+use Linux-only `libc` constants and paths (`openat2`, cgroupfs), so the
+workspace does not build on macOS.
 
 ## 2. Enter the development environment
 
-The toolchain is pinned through devenv/Nix. `devenv.yaml` pins the inputs
-(`nixpkgs`, `git-hooks`) and `devenv.nix` pins the Rust toolchain (`1.95.0`)
-plus the Linux-only VM hosting tools (QEMU/KVM, nftables, cpio, util-linux,
-kmod, e2fsprogs, pciutils).
+`devenv.yaml` pins the inputs (`nixpkgs`, `git-hooks`). `devenv.nix` enables
+Rust on the stable channel and adds the Linux VM tools: QEMU/KVM, nftables,
+cpio, util-linux, kmod, e2fsprogs, and pciutils. `rust-toolchain.toml` pins Rust
+1.95.0.
 
 ```bash
-# From the repository root:
 devenv shell
 ```
 
-Inside the shell the pinned Rust toolchain and Linux tooling are on `PATH`.
-Confirm the environment resolved:
+Confirm the toolchain resolved:
 
 ```bash
 devenv shell -- rustc --version
 devenv shell -- cargo --version
 ```
 
-> **No KVM/QEMU daemon module.** devenv 2.x has no built-in KVM/QEMU service
-> module, and `devenv.nix` deliberately does not declare one (it would error at
-> evaluation). The orchestrator owns the VM host stack through its own Rust
-> crates and host-side scripts, not through devenv-managed services.
-
----
+devenv 2.x has no built-in KVM/QEMU service module, and `devenv.nix` does not
+declare one. The orchestrator owns the VM host stack through its Rust crates and
+host scripts, not through devenv-managed services.
 
 ## 3. Host preflight: what it means
 
-`scripts/preflight.sh` is a **read-only** host capability probe. It never
-mutates sysctls, never creates namespaces, never loads kernel modules, and never
-opens `/dev/kvm` with write intent. It parses `/etc/os-release` with `grep`/`sed`
-(never `source`).
+`scripts/preflight.sh` reads host capabilities. It never mutates sysctls,
+creates namespaces, loads kernel modules, or opens `/dev/kvm` for writing. It
+parses `/etc/os-release` with `grep` and `sed` and does not source the file.
 
 ### Run it
 
 ```bash
-# Human-readable JSON to stdout, plus a convenience copy in .preflight/host.json
+# Print JSON to stdout and write a convenience copy in .preflight/host.json.
 bash scripts/preflight.sh
 
-# Atomic write to an explicit path (required for CI evidence):
+# Write atomically to an explicit path, as CI evidence expects.
 bash scripts/preflight.sh --json .preflight/host.json
 
-# Treat warnings (degraded conditions) as blockers:
+# Treat degraded warnings as blockers.
 bash scripts/preflight.sh --strict --json .preflight/host.json
 ```
 
@@ -79,98 +69,94 @@ bash scripts/preflight.sh --strict --json .preflight/host.json
 
 | Exit | Meaning | Lane consequence |
 | --- | --- | --- |
-| `0` | **Capable** — no blockers, no degraded warnings. | Privileged lane may proceed. |
-| `2` | **Degraded** — warnings present, no hard blockers. | Privileged lane may proceed *with caveat*; blocked under `--strict`. |
-| `77` | **Blocked** — one or more blockers. | Privileged lane must NOT run; emit blocked evidence instead of mocking a pass. |
+| `0` | Capable. No blockers and no warnings. | The privileged lane may proceed. |
+| `2` | Degraded. Warnings are present and no hard blocker exists. | Proceed with a caveat, or block under `--strict`. |
+| `77` | Blocked. One or more blockers are present. | Do not run the privileged lane. Record blocked evidence. |
 
-`--strict` promotes the degraded (`2`) condition to blocked (`77`).
+`--strict` promotes the degraded (`2`) result to blocked (`77`).
 
 ### What the JSON records
 
 The output conforms to
 [`schemas/evidence-host-preflight.v1.json`](../schemas/evidence-host-preflight.v1.json)
-(`class: "host_preflight"`). Top-level fields:
+with `class: "host_preflight"`. The fields are:
 
 | Field | Meaning |
 | --- | --- |
-| `host` | OS / arch / kernel / Nix version. |
-| `cpu` | Vendor, virtualization flag (`virt`), nested-virt flag (`nested`). |
-| `kvm` | `/dev/kvm` mode/uid/gid, `accessible`, `api_version`. |
-| `tap` | `/dev/net/tun` mode and `accessible`. |
-| `cgroup_v2` | `unified` flag and the list of available `controllers`. |
-| `tools` | Firecracker + jailer presence, version, and `sha256`. |
+| `host` | OS, architecture, kernel, and Nix version. |
+| `cpu` | Vendor, virtualization flag (`virt`), and nested-virtualization flag (`nested`). |
+| `kvm` | `/dev/kvm` mode, uid, gid, accessibility, and API version. |
+| `tap` | `/dev/net/tun` mode and accessibility. |
+| `cgroup_v2` | Unified flag and available controllers. |
+| `tools` | Firecracker and jailer presence, version, and SHA-256. |
 | `mitigations` | CPU vulnerability status from `/sys/devices/system/cpu/vulnerabilities/*`. |
-| `blockers` | Array of hard-blocking condition tokens. |
-| `warnings` | Array of degraded-condition tokens. |
-| `blocked_reason` | Human-readable summary when blocked. |
+| `blockers` | Hard-blocking condition tokens. |
+| `warnings` | Degraded-condition tokens. |
+| `blocked_reason` | A human-readable summary when the host is blocked. |
 
 ### Documented toolchain limitation
 
-Pure Bash cannot issue `ioctl(2)`, so the script cannot run `KVM_GET_API_VERSION`
-or `TUNGETFEATURES` directly. When `/dev/kvm` is openable the probe reports
-`kvm.api_version = -1` and emits the warning token
-`kvm_api_version_unprobed_in_bash`. A future privileged-host runner may ship a
-small `kvm-probe` companion binary to refine `api_version` to the schema's strict
-`O_RDWR + ioctl` semantics. This gap is recorded explicitly rather than papered
-over.
-
----
+Pure Bash cannot issue `ioctl(2)`, so the script cannot run
+`KVM_GET_API_VERSION` or `TUNGETFEATURES`. When `/dev/kvm` is openable, the
+probe reports `kvm.api_version = -1` and emits the warning token
+`kvm_api_version_unprobed_in_bash`. A privileged runner can refine the value
+with a small companion binary. The gap is recorded instead of hidden.
 
 ## 4. The two verification lanes
 
-The platform uses a **hybrid** test strategy: deterministic contracts first,
-privileged host behavior gated behind preflight. This keeps deterministic
-feedback fast and reproducible while still requiring real evidence for any host
-claim.
+The platform uses a hybrid test strategy: deterministic contracts first, with
+privileged host behavior gated behind preflight. This keeps feedback fast and
+reproducible while still requiring real evidence for host claims.
 
 ### 4.1 Deterministic lane (no host capabilities required)
 
-Runs on any host. Covers unit tests, property tests, API/transport contract
-parity, scheduler pure logic, the OCI importer, the snapshot manifest and
-compatibility gate, and the adversarial security batteries — all without
-`/dev/kvm`, `/dev/net/tun`, or a writable cgroupfs.
+The deterministic lane covers unit tests, property tests, API and transport
+contract parity, scheduler logic, the OCI importer, the snapshot manifest and
+compatibility gate, and the adversarial security batteries. It needs no
+`/dev/kvm`, `/dev/net/tun`, or writable cgroupfs.
 
 ```bash
-# Whole-workspace deterministic suite:
 cargo test --workspace
-
-# Formatting and lint gates:
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-
-# Dependency policy gate:
-cargo deny check
 ```
 
-Deterministic evidence artifacts MUST NOT carry `host_preflight` or `target_ms`
-fields — per-host metadata would only confuse a reproducible result. See
+Dependency policy is configured in `deny.toml`. CI does not run it, so run
+`nix run nixpkgs#cargo-deny -- check` when you change a dependency.
+
+Deterministic evidence does not carry `host_preflight` or `target_ms` fields.
+Per-host metadata would make a reproducible result depend on the host. See
 [`schemas/evidence-deterministic.v1.json`](../schemas/evidence-deterministic.v1.json).
 
 ### 4.2 Privileged lane (requires a capable host)
 
-Exercises real Firecracker boot, cgroup-v2 enforcement, TAP/netns, jailer launch,
-lifecycle cleanup, and snapshot/restore against real KVM. The privileged lane is
-**gated**: it refuses to run unless strict preflight passes, and it emits
-`blocked` evidence (never a mocked pass) when prerequisites are absent.
+The privileged lane exercises Firecracker boot, cgroup-v2 enforcement,
+TAP/netns, jailer launch, lifecycle cleanup, and snapshot/restore against real
+KVM. Two scripts split the work. `scripts/run-privileged-tests.sh` runs strict
+preflight and refuses a blocked host. `scripts/run-privileged-suite.sh` runs the
+tests and needs `sudo` for cgroup, netns, and jailer setup.
 
 ```bash
-# Gate the privileged lane. Runs preflight --strict first; exits 77 if blocked.
+# Strict preflight gate. Exits 77 when the host is blocked.
 bash scripts/run-privileged-tests.sh
+
+# Run the suite after the gate passes.
+sudo -E bash scripts/run-privileged-suite.sh
 ```
 
-Feature-gated privileged test targets (run only on a capable host):
+Privileged test targets:
 
 ```bash
-# Direct-KVM educational subset privileged boot (requires /dev/kvm):
+# Direct-KVM educational subset, requires /dev/kvm.
 cargo test -p microvm-backend-directkvm --features direct-kvm,privileged
 
-# Adversarial security batteries that need a real kernel (skip gracefully otherwise):
+# Adversarial security batteries that need a real kernel.
 cargo test -p microvm-security-tests --features privileged
 ```
 
-Privileged evidence embeds the `host_preflight` snapshot and is governed by
+Privileged evidence embeds the `host_preflight` snapshot and conforms to
 [`schemas/evidence-privileged.v1.json`](../schemas/evidence-privileged.v1.json).
-That schema carries an anti-mock rule: when `host_preflight.kvm_ok` is `false`,
+The schema carries an anti-mock rule: when `host_preflight.kvm_ok` is `false`,
 no run may record `pass: true`. A blocked lane emits `pass: false`,
 `blocked: true`, and a `blocked_reason` token.
 
@@ -178,66 +164,75 @@ no run may record `pass: true`. A blocked lane emits `pass: false`,
 
 | Lane | Substrate | Gate | On an incapable host |
 | --- | --- | --- | --- |
-| deterministic | none | `cargo test --workspace` | Runs unchanged. |
-| privileged | `/dev/kvm` (API ≥ 12), `/dev/net/tun`, unified cgroup-v2 (`cpu`+`memory`+`pids`), pinned Firecracker+jailer | `bash scripts/run-privileged-tests.sh` (preflight `--strict`) | Emits `blocked` evidence; never mocks a pass. |
-| benchmark | same as privileged, plus page-cache control and N ≥ 100 samples | benchmark harness binary | Records a stable blocked reason, zero samples, null percentiles; exits `77`. |
-
----
+| deterministic | None | `cargo test --workspace` | Runs unchanged. |
+| privileged | `/dev/kvm` (API 12 or later), `/dev/net/tun`, unified cgroup v2 with `cpu`, `memory`, and `pids`, pinned Firecracker and jailer | `bash scripts/run-privileged-tests.sh`, then `sudo -E bash scripts/run-privileged-suite.sh` | The gate exits `77` and the suite is not run. |
+| benchmark | The privileged substrate, plus page-cache control and at least 100 samples | Benchmark harness binary | Records a stable blocked reason, zero samples, and null percentiles, then exits `77`. |
 
 ## Benchmark interpretation
 
-Benchmark artifacts are governed by
-[`schemas/evidence-benchmark.v1.json`](../schemas/evidence-benchmark.v1.json)
-and follow strict interpretation rules. Read these before quoting any number.
+Benchmark artifacts conform to
+[`schemas/evidence-benchmark.v1.json`](../schemas/evidence-benchmark.v1.json).
+Read these rules before you quote a number.
 
-- **Target, not SLA.** The `<200 ms` snapshot/restore figure is a *measured
-  reference target* recorded as `target_ms` metadata. Firecracker publishes no
-  universal restore-latency SLA, and this project makes no universal guarantee
-  that every host achieves it. Restore latency depends on memory size, vCPU
-  count, device count, and storage/page-cache state.
-- **No pass/fail gate.** The benchmark schema forbids a `pass` field at the top
-  level and on every benchmark item. Reviewers compare the recorded p50/p95/p99
-  against `target_ms`; the harness never reduces that comparison to a boolean.
-- **Distributions, not verdicts.** Each lane records p50/p95/p99 under cold and
-  warm page-cache conditions, with full host metadata, pinned workload/artifact
-  hashes, and runtime versions.
-- **Like-for-like content.** A single pinned `payload_sha256` is shared by the
-  Docker and VM comparison lanes. Comparing different image contents is
-  explicitly not proof of superiority.
-- **Blocked lanes carry evidence.** An unavailable Docker/KVM/Firecracker lane
-  records a stable blocked reason, zero samples, and null percentiles — never
-  fabricated samples. Sample failures are recorded and excluded from statistics,
-  never zero-filled.
+- The `<200 ms` snapshot/restore figure is a measured reference target recorded
+  as `target_ms`. Firecracker publishes no universal restore-latency SLA, and
+  this project does not guarantee that every host reaches the target. Restore
+  latency depends on memory size, vCPU count, device count, and page-cache
+  state.
+- The harness publishes p50, p95, and p99 under cold and warm page-cache
+  conditions, with host metadata, pinned workload and artifact hashes, and
+  runtime versions. It does not reduce a comparison to a boolean, and the
+  schema forbids a `pass` field.
+- The Docker and VM lanes share one pinned `payload_sha256`. A comparison across
+  different image contents is not evidence of superiority.
+- A blocked lane records a stable reason, zero samples, and null percentiles.
+  Failed samples are recorded and excluded from the statistics, not zero-filled.
 
-See [adr/0011-benchmark-distributions-not-sla.md](adr/0011-benchmark-distributions-not-sla.md)
-for the decision rationale.
-
----
+See [ADR-0011](adr/0011-benchmark-distributions-not-sla.md) for the rationale.
 
 ## Direct-KVM educational subset
 
-The `microvm-backend-directkvm` crate is an **educational** KVM backend gated
-behind the `direct-kvm` Cargo feature (off by default). It is **not** a
-production Firecracker replacement. Its contract is pinned in
-[design/direct-kvm-subset.md](design/direct-kvm-subset.md): one architecture
-(x86_64), one vCPU, one 16 MiB memory slot, serial output, and four handled VM
-exits. Deterministic contract tests run without `/dev/kvm`:
+The `microvm-backend-directkvm` crate is an educational KVM backend behind the
+`direct-kvm` Cargo feature, off by default. It is not a production Firecracker
+replacement. Its contract is pinned in
+[design/direct-kvm-subset.md](design/direct-kvm-subset.md): x86_64 only, one
+vCPU, one 16 MiB memory slot, serial output, and four handled VM exits.
+
+The deterministic contract tests run without `/dev/kvm`:
 
 ```bash
 cargo test -p microvm-backend-directkvm --no-default-features
 ```
 
 The privileged boot test requires `/dev/kvm` and the `direct-kvm,privileged`
-features (see §4.2).
+features. See section 4.2.
 
----
+## Guest image pipeline
+
+The snapshot and benchmark lanes need a Firecracker-compatible kernel and
+rootfs. `scripts/build-guest-image.sh` builds three artifacts under `guest/`:
+
+- `vmlinux`: the Firecracker CI guest kernel, or the URL in `KERNEL_URL`.
+- `rootfs.ext4`: a 64 MiB ext4 image with static busybox and the health server
+  from `crates/microvm-guest-health`.
+- `payload.sha256`: SHA-256 checksums for the kernel and rootfs.
+
+```bash
+bash scripts/build-guest-image.sh
+```
+
+The script needs the Rust `x86_64-unknown-linux-musl` target, `mkfs.ext4`,
+`curl`, a static busybox, `sha256sum`, and `sudo` for the loop mount. The
+`guest/` directory is git-ignored. `scripts/prepare-bench-artifacts.sh` builds
+the image when it is absent, takes a snapshot, and runs the Firecracker and
+Docker lanes against the same payload bytes.
 
 ## Troubleshooting orientation
 
 | Symptom | First check |
 | --- | --- |
-| Preflight exits `77` | Read `blockers` / `blocked_reason` in `.preflight/host.json`. Privileged work is not possible on this host; deterministic work still is. |
-| Preflight exits `2` | Read `warnings`. The host is degraded; `--strict` will treat this as blocked. |
-| `kvm_api_version_unprobed_in_bash` warning | Expected Bash limitation (§3). The device is openable but the API version was not probed via ioctl. |
-| Firecracker/jailer `accessible: false` | The pinned binaries are not on `PATH`; the privileged lane will block rather than fall back. |
-| Privileged test skips | Expected on a non-capable/non-root host; privileged-gated tests skip gracefully instead of failing. |
+| Preflight exits `77` | Read `blockers` and `blocked_reason` in `.preflight/host.json`. Privileged work is not possible on this host; deterministic work still is. |
+| Preflight exits `2` | Read `warnings`. `--strict` treats the same result as blocked. |
+| `kvm_api_version_unprobed_in_bash` warning | This is the Bash limitation in section 3. The device is openable, but the API version was not probed. |
+| Firecracker or jailer reports `accessible: false` | The pinned binaries are not on `PATH`. The privileged lane blocks instead of falling back. |
+| Privileged tests skip | The host is not capable or the process is not root. Privileged-gated tests skip and record blocked evidence. |

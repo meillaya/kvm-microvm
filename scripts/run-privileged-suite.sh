@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run-privileged-suite.sh — run all privileged tests for the kvm-microvm-orchestrator.
+# run-privileged-suite.sh: run all privileged tests for the kvm-microvm-orchestrator.
 #
 # Usage:
 #   devenv shell
@@ -65,7 +65,7 @@ run "lifecycle_cleanup" \
 run "security_adversarial" \
   cargo test -p microvm-security-tests --features privileged -- --nocapture
 
-# --- Direct-KVM boot (todo 30) — no sudo needed ---
+# --- Direct-KVM boot (todo 30); no sudo needed ---
 run "directkvm_boot" \
   cargo test -p microvm-backend-directkvm --features direct-kvm,privileged --test privileged_boot -- --nocapture
 
@@ -74,7 +74,7 @@ echo "================================================================"
 echo "  RESULTS: $PASS passed, $FAIL failed, $SKIP skipped"
 echo "================================================================"
 
-# --- Docker comparison (todo 27) — needs Docker daemon ---
+# --- Docker comparison (todo 27): needs Docker daemon ---
 if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
   echo ""
   echo "================================================================"

@@ -1,6 +1,6 @@
 //! Tiny static HTTP health server for microvm guest rootfs.
 //!
-//! Uses only `std::net::TcpListener` — no external HTTP framework.
+//! Uses only `std::net::TcpListener`; no external HTTP framework.
 //! Designed to compile as a static musl binary for Firecracker guests.
 
 use std::env;

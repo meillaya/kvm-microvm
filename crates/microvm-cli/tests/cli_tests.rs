@@ -51,7 +51,7 @@ fn all_required_subcommands_exist() {
 }
 
 // ---------------------------------------------------------------------------
-// Forbidden flags must NOT exist
+// Forbidden flags must not exist
 // ---------------------------------------------------------------------------
 
 /// The set of flags the plan forbids the CLI from exposing.

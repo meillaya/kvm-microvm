@@ -1,105 +1,82 @@
-# kvm-microvm-orchestrator — Operator Documentation
+# Operator documentation
 
-A Rust-based, **Firecracker-first** microVM control plane that creates, starts,
-stops, snapshots, and restores isolated Linux workloads through both REST/JSON
-and gRPC, exposed **only** over protected Unix domain sockets.
+This directory is the operator-facing documentation for
+kvm-microvm-orchestrator. Start with [setup](setup.md) to run the deterministic
+lane. Read [architecture](architecture.md) and [security](security.md) before
+you trust a privileged result.
 
-This directory is the operator-facing documentation set. It describes how to
-set up a development environment, what the host preflight means, how the
-platform isolates workloads, how to operate snapshots/network/cleanup, and the
-locked architecture decisions behind the design.
+## Scope
 
----
+The platform creates, starts, stops, snapshots, and restores Firecracker
+microVMs. It is a development and verification platform, not a production
+service. These boundaries are part of the design, and tests enforce most of
+them:
 
-## Read this first: what this project is NOT
+- The control plane listens on Unix domain sockets. There is no TCP endpoint.
+- The OCI entry point imports digest-pinned local layouts. It performs no
+  network I/O and applies no host mounts, capabilities, or process controls.
+- Snapshots stay local and content-addressed. The compatibility gate rejects a
+  manifest from a different host envelope or owner.
+- Benchmarks publish distributions. The `<200 ms` target is metadata for a
+  reviewer, not a release gate.
+- The TCB covers input validation, authentication, binary provenance, artifact
+  integrity, isolation setup, and cleanup. It does not claim host hardening
+  beyond that boundary.
 
-These boundaries are deliberate and are enforced by tests. Every page in this
-set respects them.
-
-- **Not production-ready.** This is a development and verification platform.
-  Nothing here claims production readiness or a production support contract.
-- **No universal latency guarantee.** The `<200 ms` snapshot/restore figure is a
-  *measured reference target*, not an SLA. Benchmarks publish p50/p95/p99
-  distributions with host conditions; they never reduce to a pass/fail verdict.
-  See [setup.md](setup.md#benchmark-interpretation) and
-  [adr/0011-benchmark-distributions-not-sla.md](adr/0011-benchmark-distributions-not-sla.md).
-- **Not a general OCI runtime.** The `microvm run` interface is a *constrained
-  local import* path for digest-pinned OCI-like layouts. It performs no network
-  I/O, applies no host mounts/capabilities/process controls, and makes no OCI
-  runtime conformance claim. See
-  [adr/0008-local-digest-artifacts-constrained-oci.md](adr/0008-local-digest-artifacts-constrained-oci.md).
-- **No host-security claim beyond the stated TCB.** The platform owns a defined
-  trusted computing base (validation, auth, binary provenance, artifact hashes,
-  safe cleanup). It does **not** treat Firecracker's unauthenticated UDS API,
-  trusted jailer paths, release-build seccomp, or Firecracker's CRC as sufficient
-  outer security. See [security.md](security.md).
-- **Unix sockets only.** No TCP, loopback, or remote listener exists anywhere in
-  the platform. See
-  [adr/0001-unix-socket-only-transport.md](adr/0001-unix-socket-only-transport.md).
-
----
+See [security.md](security.md) for the full threat model.
 
 ## Documentation map
 
-| Document | What it covers |
+| Document | Contents |
 | --- | --- |
-| [setup.md](setup.md) | devenv/Nix setup, host preflight meanings, deterministic vs privileged lanes, runnable commands, benchmark interpretation. |
-| [architecture.md](architecture.md) | Component topology, transport model, isolation model, state/observability, interfaces. |
+| [setup.md](setup.md) | devenv setup, host preflight meanings, deterministic and privileged lanes, benchmark interpretation. |
+| [architecture.md](architecture.md) | Component topology, transport model, isolation model, state and observability, interfaces and benchmarks. |
 | [security.md](security.md) | Threat model, TCB, Unix-socket auth, tenant ownership, isolation boundaries, explicit non-claims. |
-| [runbooks/](runbooks/README.md) | Operational runbooks: preflight, snapshot, network, cleanup. |
-| [adr/](adr/README.md) | Architecture Decision Records for every locked decision and scope-out rule. |
-| [design/direct-kvm-subset.md](design/direct-kvm-subset.md) | Pinned contract for the educational direct-KVM subset (not a production VMM). |
-| [release-readiness.md](release-readiness.md) | Release-readiness integration matrix: deterministic/privileged/benchmark lanes, scope fidelity, and five-component status (plan todo 34). |
+| [runbooks/](runbooks/README.md) | Preflight, snapshot, network, cleanup, and CI setup procedures. |
+| [adr/](adr/README.md) | Architecture decision records for each locked decision and scope-out rule. |
+| [design/direct-kvm-subset.md](design/direct-kvm-subset.md) | Pinned contract for the educational direct-KVM subset. |
+| [release-readiness.md](release-readiness.md) | Verification matrix across the deterministic, privileged, and benchmark lanes. |
 
-Project-level references (source of truth for contracts):
+Reference contracts live outside this directory:
 
 | Reference | Purpose |
 | --- | --- |
-| [`api/openapi.yaml`](../api/openapi.yaml) | REST lifecycle API contract (Unix-socket server). |
-| [`api/microvm/v1/service.proto`](../api/microvm/v1/service.proto) | gRPC lifecycle service contract (Unix-socket only). |
-| [`schemas/`](../schemas/README.md) | JSON Schemas for evidence, snapshot manifest, and metrics records. |
+| [`api/openapi.yaml`](../api/openapi.yaml) | REST lifecycle API. |
+| [`api/microvm/v1/service.proto`](../api/microvm/v1/service.proto) | gRPC lifecycle service. |
+| [`schemas/`](../schemas/README.md) | JSON Schemas for evidence, snapshot manifests, and metrics records. |
 | [`scripts/preflight.sh`](../scripts/preflight.sh) | Read-only host capability probe. |
-| [`scripts/run-privileged-tests.sh`](../scripts/run-privileged-tests.sh) | Privileged-lane gate. |
-
----
+| [`scripts/run-privileged-suite.sh`](../scripts/run-privileged-suite.sh) | Privileged test runner. |
 
 ## Five independently verifiable components
 
-The platform is organized into five topology components. Each can succeed or
-fail independently and carries its own evidence. See
-[architecture.md](architecture.md) for the full topology and crate map.
+The platform has five components. Each can fail alone and carries its own
+evidence. [architecture.md](architecture.md) shows how they connect and maps
+every crate.
 
-1. **environment** — reproducible devenv/Nix toolchain and Linux host preflight.
-2. **lifecycle** — typed VM control plane over a transport-neutral service.
-3. **isolation** — per-VM cgroup-v2, jailer, TAP/netns/NAT, and cleanup.
-4. **state-observability** — snapshots, metrics, and deterministic scheduling.
-5. **interfaces-benchmarks** — constrained OCI import, Docker comparison, warm
-   HTTP-function demo, and the educational direct-KVM subset.
+| Component | What it owns |
+| --- | --- |
+| environment | The devenv/Nix toolchain and the Linux host preflight. |
+| lifecycle | The typed VM control plane behind REST and gRPC. |
+| isolation | The jailer, cgroup v2 limits, TAP networking, and cleanup. |
+| state-observability | Snapshots, metrics, and deterministic placement. |
+| interfaces-benchmarks | Local OCI import, Docker comparison, the warm demo, and the direct-KVM subset. |
 
----
+## Quick start
 
-## Quick start (orientation only)
-
-The full, verified command sequence lives in [setup.md](setup.md). This is only
-an orientation sketch — run the preflight before trusting any privileged result.
+The full sequence is in [setup.md](setup.md). The short version:
 
 ```bash
-# 1. Enter the pinned development environment.
 devenv shell
-
-# 2. Probe the host (read-only). Exit 0 = capable, 2 = degraded, 77 = blocked.
 bash scripts/preflight.sh --json .preflight/host.json
-
-# 3. Run the deterministic lane (no /dev/kvm required).
 cargo test --workspace
-
-# 4. Gate the privileged lane (requires a capable host).
-bash scripts/run-privileged-tests.sh
 ```
 
----
+Preflight exits `0` for a capable host, `2` for a degraded host, and `77` for a
+blocked host. The deterministic suite runs on any Linux host. The privileged
+suite requires `/dev/kvm`, `/dev/net/tun`, cgroup v2, and the pinned Firecracker
+and jailer binaries.
 
 ## Status
 
-Development / verification platform. See the non-claims above and
-[security.md](security.md) for the authoritative scope and trust boundaries.
+The project is under active development. [release-readiness.md](release-readiness.md)
+records which lanes passed, which blocked on host capabilities, and why.

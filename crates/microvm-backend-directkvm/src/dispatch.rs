@@ -1,6 +1,6 @@
 //! Backend-neutral VM-exit dispatcher for the educational direct-KVM subset.
 //!
-//! The dispatcher is a **pure state machine** over a backend-neutral
+//! The dispatcher is a pure state machine over a backend-neutral
 //! [`GuestExit`] representation. The privileged runner maps the real
 //! `kvm_ioctls::VcpuExit` into [`GuestExit`]; the dispatch logic itself never
 //! touches KVM and is fully deterministic, so it is tested in the default

@@ -3,7 +3,7 @@
 //!
 //! # Lifecycle
 //! A VM is added with [`MetricsCollector::register_vm`] and removed with
-//! [`MetricsCollector::stop_sampling`]. **Sampling stops after VM cleanup**:
+//! [`MetricsCollector::stop_sampling`]. Sampling stops after VM cleanup:
 //! once a VM is removed, [`MetricsCollector::sample`] returns
 //! [`ErrorCode::ArtifactNotFound`] and performs no filesystem or agent reads.
 //!
@@ -254,7 +254,7 @@ impl MetricsCollector {
     /// Collect a fresh [`VmMetricsRecord`] for a VM.
     ///
     /// Returns [`ErrorCode::ArtifactNotFound`] if the VM is not registered
-    /// (including after cleanup — sampling has stopped). Source failures are
+    /// (including after cleanup: sampling has stopped). Source failures are
     /// recorded as availability flags plus bounded error counters, never as
     /// panics or zero-fills.
     pub fn sample(&self, vm_id: &VmId) -> Result<VmMetricsRecord, MicrovmError> {

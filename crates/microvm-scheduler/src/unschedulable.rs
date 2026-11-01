@@ -2,9 +2,9 @@
 //!
 //! When a request cannot be placed, the scheduler returns an [`Unschedulable`]
 //! carrying a typed [`UnschedulableReason`]. There are no free-form strings in
-//! the reason itself — every variant is a stable, machine-readable case. The
+//! the reason itself: every variant is a stable, machine-readable case. The
 //! scheduler is pure: returning `Unschedulable` never touches cgroups, TAP, or
-//! Firecracker, so a no-fit decision has **zero** host side effects.
+//! Firecracker, so a no-fit decision has zero host side effects.
 
 use microvm_types::{TenantId, VmId};
 use serde::{Deserialize, Serialize};

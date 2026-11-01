@@ -1,6 +1,6 @@
 //! Cgroup-v2 resource specifications and controller model.
 //!
-//! This module is **pure**: it contains no filesystem or host calls. Every
+//! This module is pure: it contains no filesystem or host calls. Every
 //! type here can be validated, serialized, and rendered to the exact cgroup-v2
 //! file contents and `io.max` line the kernel expects, which keeps the
 //! specification logic fully deterministic and testable without root.
@@ -377,7 +377,7 @@ impl CgroupSpecBuilder {
 ///
 /// Returns [`ErrorCode::CgroupUnavailable`] listing the missing controllers
 /// when the parent cgroup does not expose the full required set. This check is
-/// intended to run **before** any process spawn.
+/// intended to run before any process spawn.
 pub fn check_required_controllers(
     available: &[Controller],
     spec: &CgroupSpec,

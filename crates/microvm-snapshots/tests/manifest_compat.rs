@@ -1,9 +1,9 @@
 //! Deterministic manifest + compatibility-gate contract tests (plan todo 21).
 //!
 //! These tests require no `/dev/kvm` and spawn no child process. They prove
-//! that every rejection — unsupported schema, foreign owner, binary/CPU/KVM/
+//! that every rejection: unsupported schema, foreign owner, binary/CPU/KVM/
 //! cgroup incompatibility, quota overflow, immutable-memory violation, and
-//! content-hash mismatch — is a typed failure produced BEFORE any Firecracker
+//! content-hash mismatch: is a typed failure produced BEFORE any Firecracker
 //! load would occur.
 
 use chrono::{DateTime, Utc};
