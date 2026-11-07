@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kvm-microvm-orchestrator.local/schemas/evidence-host-preflight.v1.json",
   "title": "host preflight (v1)",
-  "description": "Standalone host preflight artifact. Captures the read-only host capability snapshot (KVM device, TUN device, cgroup-v2 controllers, Firecracker/jailer binary provenance, CPU mitigations) used by the privileged lane to decide whether to run, block, or fail-closed. The preflight is also embedded as host_preflight inside every evidence-privileged.v1.json artifact so a reviewer can prove the result was produced by a real substrate.",
+  "description": "Standalone host preflight artifact. Captures the read-only host capability snapshot (KVM device, TUN device, cgroup-v2 controllers, Firecracker/jailer binary provenance, CPU mitigations) used by the privileged lane to decide whether to run, block, or fail-closed.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -43,7 +43,7 @@
       "properties": {
         "vendor": { "description": "CPU vendor string (e.g. 'GenuineIntel', 'AuthenticAMD', 'Cavium', 'Apple').", "type": "string", "minLength": 1 },
         "virt": { "description": "True iff hardware virtualization extensions are advertised by the CPU (SVM on AMD, VMX on Intel).", "type": "boolean" },
-        "nested": { "description": "True iff nested virtualization is available on the host (KVM_CAP_NESTED). Required for the direct-KVM educational subset.", "type": "boolean" }
+        "nested": { "description": "True iff nested virtualization is available on the host (KVM_CAP_NESTED). Recorded for host capability reporting.", "type": "boolean" }
       }
     },
     "kvm": {

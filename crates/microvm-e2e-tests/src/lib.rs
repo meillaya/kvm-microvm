@@ -1,4 +1,4 @@
-//! End-to-end API lifecycle tests for the kvm-microvm-orchestrator platform.
+//! End-to-end API lifecycle tests for the microvm platform.
 //!
 //! This is a test-only crate: it ships no production code and exists solely
 //! to hold the end-to-end (e2e) integration suite mandated by phase 2 story 2.

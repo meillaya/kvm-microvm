@@ -57,6 +57,8 @@ fn openapi_has_all_expected_operations() {
     let expected_ids = [
         "createVm",
         "getVmStatus",
+        "listVms",
+        "deleteVm",
         "startVm",
         "stopVm",
         "snapshotVm",
@@ -127,6 +129,8 @@ fn proto_has_microvm_service_with_all_rpcs() {
         "SnapshotVm",
         "RestoreVm",
         "GetVmStatus",
+        "ListVms",
+        "DeleteVm",
         "GetVmMetrics",
     ];
 

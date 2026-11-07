@@ -1,7 +1,7 @@
 //! Availability-flagged metric slots.
 //!
 //! The orchestrator's metrics contract requires that missing data is marked
-//! unavailable, never zero-filled (plan todo 23). A `0` in a metrics field
+//! unavailable, never zero-filled. A `0` in a metrics field
 //! must mean "measured zero", not "we could not measure it". [`Availability`]
 //! makes that distinction unrepresentable-as-zero by construction: a source
 //! either produced a value ([`Availability::Available`]) or it did not

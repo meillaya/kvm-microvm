@@ -13,6 +13,7 @@
 
 use crate::error::CliError;
 use microvm_errors::ErrorCode;
+use microvm_types::NetworkPolicy;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::os::unix::fs::MetadataExt;
@@ -25,7 +26,7 @@ const MAX_RESPONSE_BODY: usize = 16 * 1024 * 1024;
 
 /// A REST/JSON client that talks to the microvm daemon over a Unix socket.
 ///
-/// Every method maps to one OpenAPI lifecycle route (todo 8). The client
+/// Every method maps to one OpenAPI lifecycle route (the API contract). The client
 /// performs no TCP I/O; it connects exclusively through the filesystem
 /// socket path supplied at construction.
 #[derive(Clone, Debug)]
@@ -135,6 +136,19 @@ impl Client {
         let path = format!("/vms/{}/metrics", vm_id);
         let resp = self.request("GET", &path, None).await?;
         Self::decode(&resp)
+    }
+
+    /// `GET /vms`: list VMs.
+    pub async fn list_vms(&self) -> Result<VmListResponse, CliError> {
+        let resp = self.request("GET", "/vms", None).await?;
+        Self::decode(&resp)
+    }
+
+    /// `DELETE /vms/{vm_id}`: delete a stopped or failed VM.
+    pub async fn delete_vm(&self, vm_id: &str) -> Result<(), CliError> {
+        let path = format!("/vms/{}", vm_id);
+        let resp = self.request("DELETE", &path, None).await?;
+        Self::expect_empty(&resp)
     }
 
     /// Send one HTTP/1.1 request over the Unix socket and read the response.
@@ -315,44 +329,7 @@ pub struct CreateVmRequest {
     /// Disk allocation in MiB (minimum 1).
     pub disk_mib: u64,
     /// Network egress policy.
-    pub network_policy: NetworkPolicyArg,
-}
-
-/// Network egress policy as serialized on the wire.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum NetworkPolicyArg {
-    /// No network interface.
-    None,
-    /// NAT-only.
-    NatOnly,
-    /// Full egress allowed.
-    EgressAllowed,
-}
-
-impl std::fmt::Display for NetworkPolicyArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            Self::None => "none",
-            Self::NatOnly => "nat-only",
-            Self::EgressAllowed => "egress-allowed",
-        };
-        f.write_str(s)
-    }
-}
-
-impl std::str::FromStr for NetworkPolicyArg {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "none" => Ok(Self::None),
-            "nat-only" => Ok(Self::NatOnly),
-            "egress-allowed" => Ok(Self::EgressAllowed),
-            other => Err(format!(
-                "invalid network policy '{other}'; expected none, nat-only, or egress-allowed"
-            )),
-        }
-    }
+    pub network_policy: NetworkPolicy,
 }
 
 /// Response body for `POST /vms`.
@@ -377,7 +354,7 @@ pub struct RestoreVmResponse {
 }
 
 /// Response body for `GET /vms/{vm_id}`.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct VmStatusResponse {
     /// VM identifier.
     pub vm_id: String,
@@ -389,8 +366,15 @@ pub struct VmStatusResponse {
     pub resource_spec: ResourceSpecResponse,
 }
 
+/// Response body for `GET /vms`.
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub struct VmListResponse {
+    /// VMs visible to the caller.
+    pub vms: Vec<VmStatusResponse>,
+}
+
 /// Resource specification in API responses.
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ResourceSpecResponse {
     /// Number of virtual CPUs.
     pub vcpu_count: u32,
@@ -398,6 +382,8 @@ pub struct ResourceSpecResponse {
     pub memory_mib: u64,
     /// Disk in MiB.
     pub disk_mib: u64,
+    /// Network egress policy.
+    pub network_policy: NetworkPolicy,
 }
 
 #[cfg(test)]
@@ -460,28 +446,23 @@ mod tests {
     }
 
     #[test]
-    fn network_policy_arg_roundtrip() {
+    fn network_policy_roundtrip() {
         for (s, expected) in [
-            ("none", NetworkPolicyArg::None),
-            ("nat-only", NetworkPolicyArg::NatOnly),
-            ("egress-allowed", NetworkPolicyArg::EgressAllowed),
+            ("none", NetworkPolicy::None),
+            ("nat-only", NetworkPolicy::NatOnly),
+            ("egress-allowed", NetworkPolicy::EgressAllowed),
         ] {
-            let parsed: NetworkPolicyArg = s.parse().unwrap();
+            let parsed: NetworkPolicy = s.parse().unwrap();
             assert_eq!(parsed, expected);
             assert_eq!(parsed.to_string(), s);
         }
     }
 
     #[test]
-    fn network_policy_arg_invalid() {
-        assert!("bridge".parse::<NetworkPolicyArg>().is_err());
-    }
-
-    #[test]
-    fn network_policy_arg_serializes_snake_case() {
+    fn network_policy_serializes_hyphenated() {
         assert_eq!(
-            serde_json::to_string(&NetworkPolicyArg::NatOnly).unwrap(),
-            r#""nat_only""#
+            serde_json::to_string(&NetworkPolicy::NatOnly).unwrap(),
+            r#""nat-only""#
         );
     }
 
@@ -491,7 +472,7 @@ mod tests {
             vcpu_count: 2,
             memory_mib: 512,
             disk_mib: 1024,
-            network_policy: NetworkPolicyArg::None,
+            network_policy: NetworkPolicy::None,
         };
         let json = serde_json::to_string(&req).unwrap();
         assert!(json.contains("\"vcpu_count\":2"));

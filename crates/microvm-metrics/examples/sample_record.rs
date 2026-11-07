@@ -1,4 +1,4 @@
-//! Emits two example [`VmMetricsRecord`] documents (plan todo 23):
+//! Emits two example [`VmMetricsRecord`] documents:
 //! - a fully-available record (cgroup + network + guest), and
 //! - a degraded record where the guest agent is unavailable (never zero-filled).
 //!

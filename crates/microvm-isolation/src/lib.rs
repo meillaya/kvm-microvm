@@ -1,5 +1,5 @@
 //! Explicit cgroup-v2 hierarchy management and resource limits for the
-//! kvm-microvm-orchestrator platform.
+//! microvm platform.
 //!
 //! This crate owns the platform's cgroup-v2 isolation boundary. Firecracker's
 //! jailer historically defaulted to cgroup v1 and is willing to create cgroups

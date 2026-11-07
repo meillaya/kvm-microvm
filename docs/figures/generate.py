@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Generate the Excalidraw scenes for the architecture page.
+"""Generate the Excalidraw scenes for the microvm documentation.
 
 Run from the repository root:
 
     python3 -B docs/figures/generate.py
 
-The script writes one .excalidraw file per figure next to this file. Render each
-scene with the packaged Excalidraw CLI after changing it:
+The script writes three .excalidraw files next to this file. Render each scene
+with the packaged Excalidraw CLI after changing it:
 
-    excalidraw render docs/figures/component-topology.excalidraw \
-      --out docs/figures/component-topology.png \
-      --scale 2 --max-width 3200
+    excalidraw render docs/figures/architecture.excalidraw \
+      --out docs/figures/architecture.png --scale 2 --max-width 3200
 
-The palette, font sizes, and canvas width follow agents/excalidraw.nix in the
-nixos repository. Keep the scene and the PNG together.
+The palette, font sizes, canvas width, and composition rules follow
+agents/excalidraw.nix in the nixos repository. Keep the scene and the PNG
+together, and inspect the PNG before calling a figure done.
 """
 
 import json
@@ -21,6 +21,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SCENE_WIDTH = 1520
+MARGIN = 40
 BACKGROUND = "#ffffff"
 INK = "#1e1e1e"
 MUTED = "#5c5f66"
@@ -85,24 +86,24 @@ def text_size(content, size):
     return width, height
 
 
-def text(eid, x, y, content, size=BODY_SIZE, color=INK, width=None, align="left"):
+def text(eid, x, y, content, size=BODY_SIZE, color=INK):
     """Build a standalone text element."""
-    estimated_width, height = text_size(content, size)
+    width, height = text_size(content, size)
     return element(
         eid,
         "text",
         x,
         y,
-        width if width is not None else estimated_width,
+        width,
         height,
         strokeColor=color,
         backgroundColor="transparent",
-        fillStyle="solid",
+        fillStyle="hachure",
         roundness=None,
         text=content,
         fontSize=size,
         fontFamily=FONT,
-        textAlign=align,
+        textAlign="left",
         verticalAlign="top",
         containerId=None,
         originalText=content,
@@ -138,7 +139,7 @@ def box(eid, x, y, width, height, label, role, size=BODY_SIZE):
         label_height,
         strokeColor=INK,
         backgroundColor="transparent",
-        fillStyle="solid",
+        fillStyle="hachure",
         roundness=None,
         text=label,
         fontSize=size,
@@ -154,13 +155,13 @@ def box(eid, x, y, width, height, label, role, size=BODY_SIZE):
     return [shape, label_element]
 
 
-def arrow(eid, start, end, label, color="neutral", label_offset=(0, -30), size=NOTE_SIZE):
-    """Build a straight arrow with a separate label near its midpoint."""
+def arrow(eid, start, end, label, color="neutral", label_offset=(0, -30)):
+    """Build a straight labeled arrow from start to end."""
     x1, y1 = start
     x2, y2 = end
     dx = x2 - x1
     dy = y2 - y1
-    label_width, _ = text_size(label, size)
+    label_width, _ = text_size(label, NOTE_SIZE)
     mid_x = x1 + dx / 2
     mid_y = y1 + dy / 2
     arrow_element = element(
@@ -172,7 +173,7 @@ def arrow(eid, start, end, label, color="neutral", label_offset=(0, -30), size=N
         abs(dy),
         strokeColor=PALETTE[color]["stroke"],
         backgroundColor="transparent",
-        fillStyle="solid",
+        fillStyle="hachure",
         roundness={"type": 2},
         points=[[0, 0], [dx, dy]],
         startArrowhead=None,
@@ -186,315 +187,239 @@ def arrow(eid, start, end, label, color="neutral", label_offset=(0, -30), size=N
         mid_x + label_offset[0] - label_width / 2,
         mid_y + label_offset[1],
         label,
-        size=size,
-        color=INK,
+        size=NOTE_SIZE,
     )
     return [arrow_element, label_element]
 
 
-def scene(title, subtitle, elements, height):
-    """Assemble one scene with a title and a one-line claim."""
+def scene(title, claim, elements, height):
+    """Assemble one scene with a title, a one-line claim, and body elements."""
     title_width, _ = text_size(title, TITLE_SIZE)
-    title_element = text(
-        "title",
-        (SCENE_WIDTH - title_width) / 2,
-        36,
-        title,
-        size=TITLE_SIZE,
-        color=INK,
-    )
-    subtitle_width, _ = text_size(subtitle, NOTE_SIZE)
-    subtitle_element = text(
-        "subtitle",
-        (SCENE_WIDTH - subtitle_width) / 2,
-        86,
-        subtitle,
-        size=NOTE_SIZE,
-        color=MUTED,
-    )
+    elements.insert(0, text("subtitle", 0, 86, claim, size=NOTE_SIZE, color=MUTED))
+    elements.insert(0, text("title", (SCENE_WIDTH - title_width) / 2, 40, title, size=TITLE_SIZE))
+    # Center the subtitle and the claim once their width is known.
+    for item in elements[:2]:
+        item["x"] = (SCENE_WIDTH - item["width"]) / 2
     return {
         "type": "excalidraw",
         "version": 2,
         "source": "https://excalidraw.com",
-        "elements": [title_element, subtitle_element] + elements,
+        "elements": elements,
         "appState": {
             "gridSize": None,
             "viewBackgroundColor": BACKGROUND,
             "exportBackground": True,
         },
         "files": {},
-    }, height
+    }
 
 
-def component_topology():
-    """One claim: five components, each with its own evidence boundary."""
+def architecture():
+    """One claim: one local daemon owns every VM and its host resources."""
     elements = []
+
+    # Column 1: local clients.
+    elements += box("cli", 60, 170, 300, 90, "microvm CLI", "input")
+    elements += box("grpc-client", 60, 310, 300, 90, "local gRPC client", "input")
+
+    # Column 2: socket, daemon, service.
+    elements += box("sockets", 580, 170, 360, 90, "Unix sockets\nREST and gRPC", "neutral")
     elements += box(
-        "environment",
+        "daemon",
+        580,
+        310,
         360,
         150,
-        800,
-        110,
-        "Environment\nNix toolchain and host preflight",
-        "neutral",
-    )
-    elements += box(
-        "lifecycle",
-        60,
-        350,
-        380,
-        180,
-        "Lifecycle\nTyped state machine\nREST, gRPC",
+        "microvmd daemon\nREST + gRPC",
         "runtime",
     )
-    elements += box(
-        "isolation",
-        580,
-        350,
-        380,
-        180,
-        "Isolation\nJailer, cgroup v2, TAP",
-        "model",
-    )
-    elements += box(
-        "state",
-        1100,
-        350,
-        380,
-        180,
-        "State and observability\nSnapshots, metrics, scheduler",
-        "analysis",
-    )
-    elements += box(
-        "interfaces",
-        300,
-        740,
-        900,
-        110,
-        "Interfaces\nOCI, demo, Docker, direct-KVM",
-        "input",
-    )
-
-    elements += arrow("env-lifecycle", (560, 260), (250, 350), "toolchain and preflight", label_offset=(-90, -18))
-    elements += arrow("env-isolation", (760, 260), (770, 350), "host capability gates", label_offset=(0, -22))
-    elements += arrow("env-state", (960, 260), (1290, 350), "evidence paths", label_offset=(90, -18))
-    elements += arrow("lifecycle-isolation", (440, 440), (580, 440), "typed calls", label_offset=(0, -38))
-    elements += arrow("isolation-state", (960, 440), (1100, 440), "runtime data", label_offset=(0, -38))
-    elements += arrow("lifecycle-interfaces", (250, 530), (520, 740), "control operations", label_offset=(-40, -10))
-    elements += arrow("state-interfaces", (1290, 530), (1000, 740), "evidence records", label_offset=(40, -10))
-
-    return scene(
-        "Five components, one toolchain",
-        "Each component can fail alone and produces its own evidence.",
-        elements,
-        900,
-    )
-
-
-def transport_path():
-    """One claim: two transports enter one lifecycle contract."""
-    elements = []
-    elements += box(
-        "rest-client",
-        40,
-        240,
-        340,
-        120,
-        "microvm CLI\nREST client",
-        "input",
-    )
-    elements += box("grpc-client", 40, 480, 340, 100, "gRPC client", "input")
-    elements += box("rest", 560, 240, 340, 130, "microvm-rest\nREST/JSON adapter", "input")
-    elements += box("grpc", 560, 460, 340, 130, "microvm-grpc\ngRPC adapter", "input")
     elements += box(
         "service",
-        1080,
-        220,
+        580,
+        520,
         360,
-        150,
-        "Transport-neutral service\nmicrovm-service",
-        "runtime",
-    )
-    elements += box(
-        "fsm",
-        1080,
-        470,
-        360,
-        130,
-        "Lifecycle state machine\nmicrovm-lifecycle",
+        110,
+        "lifecycle service\nvalidates each transition",
         "runtime",
     )
 
-    elements += arrow("client-rest", (380, 300), (560, 305), "REST/JSON over UDS", label_offset=(0, -40), size=16)
-    elements += arrow("client-grpc", (380, 530), (560, 525), "gRPC over UDS", label_offset=(0, -40))
-    elements += arrow("rest-service", (900, 305), (1080, 300), "typed requests", label_offset=(0, -40))
-    elements += arrow("grpc-service", (900, 525), (1080, 370), "typed requests", label_offset=(160, -27))
-    elements += arrow("service-fsm", (1260, 370), (1260, 470), "validates transitions", label_offset=(110, -10))
+    # Column 3: host isolation and the guest.
+    elements += box("cgroup", 1120, 170, 340, 90, "cgroup v2\ncpu, memory, pids", "analysis")
+    elements += box("firecracker", 1120, 310, 340, 110, "Firecracker process", "model")
+    elements += box("guest", 1120, 470, 340, 110, "guest kernel and rootfs", "neutral")
+
+    # Bottom row: daemon-owned paths and records.
+    elements += box("artifacts", 60, 700, 340, 110, "artifacts\nimage content", "analysis")
+    elements += box("snapshots", 580, 700, 340, 110, "snapshots\nstate and memory files", "analysis")
+    elements += box("logs", 1120, 700, 340, 110, "logs\nreadiness and errors", "neutral")
+
+    elements += arrow("cli-sockets", (360, 215), (580, 215), "REST/JSON", label_offset=(0, -32))
+    elements += arrow("grpc-client-sockets", (360, 355), (580, 250), "gRPC", label_offset=(0, -30))
+    elements += arrow("sockets-daemon", (760, 260), (760, 310), "peer check", label_offset=(120, 0))
+    elements += arrow("daemon-service", (760, 460), (760, 520), "typed request", label_offset=(122, 0))
+    elements += arrow(
+        "service-firecracker",
+        (940, 575),
+        (1120, 365),
+        "spawns and controls",
+        label_offset=(-20, -46),
+    )
+    elements += arrow("firecracker-guest", (1290, 420), (1290, 470), "boots image", label_offset=(122, -12))
+    elements += arrow("firecracker-cgroup", (1290, 310), (1290, 260), "runs inside", label_offset=(120, -10))
+    elements += arrow("daemon-artifacts", (580, 420), (400, 700), "image hashes", label_offset=(-18, -34))
+    elements += arrow("service-snapshots", (760, 630), (750, 700), "writes manifest", label_offset=(-120, 0))
+    elements += arrow("service-logs", (930, 630), (1180, 700), "logs each call", label_offset=(0, -38))
 
     return scene(
-        "Two transports, one contract",
-        "REST and gRPC are adapters over the same typed service.",
+        "One daemon owns every VM",
+        "A local client enters over a Unix socket and the daemon drives Firecracker.",
         elements,
-        660,
+        880,
     )
 
 
-def isolation_boundaries():
-    """One claim: four host boundaries wrap the untrusted guest."""
+def lifecycle():
+    """One claim: a VM moves through one checked state machine."""
     elements = []
-    elements += box("host", 60, 240, 300, 120, "Host\nKVM and cgroup v2", "neutral", size=20)
-    elements += box("jailer", 560, 240, 300, 120, "Jailer\nvalidated argv", "runtime")
+
+    # Column 1: creation and a failed start.
+    elements += box("created", 60, 170, 300, 100, "created", "input")
+    elements += box("configured", 60, 410, 300, 100, "configured", "neutral")
+    elements += box("failed", 60, 650, 300, 100, "failed\nterminal state", "risk")
+
+    # Column 2: the running machine and its stop path.
+    elements += box("running", 560, 170, 300, 100, "running", "model")
+    elements += box("paused", 560, 410, 300, 100, "paused", "model")
+    elements += box("stopped", 560, 650, 300, 100, "stopped", "neutral")
+
+    # Column 3: the snapshot path back to running.
+    elements += box("snapshotting", 1060, 170, 300, 100, "snapshotting", "analysis")
     elements += box(
-        "firecracker",
-        560,
-        500,
+        "snapshot-files",
+        1060,
+        410,
         300,
-        180,
-        "Firecracker microVM\nuntrusted guest",
-        "model",
-    )
-    elements += box(
-        "artifacts",
-        60,
-        560,
-        300,
-        110,
-        "Verified artifacts\nSHA-256 and ELF",
+        100,
+        "snapshot files\nmemory and state",
         "analysis",
     )
-    elements += box(
-        "cgroup",
-        1200,
-        140,
-        260,
-        110,
-        "cgroup v2 leaf\ncpu, memory, pids",
-        "analysis",
-        size=20,
-    )
-    elements += box(
-        "netns",
-        1200,
-        330,
-        260,
-        110,
-        "TAP in netns\nno host network",
-        "model",
-        size=20,
-    )
-    elements += box(
-        "nft",
-        1200,
-        520,
-        260,
-        110,
-        "nftables NAT\npolicy-scoped egress",
-        "input",
-        size=20,
-    )
-
-    elements += arrow("host-jailer", (360, 300), (560, 300), "spawns jailer", label_offset=(0, -38))
-    elements += arrow("artifacts-jailer", (360, 560), (560, 360), "verified binary", label_offset=(150, -40))
-    elements += arrow("jailer-vm", (710, 360), (710, 500), "starts", label_offset=(40, -10))
-    elements += arrow("vm-cgroup", (860, 520), (1200, 230), "cgroup limits", label_offset=(-80, -30))
-    elements += arrow("vm-netns", (860, 560), (1200, 385), "TAP attach", label_offset=(0, 68))
-    elements += arrow("netns-nft", (1330, 440), (1330, 520), "filters egress", label_offset=(0, -18))
-
     elements.append(
         text(
-            "fail-closed",
-            560,
-            740,
-            "Missing prerequisite stops the spawn.",
+            "snapshot-resume-note",
+            1060,
+            555,
+            "A running VM resumes\nafter the snapshot is written.",
             size=NOTE_SIZE,
-            color=PALETTE["risk"]["stroke"],
+            color=MUTED,
+        )
+    )
+    elements.append(
+        text(
+            "restore-note",
+            1060,
+            660,
+            "Restore starts a fresh\nFirecracker process.",
+            size=NOTE_SIZE,
+            color=MUTED,
         )
     )
 
+    elements += arrow("created-configured", (210, 270), (210, 410), "create", label_offset=(100, 0))
+    elements += arrow("configured-running", (360, 410), (560, 270), "start", label_offset=(0, -30))
+    elements += arrow("running-paused", (790, 270), (790, 410), "pause", label_offset=(92, 0))
+    elements += arrow("paused-running", (630, 410), (630, 270), "resume", label_offset=(-92, 0))
+    elements += arrow("running-snapshotting", (860, 220), (1060, 220), "snapshot", label_offset=(0, -32))
+    elements += arrow(
+        "snapshotting-files",
+        (1210, 270),
+        (1210, 410),
+        "state and memory",
+        label_offset=(116, 0),
+    )
+    elements += arrow(
+        "files-running",
+        (1060, 410),
+        (860, 270),
+        "restore",
+        label_offset=(34, -49),
+    )
+    elements += arrow("configured-failed", (210, 510), (210, 650), "start fails", label_offset=(112, 0))
+    elements += arrow("paused-stopped", (610, 510), (610, 650), "stop", label_offset=(-80, 0))
+
     return scene(
-        "Four boundaries wrap every guest",
-        "A missing capability is a hard error before the process starts.",
+        "Every VM follows one checked lifecycle",
+        "Illegal transitions return an error instead of changing state.",
         elements,
-        820,
+        840,
     )
 
 
-def snapshot_gate():
-    """One claim: the compatibility gate rejects before Firecracker load."""
+def snapshot_restore():
+    """One claim: restore validates a local manifest before it loads state."""
     elements = []
-    elements += box(
-        "manifest",
-        60,
-        300,
-        340,
-        150,
-        "Snapshot manifest\nSHA-256 and host envelope",
-        "analysis",
-        size=20,
-    )
+
+    # Row 1: snapshot creation.
+    elements += box("paused-vm", 60, 170, 300, 100, "paused VM", "model")
+    elements += box("snapshot-files", 560, 170, 300, 100, "snapshot files\nmemory and state", "analysis")
+    elements += box("manifest", 1060, 170, 300, 100, "manifest\ncontent hashes", "analysis")
+
+    # Row 2: restore request, gate, fresh process.
+    elements += box("restore-request", 60, 390, 300, 100, "restore request", "input")
     elements += box(
         "gate",
         560,
-        280,
-        340,
-        190,
-        "Compatibility gate\nhost, binary, tenant",
-        "risk",
-    )
-    elements += box(
-        "load",
-        1080,
+        390,
         300,
-        320,
-        150,
-        "Firecracker load\n/snapshot/load",
-        "model",
-        size=20,
-    )
-    elements += box(
-        "inputs",
-        560,
-        580,
-        340,
-        120,
-        "Current host and caller\nCPU, binary, owner",
-        "neutral",
-        size=20,
-    )
-    elements += box(
-        "reject",
-        1080,
-        580,
-        320,
-        120,
-        "Reject before spawn",
+        100,
+        "compatibility gate\nhost, binary, tenant",
         "risk",
     )
+    elements += box("fresh-process", 1060, 390, 300, 100, "fresh Firecracker process", "neutral")
 
-    elements += arrow("manifest-gate", (400, 375), (560, 375), "manifest hashes", label_offset=(0, -40))
-    elements += arrow("inputs-gate", (730, 580), (730, 470), "current host and caller", label_offset=(160, -10))
-    elements += arrow("gate-load", (900, 375), (1080, 375), "compatible", label_offset=(0, -40))
-    elements += arrow("gate-reject", (900, 440), (1240, 580), "mismatch", label_offset=(80, -28), color="risk")
+    # Row 3: rejection and the loaded guest.
+    elements += box("rejected", 60, 620, 300, 100, "restore rejected", "risk")
+    elements += box("load", 560, 620, 300, 100, "load memory and state", "runtime")
+    elements += box("running-vm", 1060, 620, 300, 100, "running VM", "model")
+
+    elements += arrow("paused-files", (360, 220), (560, 220), "pause and write", label_offset=(0, -32))
+    elements += arrow("files-manifest", (860, 220), (1060, 220), "record hashes", label_offset=(0, -32))
+    elements += arrow(
+        "manifest-gate",
+        (1210, 270),
+        (860, 390),
+        "verify before load",
+        label_offset=(-24, -26),
+    )
+    elements += arrow("request-gate", (360, 440), (560, 440), "restore call", label_offset=(0, -30))
+    elements += arrow("gate-process", (860, 440), (1060, 440), "gate passes", label_offset=(0, -30))
+    elements += arrow("gate-rejected", (740, 490), (360, 620), "mismatch", label_offset=(0, -26))
+    elements += arrow(
+        "process-load",
+        (1160, 490),
+        (860, 620),
+        "load snapshot",
+        label_offset=(0, -26),
+    )
+    elements += arrow("load-running", (860, 670), (1060, 670), "resume guest", label_offset=(0, -30))
 
     return scene(
-        "No load without a matching host",
-        "The gate checks the manifest, the host envelope, and the caller.",
+        "Restore checks the manifest before load",
+        "Snapshot files stay local and a fresh process loads them after the gate passes.",
         elements,
-        780,
+        800,
     )
 
 
 FIGURES = {
-    "component-topology": component_topology,
-    "transport-path": transport_path,
-    "isolation-boundaries": isolation_boundaries,
-    "snapshot-gate": snapshot_gate,
+    "architecture": architecture,
+    "lifecycle": lifecycle,
+    "snapshot-restore": snapshot_restore,
 }
 
 
 def main():
     for name, build in FIGURES.items():
-        content, _ = build()
+        content = build()
         path = HERE / f"{name}.excalidraw"
         path.write_text(json.dumps(content, indent=2) + "\n")
         print(f"wrote {path.relative_to(HERE.parent.parent)}")

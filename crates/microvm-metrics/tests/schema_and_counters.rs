@@ -1,4 +1,4 @@
-//! Schema and counter contract tests for `microvm-metrics` (plan todo 23).
+//! Schema and counter contract tests for `microvm-metrics`.
 //!
 //! Named QA scenario: `cargo test -p microvm-metrics --test schema_and_counters`.
 //!

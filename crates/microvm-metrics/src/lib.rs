@@ -1,5 +1,5 @@
 //! Per-VM host and guest metrics with a stable, availability-flagged schema
-//! (plan todo 23).
+//!.
 //!
 //! This crate collects, for each microVM:
 //! - Host cgroup-v2 metrics ([`CgroupMetrics`]): CPU usage/throttling,

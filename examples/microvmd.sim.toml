@@ -1,0 +1,23 @@
+# Simulation config for CI and for trying the CLI without KVM.
+# Paths resolve relative to this file, so they land under .work/ in the repo.
+backend = "sim"
+
+[server]
+rest_socket = "../.work/run/rest.sock"
+grpc_socket = "../.work/run/grpc.sock"
+socket_mode = "0600"
+allowed_uids = [1000]
+tenant = "local"
+role = "owner"
+
+[paths]
+state_dir = "../.work/state"
+artifact_dir = "../.work/artifacts"
+snapshot_dir = "../.work/snapshots"
+socket_dir = "../.work/sockets"
+chroot_dir = "../.work/chroot"
+log_dir = "../.work/logs"
+
+[runtime]
+firecracker = "../.work/firecracker"
+use_jailer = false

@@ -2,14 +2,13 @@
 # prepare-bench-artifacts.sh: build guest artifacts and run the full
 # Firecracker-vs-Docker benchmark comparison.
 #
-# Usage (from inside devenv shell, with sudo):
-#   devenv shell
-#   sudo env "PATH=$PATH" bash scripts/prepare-bench-artifacts.sh
+# Usage (run as the current user; all scratch under .work/):
+#   bash scripts/prepare-bench-artifacts.sh
 #
 # What it does:
-#   1. Builds the Firecracker guest image from phase 2 story 1
-#      (scripts/build-guest-image.sh) -> guest/vmlinux, guest/rootfs.ext4,
-#      guest/payload.sha256
+#   1. Builds the Firecracker guest image via scripts/build-guest-image.sh
+#      -> .work/guest/vmlinux, .work/guest/rootfs.ext4,
+#      .work/guest/payload.sha256
 #   2. Extracts the busybox payload from the guest rootfs and computes its
 #      SHA-256: the single payload hash both benchmark lanes are pinned to
 #   3. Boots a Firecracker VM from that guest image, waits for readiness, and
@@ -21,23 +20,26 @@
 #      the prepared snapshot/memfile so the FirecrackerSnapshotLane produces real
 #      restore-latency samples and both lanes record the same payload_sha256
 #
-# Requirements: firecracker, jailer, docker (daemon running), KVM, mkfs.ext4
-# (debugfs from the same e2fsprogs package is used as an unprivileged extraction
-# fallback when a loop mount is unavailable)
+# Every generated file stays under the repository's .work/ directory
+# (override with BENCH_WORKDIR / OUT).
+#
+# Requirements: a Firecracker binary (FIRECRACKER_BIN, .work/bin/firecracker,
+# .work/firecracker, or PATH), a running Docker daemon (Docker lane), KVM, and
+# e2fsprogs (mke2fs + debugfs; no sudo and no loop mount are required).
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORKDIR="${BENCH_WORKDIR:-/tmp/microvm-bench}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+WORKDIR="${BENCH_WORKDIR:-$REPO_ROOT/.work/bench}"
 SAMPLES="${SAMPLES:-100}"
-OUT="${OUT:-.omo/evidence/kvm-microvm-orchestrator/task-27-benchmark.json}"
+OUT="${OUT:-$WORKDIR/task-27-benchmark.json}"
 
-# Guest image produced by phase 2 story 1 (scripts/build-guest-image.sh).
-GUEST_DIR="$REPO_ROOT/guest"
+# Guest image produced by scripts/build-guest-image.sh.
+GUEST_DIR="$REPO_ROOT/.work/guest"
 GUEST_KERNEL="$GUEST_DIR/vmlinux"
 GUEST_ROOTFS="$GUEST_DIR/rootfs.ext4"
 
-# Extracted busybox payload shared by both lanes (phase 2 story 4).
+# Extracted busybox payload shared by both lanes.
 PAYLOAD_DIR="$WORKDIR/payload"
 
 # Prepared Firecracker snapshot artifacts the benchmark lane restores.
@@ -46,52 +48,43 @@ MEMFILE="$WORKDIR/memfile"
 
 mkdir -p "$WORKDIR"
 
-# build-guest-image.sh requires a static busybox on PATH; the devenv shell does
-# not ship one, so provision a static musl busybox when none is present.
-ensure_busybox() {
-  if command -v busybox &>/dev/null; then
-    echo "busybox: $(command -v busybox)"
-    return
-  fi
-  local bbdir="$WORKDIR/bin"
-  mkdir -p "$bbdir"
-  if [[ ! -x "$bbdir/busybox" ]]; then
-    echo "busybox not on PATH; fetching static musl busybox..."
-    curl -fsSL --retry 3 \
-      "https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox" \
-      -o "$bbdir/busybox"
-    chmod +x "$bbdir/busybox"
-  fi
-  export PATH="$bbdir:$PATH"
-  echo "busybox: $(command -v busybox)"
-}
-
-# Extract /bin/busybox from the guest rootfs into $1. Prefers a read-only loop
-# mount (the fast path under sudo, matching build-guest-image.sh); falls back to
-# debugfs (e2fsprogs, already required for mkfs.ext4) so the payload can also be
-# extracted unprivileged for local verification where loop mounts are blocked.
+# Extract /bin/busybox from the guest rootfs into $1. Uses debugfs from
+# e2fsprogs (already required for mkfs) so the payload can be extracted as a
+# normal user, with no loop mount and no sudo.
 extract_busybox() {
-  local out="$1" mnt="$WORKDIR/mnt-payload"
-  mkdir -p "$mnt"
+  local out="$1"
   rm -f "$out"
-  if mount -o loop,ro "$GUEST_ROOTFS" "$mnt" 2>/dev/null; then
-    cp "$mnt/bin/busybox" "$out"
-    umount "$mnt"
-  else
-    echo "loop mount unavailable; extracting busybox via debugfs..."
-    debugfs -R "dump /bin/busybox $out" "$GUEST_ROOTFS" >/dev/null 2>&1 || true
-  fi
-  rmdir "$mnt" 2>/dev/null || true
+  command -v debugfs >/dev/null 2>&1 \
+    || { echo "ERROR: debugfs not found (install e2fsprogs)"; return 1; }
+  debugfs -R "dump /bin/busybox $out" "$GUEST_ROOTFS" >/dev/null 2>&1 || true
   if [[ ! -s "$out" ]]; then
     echo "ERROR: failed to extract busybox payload from $GUEST_ROOTFS" >&2
     return 1
   fi
 }
 
-echo "=== Step 1: Guest image (phase 2 story 1) ==="
-ensure_busybox
+# Resolve the Firecracker binary from the .work cache, an override, or PATH.
+resolve_firecracker() {
+  local bin="${FIRECRACKER_BIN:-}"
+  if [[ -z "$bin" ]]; then
+    if [[ -x "$REPO_ROOT/.work/bin/firecracker" ]]; then
+      bin="$REPO_ROOT/.work/bin/firecracker"
+    elif [[ -x "$REPO_ROOT/.work/firecracker" ]]; then
+      bin="$REPO_ROOT/.work/firecracker"
+    else
+      bin="$(command -v firecracker 2>/dev/null || true)"
+    fi
+  fi
+  if [[ -z "$bin" ]]; then
+    echo "ERROR: Firecracker binary not found (set FIRECRACKER_BIN or run scripts/e2e-firecracker.sh to cache the pinned release)" >&2
+    return 1
+  fi
+  printf '%s\n' "$bin"
+}
+
+echo "=== Step 1: Guest image (scripts/build-guest-image.sh) ==="
 if [[ ! -f "$GUEST_KERNEL" || ! -f "$GUEST_ROOTFS" ]]; then
-  echo "Building guest image via scripts/build-guest-image.sh..."
+  echo "Guest image missing under $GUEST_DIR; building it..."
   bash "$REPO_ROOT/scripts/build-guest-image.sh"
 fi
 if [[ ! -f "$GUEST_KERNEL" || ! -f "$GUEST_ROOTFS" ]]; then
@@ -117,7 +110,7 @@ echo "payload (busybox) sha256: $PAYLOAD_SHA"
 echo ""
 echo "=== Step 3: Firecracker snapshot ==="
 SOCK="$WORKDIR/fc-api.sock"
-FC_BIN="$(which firecracker)"
+FC_BIN="$(resolve_firecracker)"
 
 # Clean up any previous run.
 rm -f "$SOCK" "$SNAPSHOT" "$MEMFILE"
@@ -127,7 +120,7 @@ echo "Booting Firecracker VM from guest image..."
 FC_PID=$!
 sleep 1
 
-# Configure the VM from the story-1 guest image.
+# Configure the VM from the guest image.
 curl -s --unix-socket "$SOCK" -X PUT http://localhost/machine-config \
   -H 'Content-Type: application/json' \
   -d '{"vcpu_count": 1, "mem_size_mib": 128}'
@@ -140,8 +133,8 @@ curl -s --unix-socket "$SOCK" -X PUT http://localhost/drives/rootfs \
   -H 'Content-Type: application/json' \
   -d "{\"drive_id\": \"rootfs\", \"path_on_host\": \"$GUEST_ROOTFS\", \"is_root_device\": true, \"is_read_only\": false}"
 
-# Start the VM. The guest init runs the microvm-guest-health server, which
-# listens forever and keeps the VM alive for snapshotting.
+# Start the VM. The guest /init prints MICROVM_READY and keeps the VM alive for
+# snapshotting (microvm-guest-health or the static busybox sleep fallback).
 curl -s --unix-socket "$SOCK" -X PUT http://localhost/actions \
   -H 'Content-Type: application/json' \
   -d '{"action_type": "InstanceStart"}'
@@ -195,10 +188,10 @@ cp "$PAYLOAD_DIR/busybox" "$DOCKER_BUILD/busybox"
 chmod +x "$DOCKER_BUILD/busybox"
 
 # The guest busybox is a minimal static build: it provides `sh` plus a few
-# applets, with `echo` as a shell builtin, but omits `ln` and `sleep`. The image
-# therefore invokes busybox directly and runs the payload to completion without
-# applet symlinks, so `docker run --rm` measures cold-start of the exact payload
-# bytes the VM rootfs ships at /bin/busybox.
+# applets, with `echo` as a shell builtin. The image therefore invokes busybox
+# directly and runs the payload to completion without applet symlinks, so
+# `docker run --rm` measures cold-start of the exact payload bytes the VM rootfs
+# ships at /bin/busybox.
 cat > "$DOCKER_BUILD/Dockerfile" << 'DOCKERFILE'
 FROM scratch
 COPY busybox /bin/busybox

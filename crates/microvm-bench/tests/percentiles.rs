@@ -1,4 +1,4 @@
-//! Deterministic percentile-calculation tests (plan todo 27).
+//! Deterministic percentile-calculation tests (the benchmark harness).
 //!
 //! Named QA scenario: `cargo test -p microvm-bench --test percentiles`.
 //!

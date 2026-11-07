@@ -1,4 +1,4 @@
-//! Shared harness for the REST/gRPC transport contract tests (plan todo 18).
+//! Shared harness for the REST/gRPC transport contract tests (transport parity).
 //!
 //! The harness builds the composed [`VmLifecycleService`] over a deterministic
 //! scripted backend (standing in for the Firecracker runtime; no KVM, root, or
@@ -508,8 +508,8 @@ fn proto_state_str(value: i32) -> String {
 
 fn proto_policy_str(value: i32) -> String {
     match ProtoNetworkPolicy::try_from(value) {
-        Ok(ProtoNetworkPolicy::NatOnly) => "nat_only".to_string(),
-        Ok(ProtoNetworkPolicy::FullEgress) => "egress_allowed".to_string(),
+        Ok(ProtoNetworkPolicy::NatOnly) => "nat-only".to_string(),
+        Ok(ProtoNetworkPolicy::EgressAllowed) => "egress-allowed".to_string(),
         // Unspecified and None both map to the domain default `none`.
         _ => "none".to_string(),
     }

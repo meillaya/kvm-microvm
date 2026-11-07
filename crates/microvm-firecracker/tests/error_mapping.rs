@@ -197,15 +197,20 @@ async fn stop_from_created_is_an_invalid_transition() {
 }
 
 #[tokio::test]
-async fn snapshot_and_restore_are_unsupported_by_boot_adapter() {
+async fn snapshot_on_created_vm_is_an_invalid_transition() {
     let rig = Rig::healthy().await;
-    let snap = microvm_types::SnapshotId::new("snap-1").unwrap();
     let err = LifecycleService::snapshot(&rig.backend, &rig.vm_id, &rig.owner)
         .await
         .unwrap_err();
-    assert_eq!(err.code, ErrorCode::InternalError);
+    assert_eq!(err.code, ErrorCode::InvalidTransition);
+}
+
+#[tokio::test]
+async fn restore_missing_snapshot_is_not_found() {
+    let rig = Rig::healthy().await;
+    let snap = microvm_types::SnapshotId::new("snap-1").unwrap();
     let err = LifecycleService::restore(&rig.backend, &snap, &rig.owner)
         .await
         .unwrap_err();
-    assert_eq!(err.code, ErrorCode::InternalError);
+    assert_eq!(err.code, ErrorCode::ArtifactNotFound);
 }

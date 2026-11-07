@@ -36,7 +36,8 @@ async fn create_sequence_is_pause_then_create() {
     match &calls[1] {
         SnapshotCall::SnapshotCreate(p) => {
             assert_eq!(p.snapshot_path, "/snap/state.vmstate");
-            assert_eq!(p.mem_backend.backend_path, "/snap/mem.img");
+            assert_eq!(p.mem_file_path, "/snap/mem.img");
+            assert!(!serde_json::to_string(p).unwrap().contains("mem_backend"));
         }
         other => panic!("expected snapshot create, got {other:?}"),
     }

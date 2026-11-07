@@ -1,5 +1,5 @@
 //! Typed identifiers, resource specifications, and tenancy types for the
-//! kvm-microvm-orchestrator platform.
+//! microvm platform.
 //!
 //! This crate contains no I/O and no host API calls. All types are
 //! validated at construction time and are safe to serialize/deserialize
@@ -162,15 +162,49 @@ define_id! {
 
 /// Network egress policy applied to a VM's TAP interface.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
 pub enum NetworkPolicy {
     /// No network interface is attached.
     #[default]
+    #[serde(rename = "none")]
     None,
     /// NAT-only: VM can reach the host but not the external network.
+    #[serde(rename = "nat-only")]
     NatOnly,
     /// Full egress allowed through controlled NAT.
+    #[serde(rename = "egress-allowed")]
     EgressAllowed,
+}
+
+impl NetworkPolicy {
+    /// The wire name used by REST/JSON, the CLI, and the documentation.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::NatOnly => "nat-only",
+            Self::EgressAllowed => "egress-allowed",
+        }
+    }
+}
+
+impl fmt::Display for NetworkPolicy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl std::str::FromStr for NetworkPolicy {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "none" => Ok(Self::None),
+            "nat-only" => Ok(Self::NatOnly),
+            "egress-allowed" => Ok(Self::EgressAllowed),
+            other => Err(format!(
+                "invalid network policy '{other}'; expected none, nat-only, or egress-allowed"
+            )),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -366,7 +400,7 @@ mod tests {
     #[test]
     fn ids_are_orderable_and_key_ordered_maps() {
         // IDs derive Ord so they can key deterministic ordered collections
-        // (e.g. the scheduler's placement ledger). Ordering is lexicographic
+        // (for example, a placement ledger). Ordering is lexicographic
         // over the validated string form.
         let a = VmId::new("vm-a").unwrap();
         let b = VmId::new("vm-b").unwrap();
@@ -419,5 +453,21 @@ mod tests {
     #[test]
     fn network_policy_default_is_none() {
         assert_eq!(NetworkPolicy::default(), NetworkPolicy::None);
+    }
+    #[test]
+    fn network_policy_wire_names_are_hyphenated() {
+        for (policy, wire) in [
+            (NetworkPolicy::None, "none"),
+            (NetworkPolicy::NatOnly, "nat-only"),
+            (NetworkPolicy::EgressAllowed, "egress-allowed"),
+        ] {
+            assert_eq!(
+                serde_json::to_string(&policy).unwrap(),
+                format!("\"{wire}\"")
+            );
+            assert_eq!(policy.to_string(), wire);
+            assert_eq!(wire.parse::<NetworkPolicy>().unwrap(), policy);
+        }
+        assert!("nat_only".parse::<NetworkPolicy>().is_err());
     }
 }

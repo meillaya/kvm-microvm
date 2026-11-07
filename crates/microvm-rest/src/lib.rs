@@ -1,5 +1,5 @@
 //! REST/JSON API over a protected Unix domain socket for the
-//! kvm-microvm-orchestrator platform.
+//! microvm platform.
 //!
 //! This crate implements the OpenAPI lifecycle routes exclusively over a
 //! filesystem Unix socket. No TCP listener is created. Peer credentials

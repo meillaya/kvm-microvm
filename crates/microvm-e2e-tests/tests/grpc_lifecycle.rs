@@ -29,8 +29,8 @@ mod common;
 use microvm_lifecycle::LifecycleService;
 
 use common::{
-    grpc_connect, grpc_create, grpc_restore, grpc_snapshot, grpc_start, grpc_status, grpc_stop,
-    grpc_wait_for_state, wait_for_health, Rig,
+    grpc_connect, grpc_create, grpc_create_with_policy, grpc_restore, grpc_snapshot, grpc_start,
+    grpc_status, grpc_stop, grpc_wait_for_state, wait_for_health, Rig,
 };
 
 /// The full lifecycle flow over a real gRPC Unix socket, backed by the composed
@@ -79,7 +79,7 @@ async fn full_lifecycle_over_grpc_unix_socket() {
     assert!(!restored_id.is_empty(), "restore must return a vm_id");
     assert_ne!(restored_id, vm_id, "restore creates a new VM");
     // The restored VM comes up with its own provisioned resources. Supervision
-    // of restored VMs (status/stop *through the service*) lands in todo 22; the
+    // of restored VMs (status/stop *through the service*) lands in snapshot restore; the
     // supervised service returns the new VmId but does not yet track it, so we
     // verify and release its resources against the backend directly.
     assert!(
@@ -129,9 +129,15 @@ async fn composed_firecracker_boot_stop_cleanup_over_grpc() {
     let mut client = grpc_connect(grpc_sock).await;
 
     // Create -> start through the API.
-    let vm_id = grpc_create(&mut client, 2, 512, 1024)
-        .await
-        .expect("create succeeds");
+    let vm_id = grpc_create_with_policy(
+        &mut client,
+        2,
+        512,
+        1024,
+        microvm_grpc::proto::v1::NetworkPolicy::NatOnly,
+    )
+    .await
+    .expect("create succeeds");
     grpc_start(&mut client, &vm_id)
         .await
         .expect("start succeeds");

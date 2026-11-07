@@ -3,16 +3,16 @@
 //! The serialized form conforms to `schemas/evidence-benchmark.v1.json`
 //! ([`BENCHMARK_SCHEMA_ID`]). Two invariants are load-bearing:
 //!
-//! 1. No `pass` field anywhere (requirement 10). `target_ms` is metadata;
+//! 1. No `pass` field anywhere. `target_ms` is metadata;
 //!    the schema forbids a `pass` boolean at every level via
 //!    `additionalProperties:false` plus an explicit `not: {required:["pass"]}`.
 //!    [`BenchmarkResult`] therefore has no field, method, or accessor that
 //!    reduces a distribution to a pass/fail verdict.
-//! 2. Blocked lanes carry zero samples and null percentiles (requirement 11).
+//! 2. Blocked lanes carry zero samples and null percentiles.
 //!    A blocked item sets `blocked_reason`, `cold.samples = warm.samples = 0`,
 //!    and null p50/p95/p99: samples are never fabricated.
 //!
-//! The result also carries the fields requirement 8 demands beyond the original
+//! The result also carries the fields the contract demands beyond the original
 //! schema: [`Workload`] (workload/artifact hashes) and [`RuntimeVersions`]
 //! (Firecracker/Docker versions; the kernel version is
 //! [`HostMetadata::kernel`]). These are declared in the extended schema.
@@ -84,7 +84,7 @@ impl Unit {
 pub struct HostMetadata {
     /// CPU model string (`/proc/cpuinfo` "model name").
     pub cpu: String,
-    /// Kernel release (`uname -r`). Also the "kernel version" of requirement 8.
+    /// Kernel release (`uname -r`). Also the "kernel version" of the contract.
     pub kernel: String,
     /// `KVM_GET_API_VERSION` at benchmark time; `-1` when inaccessible.
     pub kvm_api_version: i64,
@@ -198,9 +198,9 @@ pub struct BenchmarkResult {
     pub class: String,
     /// Host substrate snapshot.
     pub host_metadata: HostMetadata,
-    /// The single pinned workload (workload/artifact hashes, requirement 8/9).
+    /// The single pinned workload (workload/artifact hashes, the contract).
     pub workload: Workload,
-    /// Firecracker/Docker versions (requirement 8).
+    /// Firecracker/Docker versions.
     pub runtime_versions: RuntimeVersions,
     /// Per-benchmark distribution records.
     pub benchmarks: Vec<BenchmarkItem>,

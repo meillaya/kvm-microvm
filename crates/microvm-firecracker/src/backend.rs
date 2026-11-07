@@ -42,7 +42,12 @@ use microvm_lifecycle::{
     policy::{authorize, AuditEvent, AuditLog, AuditResult, Operation, ResourceType},
     transition, LifecycleService, VmMetrics, VmState, VmStatus,
 };
-use microvm_metrics::VmMetricsRecord;
+use microvm_metrics::{MetricsCollector, MetricsPhase, VmMetricsRecord};
+use microvm_snapshots::{
+    ActualHashes, ArtifactHashes, BlockDeviceHash, CompatibilityGate, CpuCompatibility,
+    FirecrackerBinary, HostCompatibility, HostEnvironment, MemoryRequirements, SnapshotManifest,
+    SnapshotQuota, SnapshotVmConfig, StateHashes, TenantQuota,
+};
 use microvm_types::{Principal, ResourceSpec, SnapshotId, TenantId, VmId};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -51,12 +56,18 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::Instant;
 
-use crate::api::{BootSource, Drive, FirecrackerApi, MachineConfig, NetworkInterface};
+use crate::api::{
+    BootSource, Drive, FirecrackerApi, MachineConfig, NetworkInterface, ROOT_DRIVE_ID,
+};
 use crate::config::BootConfig;
 use crate::phase::Phase;
 use crate::prereq::PrerequisiteCheck;
 use crate::process::{LaunchSpec, ProcessLauncher, VmProcess};
 use crate::readiness::{GuestReadinessProbe, ReadinessContext, DEFAULT_READINESS_TIMEOUT};
+use crate::snapshot::{
+    MemBackend, SnapshotApi, SnapshotCreateRequest, SnapshotLoadRequest, UdsSnapshotApi,
+    VmState as SnapshotVmState,
+};
 
 /// Default interval between socket-readiness polls.
 pub const SOCKET_POLL_INTERVAL: Duration = Duration::from_millis(10);
@@ -94,11 +105,24 @@ impl ApiFactory for UdsApiFactory {
 // Backend configuration
 // ---------------------------------------------------------------------------
 
+/// Snapshot compatibility data for the current host and pinned binary.
+#[derive(Clone, Debug)]
+pub struct SnapshotHostInfo {
+    /// Current host CPU, KVM API version, and cgroup version.
+    pub host: HostEnvironment,
+    /// Pinned Firecracker binary version and SHA-256.
+    pub binary: FirecrackerBinary,
+}
+
 /// Static configuration for a [`FirecrackerBackend`].
 #[derive(Clone, Debug)]
 pub struct BackendConfig {
     /// Host-only root directory for per-VM API sockets.
     pub socket_root: PathBuf,
+    /// Host-only directory for serial logs.
+    pub log_dir: PathBuf,
+    /// Root directory for local snapshot files and manifests.
+    pub snapshot_root: PathBuf,
     /// Path to the Firecracker binary.
     pub firecracker_binary: String,
     /// Path to the jailer binary.
@@ -117,12 +141,18 @@ pub struct BackendConfig {
     pub socket_timeout: Duration,
     /// Time to wait for guest readiness.
     pub readiness_timeout: Duration,
+    /// Whether a networked VM should launch under the jailer.
+    pub use_jailer: bool,
+    /// Host and binary data needed to build snapshot manifests.
+    pub snapshot_host: Option<SnapshotHostInfo>,
 }
 
 impl Default for BackendConfig {
     fn default() -> Self {
         Self {
             socket_root: PathBuf::from("/run/microvm/sockets"),
+            log_dir: PathBuf::from("/var/log/microvm"),
+            snapshot_root: PathBuf::from("/var/lib/microvm/snapshots"),
             firecracker_binary: "/usr/bin/firecracker".to_string(),
             jailer_binary: "/usr/bin/jailer".to_string(),
             chroot_base_dir: PathBuf::from("/srv/jailer"),
@@ -132,6 +162,8 @@ impl Default for BackendConfig {
             pids_max: DEFAULT_PIDS_MAX,
             socket_timeout: DEFAULT_SOCKET_TIMEOUT,
             readiness_timeout: DEFAULT_READINESS_TIMEOUT,
+            use_jailer: true,
+            snapshot_host: None,
         }
     }
 }
@@ -176,6 +208,7 @@ pub struct FirecrackerBackend {
     net: Mutex<NetManager>,
     cleanup: CleanupManager,
     config: BackendConfig,
+    metrics: Option<Arc<MetricsCollector>>,
     default_boot: Option<BootConfig>,
     next_id: AtomicU64,
 }
@@ -200,6 +233,28 @@ impl FirecrackerBackend {
             .socket_root
             .join(vm_id.as_str())
             .join("api.sock")
+    }
+
+    /// The per-VM serial log path.
+    pub fn serial_log_path(&self, vm_id: &VmId) -> PathBuf {
+        self.config
+            .log_dir
+            .join(format!("{}.serial.log", vm_id.as_str()))
+    }
+
+    /// The directory holding one snapshot's state, memory, and manifest.
+    pub fn snapshot_dir(&self, snapshot_id: &SnapshotId) -> PathBuf {
+        self.config.snapshot_root.join(snapshot_id.as_str())
+    }
+
+    /// The VM's cgroup path relative to the collector root.
+    fn cgroup_relative(&self, vm_id: &VmId) -> PathBuf {
+        PathBuf::from(format!("{}/{}", self.cgroup.parent_name(), vm_id.as_str()))
+    }
+
+    /// The host metrics collector, if configured.
+    pub fn metrics_collector(&self) -> Option<&Arc<MetricsCollector>> {
+        self.metrics.as_ref()
     }
 
     /// The phase timestamps recorded for a VM's process, if any.
@@ -393,12 +448,13 @@ impl FirecrackerBackend {
     async fn configure_api(
         &self,
         api: &dyn FirecrackerApi,
+        spec: &ResourceSpec,
         boot: &BootConfig,
         kernel_host: &Path,
         rootfs_host: &Path,
         net: &Option<NetConfig>,
     ) -> Result<(), MicrovmError> {
-        api.put_machine_config(&MachineConfig::new(boot.vcpu_count(), boot.mem_size_mib()))
+        api.put_machine_config(&MachineConfig::new(spec.vcpu_count(), spec.memory_mib()))
             .await?;
         api.put_boot_source(&BootSource {
             kernel_image_path: kernel_host.display().to_string(),
@@ -424,6 +480,9 @@ impl FirecrackerBackend {
             }
         }
         // Best-effort cleanup of anything provisioned so far.
+        if let Some(metrics) = &self.metrics {
+            metrics.stop_sampling(vm_id);
+        }
         let _ = self.teardown(vm_id);
         err.with_context("vm_state", VmState::Failed.as_str())
     }
@@ -507,7 +566,16 @@ impl FirecrackerBackend {
             )
         };
 
-        let net_required = boot.has_network();
+        let net_policy = spec.network_policy();
+        let net_required = net_policy != microvm_types::NetworkPolicy::None;
+        if net_required && !self.config.use_jailer {
+            return Err(MicrovmError::new(
+                ErrorCode::InvalidResourceSpec,
+                "networked VMs require the jailer; enable use_jailer or use network_policy none",
+            )
+            .with_context("vm_id", vm_id.as_str())
+            .with_context("field", "use_jailer"));
+        }
 
         // 1. Prerequisites: fail before any child creation.
         self.prereq.check(net_required).map_err(|e| {
@@ -537,9 +605,9 @@ impl FirecrackerBackend {
                 .with_context("phase", "cgroup")
         })?;
 
-        let net_config = if let Some(net_boot) = boot.network() {
+        let net_config = if net_required {
             let mut net = self.net.lock().unwrap();
-            let cfg = net.setup_netns(vm_id, net_boot.policy).map_err(|e| {
+            let cfg = net.setup_netns(vm_id, net_policy).map_err(|e| {
                 e.with_context("vm_id", vm_id.as_str())
                     .with_context("phase", "netns")
             })?;
@@ -561,7 +629,9 @@ impl FirecrackerBackend {
             })?;
         }
         let argv = self.build_launch_argv(vm_id, &socket_path, netns_path.as_deref())?;
-        let launch_spec = LaunchSpec::new(vm_id.clone(), argv, socket_path.clone());
+        let jailed = self.config.use_jailer && netns_path.is_some();
+        let launch_spec = LaunchSpec::new(vm_id.clone(), argv, socket_path.clone())
+            .with_log_path(self.serial_log_path(vm_id));
 
         let pid = match self.launcher.spawn(&launch_spec).await {
             Ok(pid) => pid,
@@ -569,6 +639,27 @@ impl FirecrackerBackend {
                 return Err(self.fail_vm(vm_id, e.with_context("phase", Phase::Spawn.as_str())));
             }
         };
+
+        // A direct launch does not pass through the jailer, so place the child
+        // in its cgroup leaf explicitly.
+        if !jailed {
+            if let Err(e) = self.cgroup.attach_pid(vm_id, pid) {
+                return Err(self.fail_vm(
+                    vm_id,
+                    e.with_context("vm_id", vm_id.as_str())
+                        .with_context("phase", "cgroup_attach"),
+                ));
+            }
+        }
+
+        if let Some(metrics) = &self.metrics {
+            metrics.register_vm(
+                vm_id.clone(),
+                MetricsPhase::Booting,
+                Some(self.cgroup_relative(vm_id)),
+                net_config.as_ref().map(|n| n.tap_name().to_string()),
+            );
+        }
 
         // From here on, failures drive the VM to Failed and clean up.
         let mut process = VmProcess::new(vm_id.clone(), pid, socket_path.clone());
@@ -597,7 +688,14 @@ impl FirecrackerBackend {
         // 6. Configure the VM over the API.
         let api = self.api_factory.connect(&socket_path);
         if let Err(e) = self
-            .configure_api(api.as_ref(), &boot, &kernel_host, &rootfs_host, &net_config)
+            .configure_api(
+                api.as_ref(),
+                &spec,
+                &boot,
+                &kernel_host,
+                &rootfs_host,
+                &net_config,
+            )
             .await
         {
             return Err(self.fail_vm(vm_id, e.with_context("phase", Phase::Configured.as_str())));
@@ -626,7 +724,8 @@ impl FirecrackerBackend {
             vm_id.clone(),
             net_config.as_ref().map(|n| n.guest_ip()),
             self.config.readiness_timeout,
-        );
+        )
+        .with_serial_log(self.serial_log_path(vm_id));
         if let Err(e) = self.probe.wait_ready(&ctx).await {
             return Err(self.fail_vm(vm_id, e.with_context("phase", Phase::GuestReady.as_str())));
         }
@@ -641,6 +740,9 @@ impl FirecrackerBackend {
                 record.state = VmState::Running;
                 record.process = Some(process);
             }
+        }
+        if let Some(metrics) = &self.metrics {
+            metrics.set_phase(vm_id, MetricsPhase::Running);
         }
         Ok(())
     }
@@ -703,7 +805,251 @@ impl FirecrackerBackend {
         }
 
         // Tear down all per-VM resources.
+        if let Some(metrics) = &self.metrics {
+            metrics.stop_sampling(vm_id);
+        }
         self.teardown(vm_id)?;
+        Ok(())
+    }
+
+    // -- snapshot helpers -------------------------------------------------
+
+    fn snapshot_host(&self) -> Result<&SnapshotHostInfo, MicrovmError> {
+        self.config.snapshot_host.as_ref().ok_or_else(|| {
+            MicrovmError::new(
+                ErrorCode::InternalError,
+                "snapshot host envelope is not configured",
+            )
+            .with_context("field", "snapshot_host")
+        })
+    }
+
+    fn manifest_path(&self, snapshot_id: &SnapshotId) -> PathBuf {
+        self.snapshot_dir(snapshot_id).join("manifest.json")
+    }
+
+    fn write_manifest(
+        &self,
+        snapshot_id: &SnapshotId,
+        manifest: &SnapshotManifest,
+    ) -> Result<(), MicrovmError> {
+        let bytes = serde_json::to_vec_pretty(manifest).map_err(|e| {
+            MicrovmError::new(
+                ErrorCode::InternalError,
+                "failed to encode snapshot manifest",
+            )
+            .with_context("serde", e.to_string())
+        })?;
+        std::fs::write(self.manifest_path(snapshot_id), bytes).map_err(|e| {
+            MicrovmError::new(
+                ErrorCode::InternalError,
+                "failed to write snapshot manifest",
+            )
+            .with_context(
+                "path",
+                self.manifest_path(snapshot_id).display().to_string(),
+            )
+            .with_context("io", e.to_string())
+        })
+    }
+
+    fn read_manifest(&self, snapshot_id: &SnapshotId) -> Result<SnapshotManifest, MicrovmError> {
+        let path = self.manifest_path(snapshot_id);
+        let bytes = std::fs::read(&path).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                MicrovmError::new(ErrorCode::ArtifactNotFound, "snapshot manifest not found")
+                    .with_context("snapshot_id", snapshot_id.as_str())
+            } else {
+                MicrovmError::new(ErrorCode::InternalError, "failed to read snapshot manifest")
+                    .with_context("path", path.display().to_string())
+                    .with_context("io", e.to_string())
+            }
+        })?;
+        serde_json::from_slice(&bytes).map_err(|e| {
+            MicrovmError::new(
+                ErrorCode::SnapshotIncompatible,
+                "snapshot manifest is malformed",
+            )
+            .with_context("snapshot_id", snapshot_id.as_str())
+            .with_context("serde", e.to_string())
+        })
+    }
+
+    fn hash_file(path: &Path) -> Result<microvm_artifacts::Digest, MicrovmError> {
+        let file = std::fs::File::open(path).map_err(|e| {
+            MicrovmError::new(ErrorCode::ArtifactNotFound, "cannot open snapshot artifact")
+                .with_context("path", path.display().to_string())
+                .with_context("io", e.to_string())
+        })?;
+        microvm_artifacts::compute_sha256(file)
+            .map_err(|e| e.with_context("path", path.display().to_string()))
+    }
+
+    fn new_snapshot_id(&self, vm_id: &VmId) -> Result<SnapshotId, MicrovmError> {
+        let raw = format!("{}-{}", vm_id.as_str(), Utc::now().timestamp_millis());
+        SnapshotId::new(raw).map_err(|e| {
+            MicrovmError::new(
+                ErrorCode::InvalidId,
+                "generated snapshot id failed validation",
+            )
+            .with_context("reason", e.reason)
+        })
+    }
+
+    fn snapshot_manifest(
+        &self,
+        snapshot_id: &SnapshotId,
+        vm_id: &VmId,
+        owner: &TenantId,
+        spec: &ResourceSpec,
+        boot: &BootConfig,
+        state_hashes: StateHashes,
+    ) -> Result<SnapshotManifest, MicrovmError> {
+        let host = self.snapshot_host()?;
+        let cpu = CpuCompatibility::new(
+            host.host.cpu.arch.clone(),
+            host.host.cpu.model.clone(),
+            host.host.cpu.flags.clone(),
+        )?;
+        let rootfs_digest = *boot.rootfs_sha256();
+        let block_devices = vec![BlockDeviceHash::new(ROOT_DRIVE_ID, rootfs_digest)?];
+        let memory_path = format!("{}/mem", snapshot_id.as_str());
+        let manifest = SnapshotManifest::builder()
+            .snapshot_id(snapshot_id.clone())
+            .vm_id(vm_id.clone())
+            .owner(owner.clone())
+            .created_at(Utc::now())
+            .firecracker(host.binary.clone())
+            .vm_config(SnapshotVmConfig::new(
+                boot.vcpu_count(),
+                boot.mem_size_mib(),
+            )?)
+            .artifacts(ArtifactHashes {
+                kernel_sha256: *boot.kernel_sha256(),
+                rootfs_sha256: rootfs_digest,
+                block_devices,
+            })
+            .state(state_hashes)
+            .host(HostCompatibility {
+                cpu,
+                kvm_api_version: host.host.kvm_api_version,
+                cgroup_version: host.host.cgroup_version,
+            })
+            .quota(SnapshotQuota {
+                memory_mib: spec.memory_mib(),
+                disk_mib: spec.disk_mib(),
+            })
+            .memory(MemoryRequirements::new(true, memory_path)?)
+            .build()?;
+        Ok(manifest)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn snapshot_create(
+        &self,
+        vm_id: &VmId,
+        snapshot_id: &SnapshotId,
+        owner: &TenantId,
+        spec: &ResourceSpec,
+        boot: &BootConfig,
+        socket_path: &Path,
+        state_path: &Path,
+        mem_path: &Path,
+    ) -> Result<(), MicrovmError> {
+        let dir = self.snapshot_dir(snapshot_id);
+        std::fs::create_dir_all(&dir).map_err(|e| {
+            MicrovmError::new(
+                ErrorCode::InternalError,
+                "failed to create snapshot directory",
+            )
+            .with_context("path", dir.display().to_string())
+            .with_context("io", e.to_string())
+        })?;
+
+        let api = UdsSnapshotApi::new(socket_path.to_path_buf());
+        let request = SnapshotCreateRequest::full(
+            state_path.to_string_lossy().to_string(),
+            mem_path.to_string_lossy().to_string(),
+        );
+        request.execute(&api).await.map_err(|e| {
+            e.with_context("vm_id", vm_id.as_str())
+                .with_context("snapshot_id", snapshot_id.as_str())
+        })?;
+
+        let state_hashes = StateHashes {
+            memory_sha256: Self::hash_file(mem_path)?,
+            vmstate_sha256: Self::hash_file(state_path)?,
+        };
+        let manifest =
+            self.snapshot_manifest(snapshot_id, vm_id, owner, spec, boot, state_hashes)?;
+        self.write_manifest(snapshot_id, &manifest)
+    }
+
+    async fn restore_inner(
+        &self,
+        vm_id: &VmId,
+        spec: &ResourceSpec,
+        state_path: &Path,
+        mem_path: &Path,
+    ) -> Result<(), MicrovmError> {
+        self.prereq.check(false).map_err(|e| {
+            e.with_context("vm_id", vm_id.as_str())
+                .with_context("phase", "prerequisite")
+        })?;
+
+        let cgroup_spec = self.cgroup_spec(spec)?;
+        self.cgroup.create_parent()?;
+        self.cgroup.apply_spec(vm_id, &cgroup_spec).map_err(|e| {
+            e.with_context("vm_id", vm_id.as_str())
+                .with_context("phase", "cgroup")
+        })?;
+
+        let socket_path = self.socket_path(vm_id);
+        if let Some(parent) = socket_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                MicrovmError::new(ErrorCode::ProcessSpawnError, "failed to create socket dir")
+                    .with_context("path", parent.display().to_string())
+                    .with_context("io", e.to_string())
+            })?;
+        }
+        let argv = vec![
+            self.config.firecracker_binary.clone(),
+            "--id".to_string(),
+            vm_id.as_str().to_string(),
+            "--api-sock".to_string(),
+            socket_path.display().to_string(),
+        ];
+        let launch_spec = LaunchSpec::new(vm_id.clone(), argv, socket_path.clone())
+            .with_log_path(self.serial_log_path(vm_id));
+        let pid = self.launcher.spawn(&launch_spec).await?;
+        let process = VmProcess::new(vm_id.clone(), pid, socket_path.clone());
+        {
+            let mut guard = self.state.lock().unwrap();
+            if let Some(record) = guard.get_mut(vm_id) {
+                record.process = Some(process);
+            }
+        }
+        self.cgroup.attach_pid(vm_id, pid).map_err(|e| {
+            e.with_context("vm_id", vm_id.as_str())
+                .with_context("phase", "cgroup_attach")
+        })?;
+        if let Some(metrics) = &self.metrics {
+            metrics.register_vm(
+                vm_id.clone(),
+                MetricsPhase::Restoring,
+                Some(self.cgroup_relative(vm_id)),
+                None,
+            );
+        }
+
+        self.wait_for_socket(&socket_path).await?;
+        let api = UdsSnapshotApi::new(socket_path);
+        let request = SnapshotLoadRequest::new(
+            state_path.to_string_lossy().to_string(),
+            MemBackend::file(mem_path.to_string_lossy().to_string()),
+        );
+        api.put_snapshot_load(request.params()).await?;
+        api.patch_vm(SnapshotVmState::Resumed).await?;
         Ok(())
     }
 }
@@ -769,28 +1115,207 @@ impl LifecycleService for FirecrackerBackend {
 
     async fn snapshot(
         &self,
-        _vm_id: &VmId,
-        _principal: &Principal,
+        vm_id: &VmId,
+        principal: &Principal,
     ) -> Result<SnapshotId, MicrovmError> {
-        // Snapshot create/load ordering is implemented in a later todo (22).
-        Err(MicrovmError::new(
-            ErrorCode::InternalError,
-            "snapshot is not supported by the Firecracker boot adapter",
-        )
-        .with_context("todo", "22"))
+        let (owner, spec, boot, was_running, socket_path, previous_state) = {
+            let mut guard = self.state.lock().unwrap();
+            let record = self.record_mut(&mut guard, vm_id)?;
+            authorize(principal, &record.owner, Operation::Snapshot)?;
+            if !matches!(record.state, VmState::Running | VmState::Paused) {
+                return Err(MicrovmError::new(
+                    ErrorCode::InvalidTransition,
+                    format!("cannot snapshot VM in {} state", record.state),
+                )
+                .with_context("vm_id", vm_id.as_str())
+                .with_context("state", record.state.as_str()));
+            }
+            if record.spec.network_policy() != microvm_types::NetworkPolicy::None {
+                return Err(MicrovmError::new(
+                    ErrorCode::InvalidResourceSpec,
+                    "snapshot is supported only for network_policy none in this version",
+                )
+                .with_context("vm_id", vm_id.as_str()));
+            }
+            let boot = record.boot.clone().ok_or_else(|| {
+                MicrovmError::new(
+                    ErrorCode::InvalidResourceSpec,
+                    "VM has no boot configuration to snapshot",
+                )
+                .with_context("vm_id", vm_id.as_str())
+            })?;
+            let socket_path = record
+                .process
+                .as_ref()
+                .map(|p| p.socket_path().to_path_buf())
+                .ok_or_else(|| {
+                    MicrovmError::new(
+                        ErrorCode::InvalidTransition,
+                        "VM has no running Firecracker process",
+                    )
+                    .with_context("vm_id", vm_id.as_str())
+                })?;
+            let previous = record.state;
+            record.state = transition(record.state, VmState::Snapshotting)?;
+            (
+                record.owner.clone(),
+                record.spec.clone(),
+                boot,
+                previous == VmState::Running,
+                socket_path,
+                previous,
+            )
+        };
+
+        let snapshot_id = self.new_snapshot_id(vm_id)?;
+        let dir = self.snapshot_dir(&snapshot_id);
+        let state_path = dir.join("vmstate");
+        let mem_path = dir.join("mem");
+        let result = self
+            .snapshot_create(
+                vm_id,
+                &snapshot_id,
+                &owner,
+                &spec,
+                &boot,
+                &socket_path,
+                &state_path,
+                &mem_path,
+            )
+            .await;
+
+        match result {
+            Ok(()) => {
+                if was_running {
+                    let api = UdsSnapshotApi::new(socket_path.clone());
+                    if let Err(e) = api.patch_vm(SnapshotVmState::Resumed).await {
+                        let mut guard = self.state.lock().unwrap();
+                        if let Some(record) = guard.get_mut(vm_id) {
+                            record.state = VmState::Paused;
+                        }
+                        return Err(e.with_context("snapshot_phase", "resume_after_create"));
+                    }
+                }
+                let mut guard = self.state.lock().unwrap();
+                if let Some(record) = guard.get_mut(vm_id) {
+                    let target = if was_running {
+                        VmState::Running
+                    } else {
+                        VmState::Paused
+                    };
+                    record.state = transition(VmState::Snapshotting, target).unwrap_or(target);
+                }
+                Ok(snapshot_id)
+            }
+            Err(e) => {
+                let _ = std::fs::remove_dir_all(&dir);
+                if was_running {
+                    let api = UdsSnapshotApi::new(socket_path.clone());
+                    let _ = api.patch_vm(SnapshotVmState::Resumed).await;
+                }
+                let mut guard = self.state.lock().unwrap();
+                if let Some(record) = guard.get_mut(vm_id) {
+                    record.state = previous_state;
+                }
+                Err(e)
+            }
+        }
     }
 
     async fn restore(
         &self,
-        _snapshot_id: &SnapshotId,
-        _principal: &Principal,
+        snapshot_id: &SnapshotId,
+        principal: &Principal,
     ) -> Result<VmId, MicrovmError> {
-        // Restore rebinding is implemented in a later todo (22).
-        Err(MicrovmError::new(
-            ErrorCode::InternalError,
-            "restore is not supported by the Firecracker boot adapter",
+        let manifest = self.read_manifest(snapshot_id)?;
+        authorize(principal, &manifest.owner, Operation::Restore)?;
+        let host = self.snapshot_host()?;
+        let quota = TenantQuota {
+            max_memory_mib: manifest.quota.memory_mib,
+            max_disk_mib: manifest.quota.disk_mib,
+        };
+        CompatibilityGate::new(host.host.clone(), host.binary.clone(), quota)
+            .validate(&manifest, principal.tenant_id())
+            .map_err(MicrovmError::from)?;
+
+        let boot = self.default_boot.clone().ok_or_else(|| {
+            MicrovmError::new(
+                ErrorCode::InvalidResourceSpec,
+                "restore requires a configured default boot image",
+            )
+        })?;
+        if *boot.kernel_sha256() != manifest.artifacts.kernel_sha256
+            || *boot.rootfs_sha256() != manifest.artifacts.rootfs_sha256
+        {
+            return Err(MicrovmError::new(
+                ErrorCode::SnapshotIncompatible,
+                "configured image does not match the snapshot's kernel or rootfs",
+            )
+            .with_context("snapshot_id", snapshot_id.as_str()));
+        }
+
+        let dir = self.snapshot_dir(snapshot_id);
+        let state_path = dir.join("vmstate");
+        let mem_path = dir.join("mem");
+        let actual = ActualHashes {
+            kernel_sha256: *boot.kernel_sha256(),
+            rootfs_sha256: *boot.rootfs_sha256(),
+            memory_sha256: Self::hash_file(&mem_path)?,
+            vmstate_sha256: Self::hash_file(&state_path)?,
+            block_devices: manifest.artifacts.block_devices.clone(),
+        };
+        manifest
+            .verify_artifacts(&actual)
+            .map_err(MicrovmError::from)?;
+
+        let spec = ResourceSpec::new(
+            manifest.vm_config.vcpu_count(),
+            manifest.vm_config.mem_size_mib(),
+            manifest.quota.disk_mib,
+            microvm_types::NetworkPolicy::None,
         )
-        .with_context("todo", "22"))
+        .map_err(|e| {
+            MicrovmError::new(ErrorCode::InvalidResourceSpec, e.reason)
+                .with_context("snapshot_id", snapshot_id.as_str())
+        })?;
+
+        let vm_id = self.generate_vm_id()?;
+        let record = VmRecord {
+            vm_id: vm_id.clone(),
+            owner: manifest.owner.clone(),
+            spec: spec.clone(),
+            boot: Some(boot.clone()),
+            state: VmState::Restoring,
+            created_at: Utc::now(),
+            process: None,
+            net: None,
+        };
+        self.state.lock().unwrap().insert(vm_id.clone(), record);
+
+        let result = self
+            .restore_inner(&vm_id, &spec, &state_path, &mem_path)
+            .await;
+        match result {
+            Ok(()) => {
+                let mut guard = self.state.lock().unwrap();
+                if let Some(record) = guard.get_mut(&vm_id) {
+                    record.state = transition(VmState::Restoring, VmState::Running)
+                        .unwrap_or(VmState::Running);
+                }
+                if let Some(metrics) = &self.metrics {
+                    metrics.set_phase(&vm_id, MetricsPhase::Running);
+                }
+                Ok(vm_id)
+            }
+            Err(e) => {
+                let _ = self.fail_vm(&vm_id, e);
+                self.state.lock().unwrap().remove(&vm_id);
+                Err(
+                    MicrovmError::new(ErrorCode::InternalError, "snapshot restore failed")
+                        .with_context("snapshot_id", snapshot_id.as_str()),
+                )
+            }
+        }
     }
 
     async fn status(&self, vm_id: &VmId, principal: &Principal) -> Result<VmStatus, MicrovmError> {
@@ -808,31 +1333,82 @@ impl LifecycleService for FirecrackerBackend {
         })
     }
 
+    async fn list(&self, principal: &Principal) -> Result<Vec<VmStatus>, MicrovmError> {
+        let guard = self.state.lock().unwrap();
+        let mut statuses: Vec<VmStatus> = guard
+            .values()
+            .filter(|record| authorize(principal, &record.owner, Operation::Status).is_ok())
+            .map(|record| VmStatus {
+                vm_id: record.vm_id.clone(),
+                state: record.state,
+                created_at: record.created_at,
+                resource_spec: record.spec.clone(),
+            })
+            .collect();
+        statuses.sort_by(|a, b| a.vm_id.as_str().cmp(b.vm_id.as_str()));
+        Ok(statuses)
+    }
+
+    async fn delete(&self, vm_id: &VmId, principal: &Principal) -> Result<(), MicrovmError> {
+        let record = {
+            let mut guard = self.state.lock().unwrap();
+            let record = self.record_mut(&mut guard, vm_id)?;
+            authorize(principal, &record.owner, Operation::Delete)?;
+            if !matches!(record.state, VmState::Stopped | VmState::Failed) {
+                return Err(MicrovmError::new(
+                    ErrorCode::InvalidTransition,
+                    format!("cannot delete VM in {} state", record.state),
+                )
+                .with_context("vm_id", vm_id.as_str())
+                .with_context("state", record.state.as_str()));
+            }
+            guard.remove(vm_id)
+        };
+
+        if record.is_some() {
+            if let Some(metrics) = &self.metrics {
+                metrics.stop_sampling(vm_id);
+            }
+            self.teardown(vm_id)?;
+            let _ = std::fs::remove_file(self.serial_log_path(vm_id));
+        }
+        Ok(())
+    }
+
     async fn metrics(
         &self,
         vm_id: &VmId,
         principal: &Principal,
     ) -> Result<VmMetrics, MicrovmError> {
-        let guard = self.state.lock().unwrap();
-        let record = guard.get(vm_id).ok_or_else(|| {
-            MicrovmError::new(ErrorCode::ArtifactNotFound, "no such VM")
-                .with_context("vm_id", vm_id.as_str())
-        })?;
-        authorize(principal, &record.owner, Operation::Metrics)?;
-        // The backend does not (yet) attach a host-metrics collector to its
-        // in-memory record, so it returns an honest record whose sources are
-        // marked unavailable rather than zero-filled (plan todo 23). A
-        // privileged deployment wires a `MetricsCollector` to the VM's cgroup
-        // leaf and TAP device to produce real measurements.
+        let (state, owner) = {
+            let guard = self.state.lock().unwrap();
+            let record = guard.get(vm_id).ok_or_else(|| {
+                MicrovmError::new(ErrorCode::ArtifactNotFound, "no such VM")
+                    .with_context("vm_id", vm_id.as_str())
+            })?;
+            (record.state, record.owner.clone())
+        };
+        authorize(principal, &owner, Operation::Metrics)?;
+
+        let record = match &self.metrics {
+            None => {
+                VmMetricsRecord::not_collected(vm_id.clone(), state.metrics_phase(), Utc::now(), 0)
+            }
+            Some(collector) => match collector.sample(vm_id) {
+                Ok(record) => record,
+                Err(e) if e.code == ErrorCode::ArtifactNotFound => VmMetricsRecord::not_collected(
+                    vm_id.clone(),
+                    state.metrics_phase(),
+                    Utc::now(),
+                    0,
+                ),
+                Err(e) => return Err(e),
+            },
+        };
         Ok(VmMetrics {
-            record: VmMetricsRecord::not_collected(
-                record.vm_id.clone(),
-                record.state.metrics_phase(),
-                Utc::now(),
-                0,
-            ),
-            vm_id: record.vm_id.clone(),
-            state: record.state,
+            record,
+            vm_id: vm_id.clone(),
+            state,
         })
     }
 }
@@ -855,6 +1431,7 @@ pub struct BackendBuilder {
     cgroup: Option<CgroupManager>,
     net: Option<NetManager>,
     cleanup: Option<CleanupManager>,
+    metrics: Option<Arc<MetricsCollector>>,
     default_boot: Option<BootConfig>,
 }
 
@@ -926,6 +1503,12 @@ impl BackendBuilder {
         self
     }
 
+    /// Attach a host metrics collector.
+    pub fn metrics(mut self, metrics: Arc<MetricsCollector>) -> Self {
+        self.metrics = Some(metrics);
+        self
+    }
+
     /// Set a default boot config inherited by every created VM.
     pub fn default_boot(mut self, boot: BootConfig) -> Self {
         self.default_boot = Some(boot);
@@ -962,6 +1545,7 @@ impl BackendBuilder {
             net: Mutex::new(net),
             cleanup,
             config: self.config,
+            metrics: self.metrics,
             default_boot: self.default_boot,
             next_id: AtomicU64::new(1),
         }

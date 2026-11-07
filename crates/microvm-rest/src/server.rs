@@ -11,19 +11,24 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
 
-use http_body_util::{BodyExt, Full};
+use http_body_util::{BodyExt, Full, Limited};
 use hyper::body::{Bytes, Incoming};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use microvm_lifecycle::LifecycleService;
+use std::ffi::CString;
+use std::os::unix::ffi::OsStrExt;
 use tokio::net::UnixListener;
 
 use crate::config::SocketConfig;
 use crate::error::{ErrorBody, HttpStatus};
 use crate::peer::{get_peer_credentials, PeerAuthenticator};
 use crate::router::{self, HttpResponse};
+
+/// Maximum request body accepted by the REST adapter.
+pub const MAX_REQUEST_BODY: usize = 1024 * 1024;
 
 /// Error returned when the server cannot start.
 #[derive(Debug)]
@@ -133,8 +138,8 @@ impl RestServer {
 
     /// Bind the Unix socket and return the listener.
     ///
-    /// Creates parent directories, removes any stale socket file, binds,
-    /// and sets the file mode to the configured value.
+    /// Creates parent directories, refuses to replace a live socket, removes a
+    /// stale socket, binds, sets mode and ownership, and validates the result.
     pub fn bind(&self) -> Result<UnixListener, ServerError> {
         let path = &self.config.path;
 
@@ -143,8 +148,14 @@ impl RestServer {
             std::fs::create_dir_all(parent)?;
         }
 
-        // Remove stale socket file if it exists.
+        // Refuse to replace a socket another process is serving.
         if path.exists() {
+            if std::os::unix::net::UnixStream::connect(path).is_ok() {
+                return Err(ServerError::SocketValidation(format!(
+                    "{} is already in use by a live process",
+                    path.display()
+                )));
+            }
             std::fs::remove_file(path)?;
         }
 
@@ -155,19 +166,17 @@ impl RestServer {
         let perms = std::fs::Permissions::from_mode(self.config.mode);
         std::fs::set_permissions(path, perms)?;
 
+        chown_socket(path, &self.config)?;
+        Self::validate_socket(path, &self.config)?;
+
         Ok(listener)
     }
 
-    /// Run the server, accepting connections until the future is dropped.
+    /// Run the server on an already-bound listener.
     ///
-    /// Each connection has its peer credentials extracted via `SO_PEERCRED`
-    /// before any HTTP processing. Unauthenticated peers receive 403.
-    pub async fn serve(self) -> Result<(), ServerError> {
-        let listener = self.bind()?;
-
-        // Validate the socket after binding.
-        Self::validate_socket(&self.config.path, &self.config)?;
-
+    /// The daemon binds both transports before serving so a failure on one
+    /// socket does not leave the other accepting connections.
+    pub async fn serve_with_listener(self, listener: UnixListener) -> Result<(), ServerError> {
         let service = self.service;
         let authenticator = self.authenticator;
 
@@ -200,6 +209,34 @@ impl RestServer {
             });
         }
     }
+
+    /// Bind and serve until the future is dropped.
+    pub async fn serve(self) -> Result<(), ServerError> {
+        let listener = self.bind()?;
+        self.serve_with_listener(listener).await
+    }
+}
+
+/// Change the socket owner when the configuration asks for a specific one.
+fn chown_socket(path: &Path, config: &SocketConfig) -> Result<(), ServerError> {
+    if config.expected_uid.is_none() && config.expected_gid.is_none() {
+        return Ok(());
+    }
+
+    let path_c = CString::new(path.as_os_str().as_bytes()).map_err(|_| {
+        ServerError::SocketValidation("socket path contains a NUL byte".to_string())
+    })?;
+    let uid = config.expected_uid.map_or(!0, |v| v as libc::uid_t);
+    let gid = config.expected_gid.map_or(!0, |v| v as libc::gid_t);
+
+    let rc = unsafe { libc::chown(path_c.as_ptr(), uid, gid) };
+    if rc != 0 {
+        return Err(ServerError::SocketValidation(format!(
+            "cannot change socket ownership: {}",
+            std::io::Error::last_os_error()
+        )));
+    }
+    Ok(())
 }
 
 /// Handle a single HTTP request: route, dispatch, and build the response.
@@ -223,11 +260,14 @@ async fn handle_request(
     let method = req.method().as_str().to_string();
     let path = req.uri().path().to_string();
 
-    // Read the request body.
-    let body_bytes = match req.collect().await {
+    // Read the request body under a hard size limit.
+    let body_bytes = match Limited::new(req.into_body(), MAX_REQUEST_BODY)
+        .collect()
+        .await
+    {
         Ok(collected) => collected.to_bytes().to_vec(),
         Err(_) => {
-            let body = ErrorBody::bad_request("failed to read request body");
+            let body = ErrorBody::bad_request("request body is missing or too large");
             return Ok(build_hyper_response(
                 HttpStatus::BadRequest,
                 &body.to_json_bytes(),

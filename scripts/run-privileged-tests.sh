@@ -31,5 +31,5 @@ if ! bash "$SCRIPT_DIR/preflight.sh" --strict; then
 fi
 
 echo "$PROG: preflight passed; run the privileged suite with:"
-echo "  sudo -E bash ${SCRIPT_DIR}/run-privileged-suite.sh"
+echo "  bash ${SCRIPT_DIR}/run-privileged-suite.sh   # current user, no sudo; scratch under .work/"
 exit 0

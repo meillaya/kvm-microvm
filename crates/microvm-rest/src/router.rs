@@ -1,8 +1,10 @@
 //! HTTP route matching and request dispatch for the REST API.
 //!
-//! Routes match the OpenAPI spec (todo 8):
+//! Routes match the OpenAPI spec:
 //! - `POST /vms`: create a VM
+//! - `GET /vms`: list VMs
 //! - `GET /vms/{vm_id}`: get VM status
+//! - `DELETE /vms/{vm_id}`: delete a stopped VM
 //! - `POST /vms/{vm_id}/start`: start a VM
 //! - `POST /vms/{vm_id}/stop`: stop a VM
 //! - `POST /vms/{vm_id}/snapshot`: snapshot a VM
@@ -47,6 +49,13 @@ pub struct CreateVmResponse {
     pub vm_id: String,
 }
 
+/// Response body for `GET /vms` (200).
+#[derive(Clone, Debug, Serialize)]
+pub struct VmListResponse {
+    /// VMs visible to the caller, sorted by identifier.
+    pub vms: Vec<VmStatusResponse>,
+}
+
 /// Response body for `GET /vms/{vm_id}` (200).
 #[derive(Clone, Debug, Serialize)]
 pub struct VmStatusResponse {
@@ -76,7 +85,7 @@ pub struct ResourceSpecResponse {
 /// Response body for `GET /vms/{vm_id}/metrics` (200).
 ///
 /// Carries the lifecycle state plus the full, availability-flagged
-/// [`VmMetricsRecord`] (plan todo 23): host cgroup/TAP metrics, monotonic
+/// [`VmMetricsRecord`]: host cgroup/TAP metrics, monotonic
 /// boot/restore phases, and optional guest metrics. Missing sources are
 /// flagged unavailable, never zero-filled.
 #[derive(Clone, Debug, Serialize)]
@@ -113,8 +122,12 @@ pub struct RestoreVmResponse {
 pub enum Route {
     /// `POST /vms`
     CreateVm,
+    /// `GET /vms`
+    ListVms,
     /// `GET /vms/{vm_id}`
     GetVmStatus(String),
+    /// `DELETE /vms/{vm_id}`
+    DeleteVm(String),
     /// `POST /vms/{vm_id}/start`
     StartVm(String),
     /// `POST /vms/{vm_id}/stop`
@@ -143,7 +156,9 @@ pub fn match_route(method: &str, path: &str) -> Option<Route> {
 
     match (method, segments.as_slice()) {
         ("POST", ["vms"]) => Some(Route::CreateVm),
+        ("GET", ["vms"]) => Some(Route::ListVms),
         ("GET", ["vms", vm_id]) => Some(Route::GetVmStatus(vm_id.to_string())),
+        ("DELETE", ["vms", vm_id]) => Some(Route::DeleteVm(vm_id.to_string())),
         ("POST", ["vms", vm_id, "start"]) => Some(Route::StartVm(vm_id.to_string())),
         ("POST", ["vms", vm_id, "stop"]) => Some(Route::StopVm(vm_id.to_string())),
         ("POST", ["vms", vm_id, "snapshot"]) => Some(Route::SnapshotVm(vm_id.to_string())),
@@ -230,7 +245,9 @@ pub async fn dispatch(
 ) -> HttpResponse {
     match route {
         Route::CreateVm => handle_create_vm(body, principal, service).await,
+        Route::ListVms => handle_list_vms(principal, service).await,
         Route::GetVmStatus(vm_id) => handle_get_status(vm_id, principal, service).await,
+        Route::DeleteVm(vm_id) => handle_delete_vm(vm_id, principal, service).await,
         Route::StartVm(vm_id) => handle_start_vm(vm_id, principal, service).await,
         Route::StopVm(vm_id) => handle_stop_vm(vm_id, principal, service).await,
         Route::SnapshotVm(vm_id) => handle_snapshot_vm(vm_id, principal, service).await,
@@ -290,6 +307,34 @@ async fn handle_create_vm(
     }
 }
 
+async fn handle_list_vms(
+    principal: &Principal,
+    service: &Arc<dyn LifecycleService>,
+) -> HttpResponse {
+    match service.list(principal).await {
+        Ok(statuses) => {
+            let mut vms: Vec<VmStatusResponse> = statuses.iter().map(status_response).collect();
+            vms.sort_by(|a, b| a.vm_id.cmp(&b.vm_id));
+            HttpResponse::ok(&VmListResponse { vms })
+        }
+        Err(e) => service_error_response(&e),
+    }
+}
+
+fn status_response(status: &microvm_lifecycle::VmStatus) -> VmStatusResponse {
+    VmStatusResponse {
+        vm_id: status.vm_id.to_string(),
+        state: status.state.as_str().to_string(),
+        created_at: status.created_at.to_rfc3339(),
+        resource_spec: ResourceSpecResponse {
+            vcpu_count: status.resource_spec.vcpu_count(),
+            memory_mib: status.resource_spec.memory_mib(),
+            disk_mib: status.resource_spec.disk_mib(),
+            network_policy: status.resource_spec.network_policy(),
+        },
+    }
+}
+
 async fn handle_get_status(
     vm_id_raw: &str,
     principal: &Principal,
@@ -301,17 +346,23 @@ async fn handle_get_status(
     };
 
     match service.status(&vm_id, principal).await {
-        Ok(status) => HttpResponse::ok(&VmStatusResponse {
-            vm_id: status.vm_id.to_string(),
-            state: status.state.as_str().to_string(),
-            created_at: status.created_at.to_rfc3339(),
-            resource_spec: ResourceSpecResponse {
-                vcpu_count: status.resource_spec.vcpu_count(),
-                memory_mib: status.resource_spec.memory_mib(),
-                disk_mib: status.resource_spec.disk_mib(),
-                network_policy: status.resource_spec.network_policy(),
-            },
-        }),
+        Ok(status) => HttpResponse::ok(&status_response(&status)),
+        Err(e) => service_error_response(&e),
+    }
+}
+
+async fn handle_delete_vm(
+    vm_id_raw: &str,
+    principal: &Principal,
+    service: &Arc<dyn LifecycleService>,
+) -> HttpResponse {
+    let vm_id = match parse_vm_id(vm_id_raw) {
+        Ok(id) => id,
+        Err(resp) => return resp,
+    };
+
+    match service.delete(&vm_id, principal).await {
+        Ok(()) => HttpResponse::no_content(),
         Err(e) => service_error_response(&e),
     }
 }
@@ -450,6 +501,19 @@ mod tests {
     }
 
     #[test]
+    fn match_list_vms() {
+        assert_eq!(match_route("GET", "/vms"), Some(Route::ListVms));
+    }
+
+    #[test]
+    fn match_delete_vm() {
+        assert_eq!(
+            match_route("DELETE", "/vms/vm-001"),
+            Some(Route::DeleteVm("vm-001".to_string()))
+        );
+    }
+
+    #[test]
     fn match_get_vm_status() {
         assert_eq!(
             match_route("GET", "/vms/vm-001"),
@@ -500,7 +564,7 @@ mod tests {
     #[test]
     fn unknown_route_returns_none() {
         assert_eq!(match_route("GET", "/unknown"), None);
-        assert_eq!(match_route("DELETE", "/vms/vm-001"), None);
+        assert_eq!(match_route("DELETE", "/unknown"), None);
         assert_eq!(match_route("POST", "/vms/vm-001/unknown"), None);
         assert_eq!(match_route("GET", "/"), None);
     }
@@ -516,7 +580,7 @@ mod tests {
 
     #[test]
     fn wrong_method_returns_none() {
-        assert_eq!(match_route("GET", "/vms"), None);
+        assert_eq!(match_route("PUT", "/vms"), None);
         assert_eq!(match_route("POST", "/vms/vm-001"), None);
         assert_eq!(match_route("GET", "/vms/vm-001/start"), None);
     }
@@ -562,7 +626,7 @@ mod tests {
     #[test]
     fn create_vm_request_with_network_policy() {
         let json =
-            r#"{"vcpu_count":4,"memory_mib":1024,"disk_mib":2048,"network_policy":"nat_only"}"#;
+            r#"{"vcpu_count":4,"memory_mib":1024,"disk_mib":2048,"network_policy":"nat-only"}"#;
         let req: CreateVmRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.network_policy, NetworkPolicy::NatOnly);
     }

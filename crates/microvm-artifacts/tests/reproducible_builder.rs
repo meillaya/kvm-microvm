@@ -1,4 +1,4 @@
-//! Deterministic image-builder acceptance tests (plan todo 20).
+//! Deterministic image-builder acceptance tests (the image builder).
 //!
 //! QA happy path: `cargo test -p microvm-artifacts --test reproducible_builder`.
 //!
@@ -6,7 +6,7 @@
 //! capabilities: they build from local fixture bytes in a tempdir and assert
 //! reproducibility, digest/size coverage, source-provenance rejection, and that
 //! generated artifacts open only through the descriptor-relative
-//! [`PathResolver`] (todo 9).
+//! [`PathResolver`] (the path resolver).
 
 use microvm_artifacts::{
     compute_sha256, validate_relative_path, verify_sha256, BuildOutput, GuestArch, ImageBuilder,
@@ -208,7 +208,7 @@ fn manifest_records_version_arch_boot_args_and_provenance() {
 }
 
 // ---------------------------------------------------------------------------
-// Artifacts open only through the PathResolver (todo 9)
+// Artifacts open only through the PathResolver (the path resolver)
 // ---------------------------------------------------------------------------
 
 #[test]

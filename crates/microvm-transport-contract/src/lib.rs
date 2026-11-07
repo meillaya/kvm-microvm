@@ -1,4 +1,4 @@
-//! Transport contract validation for the kvm-microvm-orchestrator platform.
+//! Transport contract validation for the microvm platform.
 //!
 //! This crate validates that the REST (OpenAPI) and gRPC (proto3) lifecycle
 //! API definitions are in parity and conform to the Unix-socket-only
@@ -463,7 +463,7 @@ mod tests {
 
     #[test]
     fn scan_passes_clean_content() {
-        let content = "server: unix:///run/microvm/api.sock\n";
+        let content = "server: unix:///run/microvm/rest.sock\n";
         let violations = scan_for_tcp_patterns(content);
         assert!(violations.is_empty());
     }

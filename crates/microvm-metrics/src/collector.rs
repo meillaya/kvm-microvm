@@ -1,5 +1,5 @@
 //! The [`MetricsCollector`]: reads cgroup/TAP/guest sources for registered VMs
-//! and produces [`VmMetricsRecord`]s (plan todo 23).
+//! and produces [`VmMetricsRecord`]s.
 //!
 //! # Lifecycle
 //! A VM is added with [`MetricsCollector::register_vm`] and removed with

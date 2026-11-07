@@ -6,7 +6,6 @@ members = [
     "crates/microvm-lifecycle",
     "crates/microvm-transport-contract",
     "crates/microvm-artifacts",
-    "crates/microvm-oci",
     "crates/microvm-isolation",
     "crates/microvm-firecracker",
     "crates/microvm-service",
@@ -14,12 +13,11 @@ members = [
     "crates/microvm-grpc",
     "crates/microvm-snapshots",
     "crates/microvm-metrics",
-    "crates/microvm-scheduler",
+    "crates/microvm-sim",
     "crates/microvm-contract-tests",
     "crates/microvm-cli",
     "crates/microvm-bench",
-    "crates/microvm-demo",
-    "crates/microvm-backend-directkvm",
+    "crates/microvm-daemon",
     "crates/microvm-security-tests",
     "crates/microvm-guest-health",
     "crates/microvm-e2e-tests",
@@ -40,6 +38,7 @@ tokio = { version = "1", features = ["rt", "macros"] }
 sha2 = "0.10"
 libc = "0.2"
 tempfile = "3"
+toml = "0.8"
 
 [profile.release]
 

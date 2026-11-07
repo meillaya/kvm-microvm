@@ -32,8 +32,8 @@ mod common;
 use microvm_lifecycle::LifecycleService;
 
 use common::{
-    rest_create, rest_restore, rest_snapshot, rest_start, rest_status, rest_stop,
-    rest_wait_for_state, wait_for_health, Rig,
+    rest_create, rest_create_with_policy, rest_restore, rest_snapshot, rest_start, rest_status,
+    rest_stop, rest_wait_for_state, wait_for_health, Rig,
 };
 
 /// The full lifecycle flow over a real REST Unix socket, backed by the composed
@@ -81,7 +81,7 @@ async fn full_lifecycle_over_rest_unix_socket() {
     assert!(!restored_id.is_empty(), "restore must return a vm_id");
     assert_ne!(restored_id, vm_id, "restore creates a new VM");
     // The restored VM comes up with its own provisioned resources. Supervision
-    // of restored VMs (status/stop *through the service*) lands in todo 22; the
+    // of restored VMs (status/stop *through the service*) lands in snapshot restore; the
     // supervised service returns the new VmId but does not yet track it, so we
     // verify and release its resources against the backend directly.
     assert!(
@@ -135,7 +135,7 @@ async fn composed_firecracker_boot_stop_cleanup_over_rest() {
     common::spawn_rest_server(rest_sock.clone(), rig.service.clone()).await;
 
     // Create -> start through the API.
-    let (status, vm_id) = rest_create(&rest_sock, 2, 512, 1024).await;
+    let (status, vm_id) = rest_create_with_policy(&rest_sock, 2, 512, 1024, "nat-only").await;
     assert_eq!(status, 201, "create must return 201");
 
     let status = rest_start(&rest_sock, &vm_id).await;

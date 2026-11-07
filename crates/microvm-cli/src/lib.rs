@@ -1,12 +1,6 @@
 //! The `microvm` CLI: client-side lifecycle commands over a protected
 //! REST Unix socket.
 //!
-//! This crate provides the [`Cli`] parser (clap-based), a stable
-//! [`ExitCode`] contract, and a Unix-socket REST [`Client`]. It drives
-//! the microvm daemon's OpenAPI lifecycle routes (todo 8) exclusively
-//! through a filesystem Unix socket, never TCP, and maps every
-//! outcome to a documented exit code.
-//!
 //! # Exit codes
 //! | Code | Meaning |
 //! |------|---------|
@@ -16,20 +10,11 @@
 //! | 3 | Not found |
 //! | 4 | Local artifact required |
 //! | 5 | Permission denied |
-//!
-//! # Forbidden flags
-//! The CLI deliberately exposes no `--tcp`, `--rootless`, `--mount`,
-//! `--cap-add`, or remote registry convenience flags.
-//!
-//! # `microvm run`
-//! The `run` subcommand is a constrained local import surface (not an
-//! OCI runtime); its help text is sourced from [`microvm_oci::help`].
 
 pub mod cli;
 pub mod client;
 pub mod error;
 pub mod exit_code;
-pub mod run;
 
 pub use cli::{Cli, Command};
 pub use client::Client;
@@ -37,45 +22,57 @@ pub use error::CliError;
 pub use exit_code::ExitCode;
 
 use clap::Parser;
+use client::CreateVmRequest;
+use microvm_types::NetworkPolicy;
 
-/// Execute a parsed [`Command`] against the daemon and return the
-/// process exit code plus a human-readable output line.
-///
-/// This is the transport-facing dispatch layer: it builds a [`Client`]
-/// from the socket path and maps each subcommand to one or more REST
-/// calls. It never panics on a service error; every failure becomes a
-/// [`CliError`] with a stable [`ExitCode`].
+/// Execute a parsed [`Command`] and return the process exit code plus text.
 pub async fn execute(cli: &Cli) -> (ExitCode, String) {
     let client = Client::new(cli.socket.clone());
 
     let result = match &cli.command {
         Command::Create {
-            image,
             vcpu,
             memory_mib,
             disk_mib,
             network_policy,
         } => {
-            // Validate the digest reference locally first (exit 4 for
-            // remote/tag-only, exit 2 for malformed digest).
-            match cli::validate_create_image(image) {
+            let policy = match parse_policy(network_policy) {
+                Ok(p) => p,
+                Err(e) => return (ExitCode::UsageError, e),
+            };
+            let req = CreateVmRequest {
+                vcpu_count: *vcpu,
+                memory_mib: *memory_mib,
+                disk_mib: *disk_mib,
+                network_policy: policy,
+            };
+            match client.create_vm(&req).await {
+                Ok(resp) => Ok(format!("created vm {}", resp.vm_id)),
                 Err(e) => Err(e),
-                Ok(()) => {
-                    let policy: client::NetworkPolicyArg = match network_policy.parse() {
-                        Ok(p) => p,
-                        Err(msg) => return (ExitCode::UsageError, msg),
-                    };
-                    let req = client::CreateVmRequest {
-                        vcpu_count: *vcpu,
-                        memory_mib: *memory_mib,
-                        disk_mib: *disk_mib,
-                        network_policy: policy,
-                    };
-                    match client.create_vm(&req).await {
-                        Ok(resp) => Ok(format!("created vm {}", resp.vm_id)),
-                        Err(e) => Err(e),
-                    }
-                }
+            }
+        }
+        Command::Run {
+            vcpu,
+            memory_mib,
+            disk_mib,
+            network_policy,
+        } => {
+            let policy = match parse_policy(network_policy) {
+                Ok(p) => p,
+                Err(e) => return (ExitCode::UsageError, e),
+            };
+            let req = CreateVmRequest {
+                vcpu_count: *vcpu,
+                memory_mib: *memory_mib,
+                disk_mib: *disk_mib,
+                network_policy: policy,
+            };
+            match client.create_vm(&req).await {
+                Ok(created) => match client.start_vm(&created.vm_id).await {
+                    Ok(()) => Ok(format!("running vm {}", created.vm_id)),
+                    Err(e) => Err(e),
+                },
+                Err(e) => Err(e),
             }
         }
         Command::Start { vm_id } => match client.start_vm(vm_id).await {
@@ -95,15 +92,25 @@ pub async fn execute(cli: &Cli) -> (ExitCode, String) {
             Err(e) => Err(e),
         },
         Command::Status { vm_id } => match client.get_status(vm_id).await {
-            Ok(resp) => Ok(format!(
-                "vm {} state={} vcpu={} memory_mib={} disk_mib={} created_at={}",
-                resp.vm_id,
-                resp.state,
-                resp.resource_spec.vcpu_count,
-                resp.resource_spec.memory_mib,
-                resp.resource_spec.disk_mib,
-                resp.created_at
-            )),
+            Ok(resp) => {
+                if cli.json {
+                    match serde_json::to_string_pretty(&resp) {
+                        Ok(text) => Ok(text),
+                        Err(e) => Err(CliError::usage(e.to_string())),
+                    }
+                } else {
+                    Ok(format!(
+                        "vm {} state={} vcpu={} memory_mib={} disk_mib={} network={} created_at={}",
+                        resp.vm_id,
+                        resp.state,
+                        resp.resource_spec.vcpu_count,
+                        resp.resource_spec.memory_mib,
+                        resp.resource_spec.disk_mib,
+                        resp.resource_spec.network_policy,
+                        resp.created_at
+                    ))
+                }
+            }
             Err(e) => Err(e),
         },
         Command::Metrics { vm_id } => match client.get_metrics(vm_id).await {
@@ -112,8 +119,34 @@ pub async fn execute(cli: &Cli) -> (ExitCode, String) {
             }
             Err(e) => Err(e),
         },
-        Command::Run { image } => match run::execute_run(&client, image).await {
-            Ok(outcome) => Ok(format!("running vm {}", outcome.vm_id)),
+        Command::List => match client.list_vms().await {
+            Ok(resp) => {
+                if cli.json {
+                    match serde_json::to_string_pretty(&resp) {
+                        Ok(text) => Ok(text),
+                        Err(e) => Err(CliError::usage(e.to_string())),
+                    }
+                } else {
+                    let mut out = String::new();
+                    for vm in resp.vms {
+                        out.push_str(&format!(
+                            "{} {} vcpu={} memory_mib={} disk_mib={} network={} created_at={}\n",
+                            vm.vm_id,
+                            vm.state,
+                            vm.resource_spec.vcpu_count,
+                            vm.resource_spec.memory_mib,
+                            vm.resource_spec.disk_mib,
+                            vm.resource_spec.network_policy,
+                            vm.created_at
+                        ));
+                    }
+                    Ok(out.trim_end().to_string())
+                }
+            }
+            Err(e) => Err(e),
+        },
+        Command::Delete { vm_id } => match client.delete_vm(vm_id).await {
+            Ok(()) => Ok(format!("deleted vm {vm_id}")),
             Err(e) => Err(e),
         },
     };
@@ -124,15 +157,15 @@ pub async fn execute(cli: &Cli) -> (ExitCode, String) {
     }
 }
 
+fn parse_policy(value: &str) -> Result<NetworkPolicy, String> {
+    value.parse::<NetworkPolicy>()
+}
+
 /// Parse arguments and run the CLI, returning the process exit code.
-///
-/// This is the top-level entry point used by `main`. Clap parse failures
-/// (usage errors) are rendered by clap and map to exit code 2.
 pub async fn run() -> ExitCode {
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
         Err(err) => {
-            // clap renders the error/usage to stderr; usage errors are 2.
             let code = err.exit_code();
             let _ = err.print();
             return if code == 2 {
@@ -157,11 +190,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn lib_reexports_key_types() {
-        // Compile-time check that the documented key types are exported.
-        fn _assert_types() {
-            let _: fn() -> ExitCode = || ExitCode::Success;
-            // Cli and Client and CliError are referenced by path elsewhere.
-        }
+    fn parse_policy_accepts_known_values() {
+        assert_eq!(parse_policy("none").unwrap(), NetworkPolicy::None);
+        assert_eq!(parse_policy("nat-only").unwrap(), NetworkPolicy::NatOnly);
+        assert_eq!(
+            parse_policy("egress-allowed").unwrap(),
+            NetworkPolicy::EgressAllowed
+        );
+        assert!(parse_policy("bridge").is_err());
     }
 }

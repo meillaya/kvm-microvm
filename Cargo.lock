@@ -165,12 +165,6 @@ checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bitflags"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
-
-[[package]]
-name = "bitflags"
 version = "2.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
@@ -638,27 +632,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kvm-bindings"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11cf0ca75d59e9d298647c59cf6c5286fa048120caa77972a7a504a0824d234f"
-dependencies = [
- "vmm-sys-util",
-]
-
-[[package]]
-name = "kvm-ioctls"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06ac372c120eb893b086d1a12027669cf2b478d1f71204021ffa7adf57948d63"
-dependencies = [
- "bitflags 2.13.1",
- "kvm-bindings",
- "libc",
- "vmm-sys-util",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -702,17 +675,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "microvm-backend-directkvm"
-version = "0.1.0"
-dependencies = [
- "kvm-bindings",
- "kvm-ioctls",
- "libc",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "microvm-bench"
 version = "0.1.0"
 dependencies = [
@@ -743,7 +705,6 @@ dependencies = [
  "microvm-errors",
  "microvm-lifecycle",
  "microvm-metrics",
- "microvm-oci",
  "microvm-rest",
  "microvm-types",
  "serde",
@@ -775,18 +736,30 @@ dependencies = [
 ]
 
 [[package]]
-name = "microvm-demo"
+name = "microvm-daemon"
 version = "0.1.0"
 dependencies = [
- "async-trait",
+ "chrono",
  "clap",
+ "libc",
  "microvm-artifacts",
- "microvm-bench",
+ "microvm-cli",
  "microvm-errors",
+ "microvm-firecracker",
+ "microvm-grpc",
+ "microvm-isolation",
+ "microvm-lifecycle",
  "microvm-metrics",
+ "microvm-rest",
+ "microvm-service",
+ "microvm-sim",
+ "microvm-snapshots",
+ "microvm-types",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -833,6 +806,7 @@ dependencies = [
  "microvm-isolation",
  "microvm-lifecycle",
  "microvm-metrics",
+ "microvm-snapshots",
  "microvm-types",
  "serde",
  "serde_json",
@@ -910,18 +884,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "microvm-oci"
-version = "0.1.0"
-dependencies = [
- "microvm-artifacts",
- "microvm-errors",
- "microvm-types",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "microvm-rest"
 version = "0.1.0"
 dependencies = [
@@ -943,19 +905,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "microvm-scheduler"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "microvm-errors",
- "microvm-metrics",
- "microvm-types",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "microvm-security-tests"
 version = "0.1.0"
 dependencies = [
@@ -969,7 +918,6 @@ dependencies = [
  "microvm-grpc",
  "microvm-isolation",
  "microvm-lifecycle",
- "microvm-oci",
  "microvm-rest",
  "microvm-snapshots",
  "microvm-types",
@@ -995,6 +943,19 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "microvm-sim"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "microvm-errors",
+ "microvm-lifecycle",
+ "microvm-metrics",
+ "microvm-types",
  "tokio",
 ]
 
@@ -1151,7 +1112,7 @@ checksum = "4b45fcc2344c680f5025fe57779faef368840d0bd1f42f216291f0dc4ace4744"
 dependencies = [
  "bit-set",
  "bit-vec",
- "bitflags 2.13.1",
+ "bitflags",
  "num-traits",
  "rand",
  "rand_chacha",
@@ -1221,7 +1182,7 @@ version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9f068eba8e7071c5f9511831b44f32c740d5adf574e990f946ddb53db2f314e"
 dependencies = [
- "bitflags 2.13.1",
+ "bitflags",
  "memchr",
  "unicase",
 ]
@@ -1335,7 +1296,7 @@ version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190"
 dependencies = [
- "bitflags 2.13.1",
+ "bitflags",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -1407,6 +1368,15 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
+]
+
+[[package]]
+name = "serde_spanned"
+version = "0.6.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -1568,6 +1538,47 @@ dependencies = [
  "pin-project-lite",
  "tokio",
 ]
+
+[[package]]
+name = "toml"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22cddaf88f4fbc13c51aebbf5f8eceb5c7c5a9da2ac40a13519eb5b0a0e8f11c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.22.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_write",
+ "winnow",
+]
+
+[[package]]
+name = "toml_write"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "tonic"
@@ -1748,16 +1759,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "vmm-sys-util"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "506c62fdf617a5176827c2f9afbcf1be155b03a9b4bf9617a60dbc07e3a1642f"
-dependencies = [
- "bitflags 1.3.2",
- "libc",
-]
-
-[[package]]
 name = "wait-timeout"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1901,6 +1902,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "winnow"
+version = "0.7.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]

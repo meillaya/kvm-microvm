@@ -1,4 +1,4 @@
-//! The stable per-VM metrics record (plan todo 23).
+//! The stable per-VM metrics record.
 //!
 //! [`VmMetricsRecord`] is the full, wire-stable snapshot returned by the
 //! collector and exposed through the UDS API. Its schema is defined by

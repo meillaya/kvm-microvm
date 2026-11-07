@@ -200,9 +200,11 @@ fn paused_to_created_is_illegal() {
 }
 
 #[test]
-fn snapshotting_to_running_is_illegal() {
-    let err = transition(VmState::Snapshotting, VmState::Running).unwrap_err();
-    assert_eq!(err.code, ErrorCode::InvalidTransition);
+fn snapshotting_to_running_is_legal() {
+    assert_eq!(
+        transition(VmState::Snapshotting, VmState::Running).unwrap(),
+        VmState::Running
+    );
 }
 
 #[test]
@@ -269,6 +271,7 @@ fn legal_pairs() -> Vec<(VmState, VmState)> {
         (VmState::Paused, VmState::Stopped),
         (VmState::Paused, VmState::Snapshotting),
         (VmState::Snapshotting, VmState::Paused),
+        (VmState::Snapshotting, VmState::Running),
         (VmState::Restoring, VmState::Running),
     ];
     // any → Failed

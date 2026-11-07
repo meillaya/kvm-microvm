@@ -1,19 +1,19 @@
 //! The [`BenchMarker`]: drives benchmark lanes and assembles a
-//! [`BenchmarkResult`] (plan todo 27).
+//! [`BenchmarkResult`] (the benchmark harness).
 //!
 //! For each lane the marker:
 //! 1. Probes availability. A blocked probe yields a blocked item (zero
 //!    samples, null percentiles, recorded `blocked_reason`): samples are never
-//!    fabricated (requirement 11).
+//!    fabricated.
 //! 2. Collects `N` cold and `N` warm samples, recording failures separately
-//!    from successful samples (requirement 6).
+//!    from successful samples.
 //! 3. Summarises each condition into a [`Distribution`] (p50/p95/p99 + min/max).
 //!
 //! The marker is generic over [`LaneRunner`], so the same orchestration drives
 //! the deterministic [`ScriptedLane`] in tests and the real Firecracker/Docker
 //! lanes on a privileged host. It performs no statistics fabrication and emits
 //! no pass/fail verdict: `target_ms` is carried through as metadata only
-//! (requirement 10).
+//!.
 
 use crate::config::BenchmarkConfig;
 use crate::config::RuntimeVersions;

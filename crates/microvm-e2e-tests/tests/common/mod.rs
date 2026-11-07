@@ -466,10 +466,22 @@ fn parse_http(text: &str) -> RestOutcome {
 }
 
 pub async fn rest_create(sock: &Path, vcpu: u32, mem: u64, disk: u64) -> (u16, String) {
+    rest_create_with_policy(sock, vcpu, mem, disk, "none").await
+}
+
+/// Create a VM with an explicit network policy string.
+pub async fn rest_create_with_policy(
+    sock: &Path,
+    vcpu: u32,
+    mem: u64,
+    disk: u64,
+    policy: &str,
+) -> (u16, String) {
     let body = serde_json::json!({
         "vcpu_count": vcpu,
         "memory_mib": mem,
         "disk_mib": disk,
+        "network_policy": policy,
     })
     .to_string();
     let r = rest_call(sock, "POST", "/vms", Some(&body)).await;
@@ -591,11 +603,22 @@ pub async fn grpc_create(
     mem: u64,
     disk: u64,
 ) -> Result<String, tonic::Status> {
+    grpc_create_with_policy(c, vcpu, mem, disk, ProtoNetworkPolicy::None).await
+}
+
+/// Create a VM with an explicit network policy.
+pub async fn grpc_create_with_policy(
+    c: &mut MicrovmServiceClient<Channel>,
+    vcpu: u32,
+    mem: u64,
+    disk: u64,
+    policy: ProtoNetworkPolicy,
+) -> Result<String, tonic::Status> {
     c.create_vm(CreateVmRequest {
         vcpu_count: vcpu,
         memory_mib: mem,
         disk_mib: disk,
-        network_policy: ProtoNetworkPolicy::None as i32,
+        network_policy: policy as i32,
     })
     .await
     .map(|r| r.into_inner().vm_id)

@@ -1,5 +1,5 @@
 //! Tenant authorization, ownership policy, quota enforcement, and structured
-//! audit events for the kvm-microvm-orchestrator platform.
+//! audit events for the microvm platform.
 //!
 //! # Design constraints
 //!
@@ -33,6 +33,8 @@ pub enum Operation {
     Snapshot,
     /// Restore a VM from a snapshot.
     Restore,
+    /// Delete a stopped or failed VM.
+    Delete,
     /// Query resource status (read-only).
     Status,
     /// Query resource metrics (read-only).
@@ -48,6 +50,7 @@ impl Operation {
             Self::Stop,
             Self::Snapshot,
             Self::Restore,
+            Self::Delete,
             Self::Status,
             Self::Metrics,
         ]
@@ -61,6 +64,7 @@ impl Operation {
             Self::Stop => "stop",
             Self::Snapshot => "snapshot",
             Self::Restore => "restore",
+            Self::Delete => "delete",
             Self::Status => "status",
             Self::Metrics => "metrics",
         }
@@ -72,7 +76,7 @@ impl Operation {
     pub fn is_mutating(self) -> bool {
         matches!(
             self,
-            Self::Create | Self::Start | Self::Stop | Self::Snapshot | Self::Restore
+            Self::Create | Self::Start | Self::Stop | Self::Snapshot | Self::Restore | Self::Delete
         )
     }
 }
@@ -131,6 +135,7 @@ impl std::fmt::Display for ResourceType {
 /// | Stop      | ✓     | ✓        |        |
 /// | Snapshot  | ✓     |          |        |
 /// | Restore   | ✓     |          |        |
+/// | Delete    | ✓     |          |        |
 /// | Status    | ✓     | ✓        | ✓      |
 /// | Metrics   | ✓     | ✓        | ✓      |
 fn role_permits(role: Role, operation: Operation) -> bool {
@@ -772,7 +777,7 @@ mod tests {
 
     #[test]
     fn operation_all_count() {
-        assert_eq!(Operation::all().len(), 7);
+        assert_eq!(Operation::all().len(), 8);
     }
 
     #[test]
@@ -782,6 +787,7 @@ mod tests {
         assert!(Operation::Stop.is_mutating());
         assert!(Operation::Snapshot.is_mutating());
         assert!(Operation::Restore.is_mutating());
+        assert!(Operation::Delete.is_mutating());
         assert!(!Operation::Status.is_mutating());
         assert!(!Operation::Metrics.is_mutating());
     }

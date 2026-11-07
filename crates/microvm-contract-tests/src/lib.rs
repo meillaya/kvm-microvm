@@ -1,7 +1,7 @@
-//! Transport contract tests for the kvm-microvm-orchestrator platform.
+//! Transport contract tests for the microvm platform.
 //!
 //! This is a test-only crate: it ships no production code and exists solely
-//! to hold the cross-transport contract suite mandated by plan todo 18. The
+//! to hold the cross-transport contract suite mandated by transport parity. The
 //! real content lives in the integration test target:
 //!
 //! - `tests/transport_parity.rs`. REST/gRPC operation + error parity, socket

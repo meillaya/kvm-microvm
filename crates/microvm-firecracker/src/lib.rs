@@ -1,5 +1,5 @@
 //! Firecracker boot/configure/start/stop adapter for the
-//! kvm-microvm-orchestrator platform.
+//! microvm platform.
 //!
 //! This crate implements the transport-neutral
 //! [`LifecycleService`](microvm_lifecycle::LifecycleService) trait using
@@ -39,6 +39,7 @@
 //! tenants: it lives in a host-only socket root and is absent from every
 //! tenant-facing status/metrics response.
 
+#![allow(clippy::double_must_use)]
 pub mod api;
 pub mod backend;
 pub mod config;
@@ -54,17 +55,17 @@ pub use api::{
     NetworkInterface, UdsApiClient, NET_IFACE_ID, ROOT_DRIVE_ID,
 };
 pub use backend::{
-    ApiFactory, BackendBuilder, BackendConfig, FirecrackerBackend, UdsApiFactory, CPU_PERIOD_US,
-    DEFAULT_JAILER_GID, DEFAULT_JAILER_UID, DEFAULT_PIDS_MAX, DEFAULT_SOCKET_TIMEOUT,
-    SOCKET_POLL_INTERVAL,
+    ApiFactory, BackendBuilder, BackendConfig, FirecrackerBackend, SnapshotHostInfo, UdsApiFactory,
+    CPU_PERIOD_US, DEFAULT_JAILER_GID, DEFAULT_JAILER_UID, DEFAULT_PIDS_MAX,
+    DEFAULT_SOCKET_TIMEOUT, SOCKET_POLL_INTERVAL,
 };
 pub use config::{BootConfig, BootConfigBuilder, NetworkBootConfig, MAX_BOOT_ARGS_LEN};
 pub use phase::{Phase, PhaseTimestamps};
 pub use prereq::{HostPrerequisiteChecker, HostPrerequisiteCheckerBuilder, PrerequisiteCheck};
 pub use process::{LaunchSpec, ProcessLauncher, TokioLauncher, VmProcess};
 pub use readiness::{
-    GuestReadinessProbe, ReadinessContext, TcpHealthProbe, DEFAULT_POLL_INTERVAL,
-    DEFAULT_READINESS_TIMEOUT,
+    AutoReadinessProbe, GuestReadinessProbe, ReadinessContext, SerialMarkerProbe, TcpHealthProbe,
+    DEFAULT_POLL_INTERVAL, DEFAULT_READINESS_TIMEOUT, DEFAULT_SERIAL_MARKER,
 };
 pub use snapshot::{
     network_connection_continuity_after_restore, reject_deprecated_mem_file_path,

@@ -778,7 +778,7 @@ const SRC_FILES: &[(&str, &str)] = &[
 #[test]
 fn no_tcp_patterns_in_server_source() {
     // Reuse the platform's canonical TCP scanner from the transport-contract
-    // crate (todo 8) so the gRPC transport is held to the same rule.
+    // crate (the API contract) so the gRPC transport is held to the same rule.
     for (name, content) in SRC_FILES {
         let violations = microvm_transport_contract::scan_for_tcp_patterns(content);
         assert!(

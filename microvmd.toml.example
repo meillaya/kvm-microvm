@@ -1,0 +1,43 @@
+# Example microvmd configuration for a host install.
+# Copy to /etc/microvmd.toml and adjust the paths for the host.
+backend = "firecracker"
+
+[server]
+rest_socket = "/run/microvm/rest.sock"
+grpc_socket = "/run/microvm/grpc.sock"
+socket_mode = "0600"
+socket_uid = 1000
+socket_gid = 1000
+allowed_uids = [1000]
+tenant = "local"
+role = "owner"
+
+[image]
+kernel = "/var/lib/microvm/guest/vmlinux"
+rootfs = "/var/lib/microvm/guest/rootfs.ext4"
+boot_args = "console=ttyS0 reboot=k panic=1 pci=off init=/init"
+
+[paths]
+state_dir = "/var/lib/microvm"
+artifact_dir = "/var/lib/microvm/artifacts"
+snapshot_dir = "/var/lib/microvm/snapshots"
+socket_dir = "/run/microvm/sockets"
+chroot_dir = "/srv/jailer"
+log_dir = "/var/log/microvm"
+
+[runtime]
+firecracker = "/usr/bin/firecracker"
+jailer = "/usr/bin/jailer"
+firecracker_version = "1.16.1"
+readiness = "auto"
+readiness_marker = "MICROVM_READY"
+readiness_port = 8080
+socket_timeout_ms = 10000
+readiness_timeout_ms = 30000
+use_jailer = true
+
+[isolation]
+cgroup_root = "/sys/fs/cgroup"
+jailer_uid = 10000
+jailer_gid = 10000
+pids_max = 256

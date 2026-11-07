@@ -8,7 +8,7 @@ description = "REST/gRPC transport parity, socket-hardening, and request-audit c
 # This is a test-only crate: it ships no production code. Every dependency is a
 # dev-dependency consumed by the integration tests under `tests/`. The two
 # transport adapters are exercised as dev-dependencies per the platform plan
-# (todo 18); the composed `microvm_service::VmLifecycleService` is the backend.
+# (transport parity); the composed `microvm_service::VmLifecycleService` is the backend.
 [dependencies]
 
 [dev-dependencies]

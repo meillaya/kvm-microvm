@@ -6,6 +6,9 @@
 target/
 **/target/
 
+# Bounded development scratch (builds, sockets, guest images, snapshots)
+.work/
+
 # Preflight / evidence scratch produced outside the committed evidence tree
 .preflight/
 

@@ -2,9 +2,9 @@
 //!
 //! Measures the pinned payload under Docker Engine so the harness can publish a
 //! Firecracker-vs-Docker distribution for identical artifact content
-//! (requirements 1, 7, 9). The lane is blocked with [`BlockedReason::DockerMissing`]
+//!. The lane is blocked with [`BlockedReason::DockerMissing`]
 //! when the `docker` binary or daemon is unavailable: it never fabricates
-//! samples (requirement 11).
+//! samples.
 //!
 //! The measured quantity is the wall-time (host-monotonic) to run the pinned
 //! image to completion via `docker run --rm <image>`. Cold samples drop the

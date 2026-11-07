@@ -3,13 +3,13 @@ name = "microvm-security-tests"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Adversarial boundary tests: path/auth/cgroup/network/snapshot/OCI/binary security traps"
+description = "Adversarial boundary tests: path/auth/cgroup/network/snapshot/binary security traps"
 
 # This is a test-only crate: it ships no production code. Every dependency is a
 # dev-dependency consumed by the integration tests under `tests/`. The suites
 # exercise the platform's real security boundaries (artifact path resolver,
 # binary provenance gate, cgroup-v2 hierarchy, peer-credential auth, snapshot
-# integrity/compatibility gate, constrained OCI importer) and assert the typed
+# integrity/compatibility gate) and assert the typed
 # error each trap produces. No check here is grep-only: every probe drives the
 # production code path and observes its structured rejection.
 [dependencies]
@@ -28,7 +28,6 @@ microvm-errors = { path = "../microvm-errors" }
 microvm-artifacts = { path = "../microvm-artifacts" }
 microvm-isolation = { path = "../microvm-isolation" }
 microvm-snapshots = { path = "../microvm-snapshots" }
-microvm-oci = { path = "../microvm-oci" }
 microvm-lifecycle = { path = "../microvm-lifecycle" }
 microvm-firecracker = { path = "../microvm-firecracker" }
 microvm-rest = { path = "../microvm-rest" }

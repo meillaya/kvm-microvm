@@ -1,6 +1,6 @@
 //! Lane execution outcomes and process exit codes.
 //!
-//! # This is not a performance pass/fail (requirement 10)
+//! # This is not a performance pass/fail
 //! [`LaneOutcome`] describes whether a benchmark lane could run, not whether
 //! a latency target was met. The harness deliberately has no notion of a
 //! benchmark "passing" or "failing" against `<200 ms`: `target_ms` is metadata

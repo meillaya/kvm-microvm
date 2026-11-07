@@ -1,7 +1,7 @@
 //! gRPC API over a protected Unix domain socket for the
-//! kvm-microvm-orchestrator platform.
+//! microvm platform.
 //!
-//! This crate implements the `microvm.v1` protobuf service (todo 8) exclusively
+//! This crate implements the `microvm.v1` protobuf service (the API contract) exclusively
 //! over a filesystem Unix socket, providing full parity with the REST/JSON
 //! transport ([`microvm-rest`]). Both transports drive the *same*
 //! transport-neutral [`LifecycleService`](microvm_lifecycle::LifecycleService)
@@ -29,6 +29,7 @@
 //! - Business policy (quota, state machine, authorization) is delegated to the
 //!   lifecycle service backend.
 
+#![allow(clippy::double_must_use)]
 pub mod config;
 pub mod error;
 pub mod peer;

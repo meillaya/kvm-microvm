@@ -1,0 +1,43 @@
+[package]
+name = "microvm-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Firecracker control-plane daemon (microvmd)"
+
+[[bin]]
+name = "microvmd"
+path = "src/main.rs"
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-service = { path = "../microvm-service" }
+microvm-rest = { path = "../microvm-rest" }
+microvm-grpc = { path = "../microvm-grpc" }
+microvm-firecracker = { path = "../microvm-firecracker" }
+microvm-isolation = { path = "../microvm-isolation" }
+microvm-artifacts = { path = "../microvm-artifacts" }
+microvm-snapshots = { path = "../microvm-snapshots" }
+microvm-metrics = { path = "../microvm-metrics" }
+microvm-sim = { path = "../microvm-sim" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+chrono = { workspace = true }
+libc = { workspace = true }
+tokio = { workspace = true, features = [
+    "rt-multi-thread",
+    "macros",
+    "net",
+    "signal",
+    "sync",
+    "time",
+] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+microvm-cli = { path = "../microvm-cli" }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "sync", "time"] }

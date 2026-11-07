@@ -11,7 +11,7 @@
 
 use std::sync::Arc;
 
-use microvm_lifecycle::{LifecycleService, VmState as DomainVmState};
+use microvm_lifecycle::{LifecycleService, VmState as DomainVmState, VmStatus};
 use microvm_types::{
     NetworkPolicy as DomainNetworkPolicy, Principal, ResourceSpec, SnapshotId, VmId,
 };
@@ -24,11 +24,11 @@ use crate::error::{
 use crate::peer::PeerConnectInfo;
 use crate::proto::v1::microvm_service_server::MicrovmService;
 use crate::proto::v1::{
-    CreateVmRequest, CreateVmResponse, GetVmMetricsRequest, GetVmMetricsResponse,
-    GetVmStatusRequest, GetVmStatusResponse, NetworkPolicy as ProtoNetworkPolicy,
-    ResourceSpec as ProtoResourceSpec, RestoreVmRequest, RestoreVmResponse, SnapshotVmRequest,
-    SnapshotVmResponse, StartVmRequest, StartVmResponse, StopVmRequest, StopVmResponse,
-    VmState as ProtoVmState,
+    CreateVmRequest, CreateVmResponse, DeleteVmRequest, DeleteVmResponse, GetVmMetricsRequest,
+    GetVmMetricsResponse, GetVmStatusRequest, GetVmStatusResponse, ListVmsRequest, ListVmsResponse,
+    NetworkPolicy as ProtoNetworkPolicy, ResourceSpec as ProtoResourceSpec, RestoreVmRequest,
+    RestoreVmResponse, SnapshotVmRequest, SnapshotVmResponse, StartVmRequest, StartVmResponse,
+    StopVmRequest, StopVmResponse, VmState as ProtoVmState,
 };
 
 /// gRPC adapter exposing a [`LifecycleService`] as the `MicrovmService`.
@@ -82,7 +82,7 @@ fn network_policy_from_proto(value: i32) -> DomainNetworkPolicy {
         DomainNetworkPolicy::None
     } else if value == ProtoNetworkPolicy::NatOnly as i32 {
         DomainNetworkPolicy::NatOnly
-    } else if value == ProtoNetworkPolicy::FullEgress as i32 {
+    } else if value == ProtoNetworkPolicy::EgressAllowed as i32 {
         DomainNetworkPolicy::EgressAllowed
     } else {
         DomainNetworkPolicy::None
@@ -94,7 +94,7 @@ fn network_policy_to_proto(policy: DomainNetworkPolicy) -> i32 {
     match policy {
         DomainNetworkPolicy::None => ProtoNetworkPolicy::None as i32,
         DomainNetworkPolicy::NatOnly => ProtoNetworkPolicy::NatOnly as i32,
-        DomainNetworkPolicy::EgressAllowed => ProtoNetworkPolicy::FullEgress as i32,
+        DomainNetworkPolicy::EgressAllowed => ProtoNetworkPolicy::EgressAllowed as i32,
     }
 }
 
@@ -105,6 +105,16 @@ fn resource_spec_to_proto(spec: &ResourceSpec) -> ProtoResourceSpec {
         memory_mib: spec.memory_mib(),
         disk_mib: spec.disk_mib(),
         network_policy: network_policy_to_proto(spec.network_policy()),
+    }
+}
+
+/// Map a domain [`VmStatus`] to the proto status message.
+fn status_to_proto(status: &VmStatus) -> GetVmStatusResponse {
+    GetVmStatusResponse {
+        vm_id: status.vm_id.to_string(),
+        state: vm_state_to_proto(status.state),
+        created_at: status.created_at.to_rfc3339(),
+        resource_spec: Some(resource_spec_to_proto(&status.resource_spec)),
     }
 }
 
@@ -208,14 +218,39 @@ impl MicrovmService for MicrovmGrpcService {
             .map_err(|e| invalid_id_status(format!("invalid vm_id: {}", e.reason)))?;
 
         match self.service.status(&vm_id, &principal).await {
-            Ok(status) => Ok(Response::new(GetVmStatusResponse {
-                vm_id: status.vm_id.to_string(),
-                state: vm_state_to_proto(status.state),
-                created_at: status.created_at.to_rfc3339(),
-                resource_spec: Some(resource_spec_to_proto(&status.resource_spec)),
-            })),
+            Ok(status) => Ok(Response::new(status_to_proto(&status))),
             Err(e) => Err(microvm_error_to_status(&e)),
         }
+    }
+
+    async fn list_vms(
+        &self,
+        request: Request<ListVmsRequest>,
+    ) -> Result<Response<ListVmsResponse>, Status> {
+        let principal = principal_from_request(&request)?;
+        let mut statuses = self
+            .service
+            .list(&principal)
+            .await
+            .map_err(|e| microvm_error_to_status(&e))?;
+        statuses.sort_by(|a, b| a.vm_id.as_str().cmp(b.vm_id.as_str()));
+        Ok(Response::new(ListVmsResponse {
+            vms: statuses.iter().map(status_to_proto).collect(),
+        }))
+    }
+
+    async fn delete_vm(
+        &self,
+        request: Request<DeleteVmRequest>,
+    ) -> Result<Response<DeleteVmResponse>, Status> {
+        let principal = principal_from_request(&request)?;
+        let vm_id = VmId::new(request.into_inner().vm_id)
+            .map_err(|e| invalid_id_status(format!("invalid vm_id: {}", e.reason)))?;
+        self.service
+            .delete(&vm_id, &principal)
+            .await
+            .map_err(|e| microvm_error_to_status(&e))?;
+        Ok(Response::new(DeleteVmResponse {}))
     }
 
     async fn get_vm_metrics(
@@ -285,9 +320,9 @@ mod tests {
     }
 
     #[test]
-    fn full_egress_maps_to_domain_egress_allowed() {
+    fn egress_allowed_maps_to_domain_egress_allowed() {
         assert_eq!(
-            network_policy_from_proto(ProtoNetworkPolicy::FullEgress as i32),
+            network_policy_from_proto(ProtoNetworkPolicy::EgressAllowed as i32),
             DomainNetworkPolicy::EgressAllowed
         );
     }

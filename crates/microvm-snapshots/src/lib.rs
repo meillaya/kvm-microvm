@@ -1,7 +1,7 @@
 //! Versioned local snapshot integrity manifest and pre-restore compatibility
-//! gate for the kvm-microvm-orchestrator platform.
+//! gate for the microvm platform.
 //!
-//! This crate owns the local snapshot integrity boundary (plan todo 21).
+//! This crate owns the local snapshot integrity boundary (the snapshot manifest).
 //! It provides:
 //! - [`SnapshotManifest`]: full snapshot metadata with content hashes
 //!   (Firecracker binary, kernel/rootfs/block devices, guest memory, VM-state)

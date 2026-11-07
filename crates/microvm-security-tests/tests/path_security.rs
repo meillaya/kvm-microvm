@@ -210,7 +210,7 @@ fn lexical_gate_rejects_escape_shapes() {
 
 /// The consolidated path-security battery: run every trap through the real
 /// resolver, record the typed rejection, write the evidence artifact, and
-/// assert no bypass. This is the artifact-producing proof for plan todo 31.
+/// assert no bypass. This is the artifact-producing proof for the security suite.
 #[test]
 fn path_security_battery_emits_evidence_and_detects_no_bypass() {
     let (tmp, rel) = root_with_blob();

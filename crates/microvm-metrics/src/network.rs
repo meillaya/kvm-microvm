@@ -1,4 +1,4 @@
-//! TAP network byte counters and derived RX/TX throughput (plan todo 23).
+//! TAP network byte counters and derived RX/TX throughput.
 //!
 //! Per-VM network usage is read from the host sysfs statistics of the VM's TAP
 //! device: `<sysfs>/class/net/<tap>/statistics/{rx_bytes,tx_bytes}`. These are

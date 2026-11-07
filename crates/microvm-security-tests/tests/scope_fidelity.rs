@@ -61,7 +61,7 @@ fn cli_rejects_every_forbidden_flag_on_create() {
 #[test]
 fn cli_rejects_forbidden_flags_on_run() {
     for flag in FORBIDDEN_FLAGS {
-        let res = Cli::try_parse_from(["microvm", "run", "--image", "./layout", flag]);
+        let res = Cli::try_parse_from(["microvm", "run", flag]);
         assert!(res.is_err(), "run must reject forbidden flag {flag}");
     }
 }
@@ -81,8 +81,6 @@ fn cli_accepts_legitimate_flags_control() {
     let cli = Cli::try_parse_from([
         "microvm",
         "create",
-        "--image",
-        "sha256:ab",
         "--vcpu",
         "2",
         "--memory-mib",
@@ -94,7 +92,7 @@ fn cli_accepts_legitimate_flags_control() {
     ])
     .unwrap();
     assert!(matches!(cli.command, Command::Create { .. }));
-    let run = Cli::try_parse_from(["microvm", "run", "--image", "./layout"]).unwrap();
+    let run = Cli::try_parse_from(["microvm", "run"]).unwrap();
     assert!(matches!(run.command, Command::Run { .. }));
     // The only global connectivity flag is a Unix socket PATH, not a host:port.
     let _ = cli.socket;
@@ -183,15 +181,6 @@ fn resource_spec_surface_has_no_forbidden_keys() {
 }
 
 #[test]
-fn oci_microvm_spec_surface_has_no_forbidden_keys() {
-    use microvm_oci::OciImporter;
-    let tmp = common::standard_layout();
-    let spec = OciImporter::open(tmp.path()).unwrap().import().unwrap();
-    let json = serde_json::to_value(&spec).unwrap();
-    assert_no_forbidden_keys(&json, "MicroVmSpec");
-}
-
-#[test]
 fn network_policy_is_exhaustively_three_variants() {
     // A compile-time proof: this match has no wildcard, so adding a fourth
     // NetworkPolicy variant (e.g. a TCP or routed mode) fails to compile here.
@@ -267,16 +256,15 @@ const CONTROL_PLANES: &[&str] = &[
     "microvm-errors",
     "microvm-lifecycle",
     "microvm-artifacts",
-    "microvm-oci",
     "microvm-isolation",
     "microvm-service",
     "microvm-rest",
     "microvm-grpc",
     "microvm-snapshots",
     "microvm-metrics",
-    "microvm-scheduler",
     "microvm-cli",
-    "microvm-backend-directkvm",
+    "microvm-daemon",
+    "microvm-sim",
 ];
 
 /// All product crates scanned for the scope flags (rootless/VFIO/migration).
@@ -285,16 +273,13 @@ const PRODUCT_CRATES: &[&str] = &[
     "microvm-errors",
     "microvm-lifecycle",
     "microvm-artifacts",
-    "microvm-oci",
     "microvm-isolation",
     "microvm-service",
     "microvm-rest",
     "microvm-grpc",
     "microvm-snapshots",
     "microvm-metrics",
-    "microvm-scheduler",
     "microvm-cli",
-    "microvm-backend-directkvm",
     "microvm-firecracker",
 ];
 

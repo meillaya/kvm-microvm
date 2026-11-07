@@ -1,5 +1,5 @@
 //! REST/gRPC transport parity, socket-hardening, and request-audit contract
-//! tests (plan todo 18).
+//! tests (transport parity).
 //!
 //! Both transports are driven end-to-end over real Unix domain sockets and are
 //! backed by the same [`VmLifecycleService`] instance, so the same request
@@ -106,7 +106,7 @@ async fn happy_parity_every_operation_rest_eq_grpc() {
 }
 
 // ===========================================================================
-// Metrics record (plan todo 23) is exposed via BOTH UDS transports
+// Metrics record is exposed via BOTH UDS transports
 // ===========================================================================
 
 /// The full, availability-flagged `VmMetricsRecord` must be reachable over both
@@ -661,7 +661,7 @@ const GRPC_SOURCES: &[(&str, &str)] = &[
     ),
 ];
 
-/// Mirror of the platform's canonical forbidden TCP patterns (todo 8), plus the
+/// Mirror of the platform's canonical forbidden TCP patterns (the API contract), plus the
 /// TCP listener/socket type names a Unix-only server must never reference.
 const FORBIDDEN_TCP_PATTERNS: &[&str] = &[
     "0.0.0.0",

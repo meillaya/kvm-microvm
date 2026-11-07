@@ -1,0 +1,17 @@
+[package]
+name = "microvm-sim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "In-memory lifecycle backend for tests and CLI exploration"
+
+[dependencies]
+microvm-types = { path = "../microvm-types" }
+microvm-errors = { path = "../microvm-errors" }
+microvm-lifecycle = { path = "../microvm-lifecycle" }
+microvm-metrics = { path = "../microvm-metrics" }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

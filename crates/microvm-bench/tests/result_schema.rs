@@ -1,4 +1,4 @@
-//! Result-schema conformance for the benchmark artifact (plan todo 27).
+//! Result-schema conformance for the benchmark artifact (the benchmark harness).
 //!
 //! Named QA scenario: `cargo test -p microvm-bench --test result_schema`.
 //!

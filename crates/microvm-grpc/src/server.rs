@@ -16,6 +16,8 @@
 //!   (and the `tonic-reflection` crate is not a dependency), so the production
 //!   socket does not expose `list`/introspection. See [`REFLECTION_ENABLED`].
 
+use std::ffi::CString;
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
@@ -152,8 +154,8 @@ impl GrpcServer {
 
     /// Bind the Unix socket and return the listener.
     ///
-    /// Creates parent directories, removes any stale socket file, binds, and
-    /// sets the file mode to the configured value.
+    /// Creates parent directories, refuses to replace a live socket, removes a
+    /// stale socket, binds, sets mode and ownership, and validates the result.
     pub fn bind(&self) -> Result<UnixListener, ServerError> {
         let path = &self.config.path;
 
@@ -162,8 +164,14 @@ impl GrpcServer {
             std::fs::create_dir_all(parent)?;
         }
 
-        // Remove stale socket file if it exists.
+        // Refuse to replace a socket another process is serving.
         if path.exists() {
+            if std::os::unix::net::UnixStream::connect(path).is_ok() {
+                return Err(ServerError::SocketValidation(format!(
+                    "{} is already in use by a live process",
+                    path.display()
+                )));
+            }
             std::fs::remove_file(path)?;
         }
 
@@ -174,21 +182,17 @@ impl GrpcServer {
         let perms = std::fs::Permissions::from_mode(self.config.mode);
         std::fs::set_permissions(path, perms)?;
 
+        chown_socket(path, &self.config)?;
+        Self::validate_socket(path, &self.config)?;
+
         Ok(listener)
     }
 
-    /// Run the server, accepting connections until the future is dropped.
+    /// Serve on an already-bound listener.
     ///
-    /// Each accepted connection has its peer credentials extracted via
-    /// `SO_PEERCRED` and authenticated *before* any RPC is processed. The
-    /// authenticated principal (or its absence) is propagated into every
-    /// request via [`PeerConnectInfo`].
-    pub async fn serve(self) -> Result<(), ServerError> {
-        let listener = self.bind()?;
-
-        // Validate the socket after binding.
-        Self::validate_socket(&self.config.path, &self.config)?;
-
+    /// The daemon binds both transports before serving so a failure on one
+    /// socket does not leave the other accepting connections.
+    pub async fn serve_with_listener(self, listener: UnixListener) -> Result<(), ServerError> {
         let authenticator = Arc::clone(&self.authenticator);
 
         // Build the authenticated incoming stream. Peer credentials are read
@@ -218,6 +222,34 @@ impl GrpcServer {
             .await
             .map_err(ServerError::Transport)
     }
+
+    /// Run the server until the future is dropped.
+    pub async fn serve(self) -> Result<(), ServerError> {
+        let listener = self.bind()?;
+        self.serve_with_listener(listener).await
+    }
+}
+
+/// Change the socket owner when the configuration asks for a specific one.
+fn chown_socket(path: &Path, config: &SocketConfig) -> Result<(), ServerError> {
+    if config.expected_uid.is_none() && config.expected_gid.is_none() {
+        return Ok(());
+    }
+
+    let path_c = CString::new(path.as_os_str().as_bytes()).map_err(|_| {
+        ServerError::SocketValidation("socket path contains a NUL byte".to_string())
+    })?;
+    let uid = config.expected_uid.map_or(!0, |v| v as libc::uid_t);
+    let gid = config.expected_gid.map_or(!0, |v| v as libc::gid_t);
+
+    let rc = unsafe { libc::chown(path_c.as_ptr(), uid, gid) };
+    if rc != 0 {
+        return Err(ServerError::SocketValidation(format!(
+            "cannot change socket ownership: {}",
+            std::io::Error::last_os_error()
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

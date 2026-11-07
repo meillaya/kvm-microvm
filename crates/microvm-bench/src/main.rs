@@ -1,11 +1,10 @@
 //! The `microvm-bench` binary: reproducible snapshot/boot benchmark harness and
-//! Docker comparison (plan todo 27).
+//! Docker comparison (the benchmark harness).
 //!
 //! # Commands
 //! - `snapshot-restore`: measure Firecracker snapshot/restore and Docker start
 //!   for the same pinned payload, under cold and warm page-cache conditions,
 //!   writing a schema-conformant benchmark JSON.
-//! - `warm-http`: reserved for plan todo 28 (warm HTTP-function microVM demo).
 //!
 //! # Exit codes (stable contract)
 //! | Code | Meaning |
@@ -16,7 +15,7 @@
 //! | 77 | a privileged lane was blocked (missing KVM/Docker/firecracker/…) |
 //!
 //! A blocked lane is a *skip* (77), never a failure (1) and never a pass (0):
-//! the harness emits no pass/fail verdict (requirement 10).
+//! the harness emits no pass/fail verdict.
 
 use clap::{Parser, Subcommand};
 use microvm_artifacts::{compute_sha256, Digest};
@@ -35,10 +34,9 @@ use std::path::PathBuf;
 ///
 /// Both the Firecracker and Docker lanes reference the SHA-256 of these exact
 /// bytes, so the default run compares identical content across runtimes
-/// (requirements 1, 7, 9). Operators measuring real artifacts pass
+///. Operators measuring real artifacts pass
 /// `--payload-hash` (and the per-artifact hashes) instead.
-pub const DEFAULT_PAYLOAD: &[u8] =
-    b"kvm-microvm-orchestrator benchmark payload v1: snapshot-restore\n";
+pub const DEFAULT_PAYLOAD: &[u8] = b"microvm benchmark payload v1: snapshot-restore\n";
 
 /// SHA-256 of [`DEFAULT_PAYLOAD`]: the default pinned payload hash.
 fn default_payload_hash() -> Digest {
@@ -63,13 +61,11 @@ struct Cli {
 enum Commands {
     /// Benchmark Firecracker snapshot/restore against Docker start.
     SnapshotRestore(Box<SnapshotRestoreArgs>),
-    /// Warm HTTP-function microVM demo (implemented in plan todo 28).
-    WarmHttp(WarmHttpArgs),
 }
 
 #[derive(Parser)]
 struct SnapshotRestoreArgs {
-    /// Measurements per condition (the plan requires N >= 100 for real runs).
+    /// Measurements per condition (N >= 100 is the recommended floor).
     #[arg(long, default_value_t = 100)]
     samples: usize,
 
@@ -119,23 +115,11 @@ struct SnapshotRestoreArgs {
     target_ms: Option<f64>,
 }
 
-#[derive(Parser)]
-struct WarmHttpArgs {
-    /// Measurements per condition.
-    #[arg(long, default_value_t = 100)]
-    samples: usize,
-
-    /// Output path for the warm-demo JSON artifact.
-    #[arg(long)]
-    out: PathBuf,
-}
-
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
     let exit = match cli.command {
         Commands::SnapshotRestore(args) => run_snapshot_restore(*args).await,
-        Commands::WarmHttp(args) => run_warm_http(args),
     };
     match exit {
         Ok(code) => code.to_process_exit_code(),
@@ -246,16 +230,6 @@ async fn run_snapshot_restore(args: SnapshotRestoreArgs) -> Result<BenchExitCode
     } else {
         Ok(BenchExitCode::Success)
     }
-}
-
-/// `warm-http` is owned by plan todo 28; this build reserves the command.
-fn run_warm_http(args: WarmHttpArgs) -> Result<BenchExitCode, RunError> {
-    let _ = args;
-    eprintln!(
-        "microvm-bench: `warm-http` is implemented in plan todo 28 (warm HTTP-function microVM \
-         demo); this build provides `snapshot-restore`"
-    );
-    Ok(BenchExitCode::UsageError)
 }
 
 /// Write the benchmark JSON artifact, creating parent directories.

@@ -6,7 +6,7 @@
 //! ```
 //!
 //! This exercises the binary provenance gate and the validated jailer argv.
-//! Following the platform's privileged evidence model (`pass` / `blocked` /
+//! Following the platform's privileged test model (`pass` / `blocked` /
 //! `failed`), a host that lacks a pinned Firecracker/jailer binary reports a
 //! stable `blocked` token and passes rather than failing.
 //!

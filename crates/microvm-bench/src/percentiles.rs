@@ -75,7 +75,7 @@ fn nearest_rank(sorted: &[f64], p: f64) -> f64 {
 pub struct Distribution {
     /// Number of successful samples collected for this condition.
     pub samples: usize,
-    /// Number of sample attempts that failed and were discarded (requirement 6).
+    /// Number of sample attempts that failed and were discarded.
     /// Failed samples are recorded here and never counted in `samples` or
     /// the percentiles: a failure is visible, not silently dropped or zero-filled.
     #[serde(default)]
@@ -114,7 +114,7 @@ impl Distribution {
     }
 
     /// Summarise a set of successful millisecond samples plus a count of failed
-    /// attempts (requirement 6). Failures are recorded but excluded from every
+    /// attempts. Failures are recorded but excluded from every
     /// statistic. Returns a distribution with `samples == 0` (and the failure
     /// count preserved) when no successful samples were collected.
     pub fn from_samples_with_failures(samples: &[f64], failures: usize) -> Self {

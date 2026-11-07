@@ -1,7 +1,7 @@
 //! Benchmark configuration: the pinned workload, the requested conditions, and
 //! the sample budget.
 //!
-//! # Reproducibility invariant (requirements 1, 7, 9)
+//! # Reproducibility invariant
 //! A [`BenchmarkConfig`] holds exactly one [`Workload`]. Every lane the
 //! harness runs (Firecracker snapshot/restore *and* Docker start) is pinned to
 //! that single workload's `payload_sha256`. The harness therefore always
@@ -10,8 +10,8 @@
 //! proof of superiority. The pinned payload hash is recorded in the output JSON
 //! so a reviewer can verify both lanes used the same bytes.
 //!
-//! # Sample budget (requirement 4)
-//! The plan requires `N >= 100` measurements per condition for an unblocked
+//! # Sample budget
+//! The harness requires `N >= 100` measurements per condition for an unblocked
 //! run. [`BenchmarkConfig::MIN_SAMPLES`] encodes that floor; the CLI enforces
 //! it for real runs while deterministic tests may use smaller budgets.
 
@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 
 /// Minimum measurements per condition for an unblocked benchmark run.
 ///
-/// The plan mandates `N >= 100`. The constant is part of the harness contract
+/// The harness requires `N >= 100`. The constant is part of the harness contract
 /// and is asserted by the deterministic suite.
 pub const MIN_SAMPLES: usize = 100;
 
@@ -82,12 +82,12 @@ impl Default for Conditions {
 /// A pinned, content-addressed benchmark workload.
 ///
 /// `payload_sha256` is the single content hash both the Firecracker and
-/// Docker lanes must use (requirement 9). The optional kernel/rootfs/image
+/// Docker lanes must use. The optional kernel/rootfs/image
 /// hashes further pin the VM-side artifacts so a reviewer can reproduce the
 /// exact bytes measured.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Workload {
-    /// Stable workload identifier (e.g. `snapshot-restore`, `warm-http`).
+    /// Stable workload identifier (e.g. `snapshot-restore`).
     pub name: String,
     /// The pinned payload hash shared by the Docker and VM lanes.
     pub payload_sha256: Digest,
@@ -152,7 +152,7 @@ impl Workload {
 ///
 /// The host kernel version lives in [`crate::result::HostMetadata::kernel`];
 /// this type records the Firecracker and Docker versions so the full
-/// kernel/Firecracker/Docker version set (requirement 8) is present in the
+/// kernel/Firecracker/Docker version set is present in the
 /// output JSON. Either field is `None` when that runtime is unavailable
 /// (a blocked lane still records the other runtime's version).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -203,7 +203,7 @@ impl BenchmarkConfig {
         })
     }
 
-    /// True when the sample budget meets the plan's `N >= 100` floor.
+    /// True when the sample budget meets the harness's `N >= 100` floor.
     pub fn meets_minimum_samples(&self) -> bool {
         self.samples >= Self::MIN_SAMPLES
     }

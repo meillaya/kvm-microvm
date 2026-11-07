@@ -29,20 +29,35 @@ pub struct LaunchSpec {
     pub argv: Vec<String>,
     /// The API socket path the VMM will create and the backend will connect to.
     pub socket_path: PathBuf,
+    /// Optional file that receives the child's stdout and stderr.
+    ///
+    /// The launcher never leaves pipes unread: a guest serial console can
+    /// produce more output than a pipe buffer holds. `None` sends the child's
+    /// output to `/dev/null`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_path: Option<PathBuf>,
     /// Extra environment variables for the child (sorted for determinism).
     #[serde(default)]
     pub env: BTreeMap<String, String>,
 }
 
 impl LaunchSpec {
-    /// Create a launch spec.
+    /// Create a launch spec with output discarded.
     pub fn new(vm_id: VmId, argv: Vec<String>, socket_path: PathBuf) -> Self {
         Self {
             vm_id,
             argv,
             socket_path,
+            log_path: None,
             env: BTreeMap::new(),
         }
+    }
+
+    /// Send the child's stdout and stderr to `path`.
+    #[must_use]
+    pub fn with_log_path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.log_path = Some(path.into());
+        self
     }
 
     /// The program (`argv[0]`), if any.
@@ -170,10 +185,45 @@ impl ProcessLauncher for TokioLauncher {
             cmd.env(k, v);
         }
         // Detach the child's stdio so it does not inherit the supervisor's
-        // terminal; Firecracker logs via its own logger/metrics configuration.
+        // terminal. A log file is used when asked; otherwise output is
+        // discarded. Pipes are never used here because an unread pipe can
+        // block a chatty guest serial console.
+        let (stdout, stderr) = match &spec.log_path {
+            Some(path) => {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent).map_err(|e| {
+                        MicrovmError::new(
+                            ErrorCode::ProcessSpawnError,
+                            "failed to create VM log directory",
+                        )
+                        .with_context("path", parent.display().to_string())
+                        .with_context("io", e.to_string())
+                    })?;
+                }
+                let file = std::fs::File::create(path).map_err(|e| {
+                    MicrovmError::new(ErrorCode::ProcessSpawnError, "failed to create VM log file")
+                        .with_context("path", path.display().to_string())
+                        .with_context("io", e.to_string())
+                })?;
+                let stderr_file = file.try_clone().map_err(|e| {
+                    MicrovmError::new(
+                        ErrorCode::ProcessSpawnError,
+                        "failed to clone VM log handle",
+                    )
+                    .with_context("path", path.display().to_string())
+                    .with_context("io", e.to_string())
+                })?;
+                (
+                    std::process::Stdio::from(file),
+                    std::process::Stdio::from(stderr_file),
+                )
+            }
+            None => (std::process::Stdio::null(), std::process::Stdio::null()),
+        };
+
         cmd.stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
+            .stdout(stdout)
+            .stderr(stderr)
             .kill_on_drop(true);
 
         let child = cmd.spawn().map_err(|e| {

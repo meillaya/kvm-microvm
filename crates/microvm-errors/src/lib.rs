@@ -1,4 +1,4 @@
-//! Stable machine-readable error codes for the kvm-microvm-orchestrator
+//! Stable machine-readable error codes for the microvm
 //! platform.
 //!
 //! Every [`ErrorCode`] variant maps to a stable `snake_case` string that will

@@ -25,13 +25,22 @@ jobs:
       - name: install devenv
         run: nix profile add nixpkgs#devenv
 
-      - name: run privileged suite
-        run: devenv shell -- sudo -E bash scripts/run-privileged-suite.sh
+      - name: build release binaries
+        run: devenv shell -- cargo build --release -p microvm-daemon -p microvm-cli
 
-      - name: upload benchmark artifacts
+      - name: build guest image
+        run: devenv shell -- bash scripts/build-guest-image.sh
+
+      - name: real Firecracker e2e
+        run: devenv shell -- bash scripts/e2e-firecracker.sh
+
+      - name: privileged suite
+        run: devenv shell -- bash scripts/run-privileged-suite.sh
+
+      - name: upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: privileged-benchmark-artifacts
-          path: .omo/evidence/kvm-microvm-orchestrator/
+          name: privileged-logs
+          path: .work/logs/
           if-no-files-found: warn

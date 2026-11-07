@@ -1,5 +1,5 @@
 //! Secure descriptor-relative artifact path resolution and digest verification
-//! for the kvm-microvm-orchestrator platform.
+//! for the microvm platform.
 //!
 //! This crate owns the platform's local artifact-integrity boundary. Firecracker
 //! and its jailer treat operator-supplied paths as trusted and (as of v1.16.1)

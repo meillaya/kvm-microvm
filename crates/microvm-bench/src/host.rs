@@ -3,7 +3,7 @@
 //! This is the harness's I/O shell. Every reader degrades gracefully: a missing
 //! or unreadable source yields a documented fallback (e.g. `kvm_api_version =
 //! -1`) rather than a panic, so a benchmark artifact is always producible and
-//! never lies about nested/cgroup-v2/KVM (requirement 8).
+//! never lies about nested/cgroup-v2/KVM.
 //!
 //! Readers take configurable roots ([`HostProbe`]) so deterministic tests can
 //! point them at fixture directories; the [`Default`] probe uses the real

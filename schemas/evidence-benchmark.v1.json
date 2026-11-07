@@ -67,7 +67,7 @@
           "minimum": 1
         },
         "vcpu_count": {
-          "description": "Logical CPU count available to the orchestrator (nproc). Used for parallel sample scheduling and for the scheduler determinism tests.",
+          "description": "Logical CPU count available to the orchestrator (nproc). Recorded for host capability reporting.",
           "type": "integer",
           "minimum": 1
         },
@@ -76,13 +76,13 @@
           "type": "boolean"
         },
         "nested": {
-          "description": "True iff nested virtualization is available. Required for the direct-KVM subset; documented for Firecracker comparisons.",
+          "description": "True iff nested virtualization is available. Recorded for Firecracker comparisons.",
           "type": "boolean"
         }
       }
     },
     "benchmarks": {
-      "description": "Per-benchmark distribution records. Each item is a single named measurement (e.g. 'snapshot_create', 'snapshot_restore', 'warm_http_first_call') with its declared target_ms, the unit of the percentiles, the cold/warm distribution, and a blocked_reason if the benchmark could not run. NEVER encode a boolean pass; reviewers compare the recorded distribution against target_ms.",
+      "description": "Per-benchmark distribution records. Each item is a single named measurement (e.g. 'snapshot_create', 'snapshot_restore') with its declared target_ms, the unit of the percentiles, the cold/warm distribution, and a blocked_reason if the benchmark could not run. NEVER encode a boolean pass; reviewers compare the recorded distribution against target_ms.",
       "type": "array",
       "items": {
         "type": "object",
@@ -106,12 +106,12 @@
         },
         "properties": {
           "name": {
-            "description": "Stable benchmark identifier (e.g. 'snapshot_create', 'snapshot_restore', 'warm_http_first_call', 'firecracker_boot_cold', 'docker_start_cold').",
+            "description": "Stable benchmark identifier (e.g. 'snapshot_create', 'snapshot_restore', 'firecracker_boot_cold', 'docker_start_cold').",
             "type": "string",
             "minLength": 1
           },
           "target_ms": {
-            "description": "Reference target in the unit declared below. Treated as metadata, not a pass/fail threshold. The plan forbids claiming a universal '<200 ms' guarantee; targets are documented per workload and host.",
+            "description": "Reference target in the unit declared below. Treated as metadata, not a pass/fail threshold. The harness forbids claiming a universal '<200 ms' guarantee; targets are documented per workload and host.",
             "type": "number",
             "minimum": 0
           },
@@ -166,7 +166,7 @@
             ],
             "properties": {
               "samples": {
-                "description": "Number of cold-condition samples collected. The plan requires N>=100 when the bench is unblocked; samples=0 indicates a blocked or skipped cold phase.",
+                "description": "Number of cold-condition samples collected. The harness requires N>=100 when the bench is unblocked; samples=0 indicates a blocked or skipped cold phase.",
                 "type": "integer",
                 "minimum": 0
               },
@@ -206,7 +206,7 @@
                 "minimum": 0
               },
               "failures": {
-                "description": "Number of failed sample attempts that were discarded from the statistics (requirement 6). Failed attempts are recorded here and NEVER counted in `samples` or the percentiles \u2014 a failure is visible, not silently dropped or zero-filled. Optional for backward compatibility with artifacts that predate failure accounting.",
+                "description": "Number of failed sample attempts that were discarded from the statistics. Failed attempts are recorded here and NEVER counted in `samples` or the percentiles \u2014 a failure is visible, not silently dropped or zero-filled. Optional for backward compatibility with artifacts that predate failure accounting.",
                 "type": "integer",
                 "minimum": 0
               }
@@ -266,7 +266,7 @@
                 "minimum": 0
               },
               "failures": {
-                "description": "Number of failed sample attempts that were discarded from the statistics (requirement 6). Failed attempts are recorded here and NEVER counted in `samples` or the percentiles \u2014 a failure is visible, not silently dropped or zero-filled. Optional for backward compatibility with artifacts that predate failure accounting.",
+                "description": "Number of failed sample attempts that were discarded from the statistics. Failed attempts are recorded here and NEVER counted in `samples` or the percentiles \u2014 a failure is visible, not silently dropped or zero-filled. Optional for backward compatibility with artifacts that predate failure accounting.",
                 "type": "integer",
                 "minimum": 0
               }
@@ -283,7 +283,7 @@
       }
     },
     "workload": {
-      "description": "The single pinned workload both lanes measure (requirements 1, 7, 9). `payload_sha256` is the ONE content hash the Firecracker and Docker lanes share, so the comparison is always between identical artifact content; comparing different images is explicitly not proof of superiority. Optional kernel/rootfs/image hashes further pin the VM- and Docker-side artifacts so a reviewer can reproduce the exact bytes measured.",
+      "description": "The single pinned workload both lanes measure. `payload_sha256` is the ONE content hash the Firecracker and Docker lanes share, so the comparison is always between identical artifact content; comparing different images is explicitly not proof of superiority. Optional kernel/rootfs/image hashes further pin the VM- and Docker-side artifacts so a reviewer can reproduce the exact bytes measured.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -292,7 +292,7 @@
       ],
       "properties": {
         "name": {
-          "description": "Stable workload identifier (e.g. 'snapshot-restore', 'warm-http').",
+          "description": "Stable workload identifier (e.g. 'snapshot-restore').",
           "type": "string",
           "minLength": 1
         },
@@ -319,7 +319,7 @@
       }
     },
     "runtime_versions": {
-      "description": "Firecracker and Docker Engine versions at benchmark time (requirement 8). The host kernel version is `host_metadata.kernel`; together these give the full kernel/Firecracker/Docker version set. A field is omitted when that runtime is unavailable (e.g. a blocked lane), so an empty object is valid when both lanes are blocked.",
+      "description": "Firecracker and Docker Engine versions at benchmark time. The host kernel version is `host_metadata.kernel`; together these give the full kernel/Firecracker/Docker version set. A field is omitted when that runtime is unavailable (e.g. a blocked lane), so an empty object is valid when both lanes are blocked.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

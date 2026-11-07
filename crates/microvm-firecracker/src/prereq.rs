@@ -44,6 +44,7 @@ pub struct HostPrerequisiteChecker {
     jailer_binary: PathBuf,
     firecracker_verifier: Option<BinaryVerifier>,
     jailer_verifier: Option<BinaryVerifier>,
+    require_jailer: bool,
     cgroup: CgroupManager,
 }
 
@@ -93,8 +94,10 @@ impl PrerequisiteCheck for HostPrerequisiteChecker {
             self.firecracker_verifier.as_ref(),
         )?;
 
-        // 4. Jailer binary.
-        verify_binary("jailer", &self.jailer_binary, self.jailer_verifier.as_ref())?;
+        // 4. Jailer binary, when the backend will launch under the jailer.
+        if self.require_jailer {
+            verify_binary("jailer", &self.jailer_binary, self.jailer_verifier.as_ref())?;
+        }
 
         // 5. cgroup-v2 root.
         self.cgroup.require_root()?;
@@ -146,6 +149,7 @@ pub struct HostPrerequisiteCheckerBuilder {
     jailer_binary: Option<PathBuf>,
     firecracker_verifier: Option<BinaryVerifier>,
     jailer_verifier: Option<BinaryVerifier>,
+    require_jailer: Option<bool>,
     cgroup: Option<CgroupManager>,
 }
 
@@ -171,6 +175,12 @@ impl HostPrerequisiteCheckerBuilder {
     /// Set the jailer binary path.
     pub fn jailer_binary(mut self, path: impl Into<PathBuf>) -> Self {
         self.jailer_binary = Some(path.into());
+        self
+    }
+
+    /// Require a jailer binary before boot. Disable for direct-launch tests.
+    pub fn require_jailer(mut self, required: bool) -> Self {
+        self.require_jailer = Some(required);
         self
     }
 
@@ -207,6 +217,7 @@ impl HostPrerequisiteCheckerBuilder {
                 .unwrap_or_else(|| PathBuf::from("/usr/bin/jailer")),
             firecracker_verifier: self.firecracker_verifier,
             jailer_verifier: self.jailer_verifier,
+            require_jailer: self.require_jailer.unwrap_or(true),
             cgroup: self.cgroup.unwrap_or_default(),
         }
     }

@@ -32,7 +32,7 @@
 //! - Generated artifacts are written beneath `out_dir` at stable relative paths
 //!   ([`KERNEL_RELPATH`], [`ROOTFS_RELPATH`], [`MANIFEST_RELPATH`]) that pass
 //!   [`crate::path::validate_relative_path`] and therefore open only through
-//!   the descriptor-relative [`crate::path::PathResolver`] (todo 9); never via
+//!   the descriptor-relative [`crate::path::PathResolver`] (the path resolver); never via
 //!   an absolute, symlink-following `open(2)`.
 //!
 //! [`ErrorCode::LocalArtifactRequired`]: microvm_errors::ErrorCode::LocalArtifactRequired

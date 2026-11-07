@@ -1,11 +1,11 @@
 //! Transport-neutral lifecycle state machine and service contract for the
-//! kvm-microvm-orchestrator platform.
+//! microvm platform.
 //!
 //! This crate defines:
 //! - [`VmState`]: the finite set of VM lifecycle states.
 //! - [`transition`]: a pure function that validates state transitions.
 //! - [`LifecycleService`]: an async trait that any backend (Firecracker,
-//!   mock, direct-KVM) can implement without embedding transport or
+//!   simulation) can implement without embedding transport or
 //!   runtime-specific details.
 //! - [`VmStatus`] / [`VmMetrics`]: read-only views returned by the service.
 //!
@@ -14,6 +14,7 @@
 //! # Policy
 //! - [`policy`]: tenant authorization, ownership, quotas, and audit events.
 
+#![allow(clippy::double_must_use)]
 pub mod policy;
 
 use async_trait::async_trait;
@@ -90,7 +91,7 @@ impl std::fmt::Display for VmState {
 
 impl VmState {
     /// Map a lifecycle state to the monotonic metrics phase used by
-    /// [`VmMetricsRecord`] (plan todo 23).
+    /// [`VmMetricsRecord`].
     ///
     /// - `Created`/`Configured` have not reached service-ready => [`Booting`].
     /// - `Running`/`Paused`/`Snapshotting` are service-ready => [`Running`].
@@ -147,6 +148,7 @@ pub fn transition(from: VmState, to: VmState) -> Result<VmState, MicrovmError> {
             | (VmState::Paused, VmState::Stopped)
             | (VmState::Paused, VmState::Snapshotting)
             | (VmState::Snapshotting, VmState::Paused)
+            | (VmState::Snapshotting, VmState::Running)
             | (VmState::Restoring, VmState::Running)
     );
 
@@ -179,7 +181,7 @@ pub struct VmStatus {
     pub resource_spec: ResourceSpec,
 }
 
-/// Per-VM metrics view returned by the service (plan todo 23).
+/// Per-VM metrics view returned by the service.
 ///
 /// Wraps the full, wire-stable [`VmMetricsRecord`] (host cgroup/TAP metrics,
 /// monotonic boot/restore phases, and optional guest-agent metrics, all
@@ -208,8 +210,9 @@ pub struct VmMetrics {
 ///
 /// Implementors manage VM state and resources. Callers interact through
 /// this trait without knowing whether the backend is Firecracker, a mock,
-/// or a direct-KVM adapter, and without knowing whether the transport is
+/// or a simulation backend, and without knowing whether the transport is
 /// REST, gRPC, or an in-process call.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait LifecycleService: Send + Sync {
     /// Create a new VM from a resource specification.
@@ -248,6 +251,28 @@ pub trait LifecycleService: Send + Sync {
     /// Query placeholder metrics for a VM.
     async fn metrics(&self, vm_id: &VmId, principal: &Principal)
         -> Result<VmMetrics, MicrovmError>;
+
+    /// List every VM the principal may see.
+    ///
+    /// Backends that do not keep a VM registry may leave the default, which
+    /// returns a typed error instead of inventing an empty list.
+    async fn list(&self, _principal: &Principal) -> Result<Vec<VmStatus>, MicrovmError> {
+        Err(MicrovmError::new(
+            ErrorCode::InternalError,
+            "this backend does not support listing VMs",
+        ))
+    }
+
+    /// Remove a stopped or failed VM record and its resources.
+    ///
+    /// Backends that do not keep a VM registry may leave the default, which
+    /// returns a typed error.
+    async fn delete(&self, _vm_id: &VmId, _principal: &Principal) -> Result<(), MicrovmError> {
+        Err(MicrovmError::new(
+            ErrorCode::InternalError,
+            "this backend does not support deleting VMs",
+        ))
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -31,3 +31,9 @@ jobs:
 
       - name: cargo test (workspace)
         run: devenv shell -- cargo test --workspace
+
+      - name: prose check
+        run: python3 -B tools/check-prose.py
+
+      - name: daemon sim check
+        run: devenv shell -- cargo run -q -p microvm-daemon --bin microvmd -- --config examples/microvmd.sim.toml --check

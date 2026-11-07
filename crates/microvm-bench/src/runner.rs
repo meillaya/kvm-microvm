@@ -6,7 +6,7 @@
 //! threshold), a probe outcome (ran vs blocked-with-evidence), and produces
 //! per-sample monotonic durations under cold and warm conditions. Sample
 //! failures are returned as `Err` so the marker can record them without counting
-//! them (requirement 6).
+//! them.
 //!
 //! The deterministic test suite uses [`ScriptedLane`]; the real Firecracker and
 //! Docker lanes live in [`crate::runner`] submodules and are exercised only on

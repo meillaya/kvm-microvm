@@ -1,4 +1,4 @@
-//! Blocked-lane handling tests (plan todo 27, requirement 11).
+//! Blocked-lane handling tests (the benchmark harness, the contract).
 //!
 //! Named QA scenario: `cargo test -p microvm-bench --test blocked_lane`.
 //!

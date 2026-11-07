@@ -1,5 +1,5 @@
 //! Readiness, process-supervision, and resource-cleanup lifecycle integration
-//! tests (plan todo 19).
+//! tests (lifecycle cleanup).
 //!
 //! These tests prove the three lifecycle guarantees the platform owes a capable
 //! host, exercised end-to-end through the composed
@@ -92,7 +92,7 @@ async fn state_of(rig: &Rig, vm: &VmId) -> VmState {
 
 /// A successful boot records the complete, monotonic phase-timestamp sequence
 /// `spawn -> socket_ready -> configured -> guest_ready`, and a subsequent stop
-/// records `stopped`. This is the happy-path evidence for todo 19: the VM is
+/// records `stopped`. This is the happy-path test: the VM is
 /// `Running` only after the guest-ready phase is recorded.
 #[tokio::test]
 async fn successful_boot_records_all_phase_timestamps() {
@@ -361,7 +361,7 @@ async fn stopped_vm_is_not_reconciled() {
 /// Real Firecracker/jailer boot driven through the composed
 /// [`VmLifecycleService`], with post-stop cleanup verification.
 ///
-/// This is the privileged evidence for todo 19: it boots a real guest on a
+/// This is the privileged test: it boots a real guest on a
 /// capable host, asserts the VM is `Running` only after the guest-ready phase,
 /// stops it, and then proves every per-VM resource disappeared; no Firecracker
 /// or jailer process, no cgroup leaf, no TAP/netns, no API socket. On an

@@ -17,6 +17,7 @@ microvm-lifecycle = { path = "../microvm-lifecycle" }
 microvm-metrics = { path = "../microvm-metrics" }
 microvm-artifacts = { path = "../microvm-artifacts" }
 microvm-isolation = { path = "../microvm-isolation" }
+microvm-snapshots = { path = "../microvm-snapshots" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 async-trait = { workspace = true }

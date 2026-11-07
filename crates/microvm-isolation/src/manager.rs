@@ -296,6 +296,23 @@ impl CgroupManager {
         Ok(leaf)
     }
 
+    /// Place a process into its VM's leaf cgroup.
+    ///
+    /// A direct Firecracker launch does not pass through the jailer, so the
+    /// backend must move the child into the leaf explicitly. Writing the PID to
+    /// `cgroup.procs` moves every thread in the process.
+    pub fn attach_pid(&self, vm_id: &VmId, pid: u32) -> Result<(), MicrovmError> {
+        let leaf = self.leaf_path(vm_id);
+        if !leaf.is_dir() {
+            return Err(MicrovmError::new(
+                ErrorCode::CgroupUnavailable,
+                "leaf cgroup does not exist",
+            )
+            .with_context("leaf", leaf.display().to_string()));
+        }
+        write_cgroup_file(&leaf.join("cgroup.procs"), &pid.to_string())
+    }
+
     /// Read back the configured limit files for a leaf, for round-trip
     /// verification.
     pub fn read_back(&self, vm_id: &VmId) -> Result<AppliedLimits, MicrovmError> {

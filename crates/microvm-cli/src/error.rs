@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn sanitize_redacts_absolute_paths() {
-        let msg = "cannot stat socket /run/microvm/api/rest.sock: permission denied";
+        let msg = "cannot stat socket /run/microvm/rest.sock: permission denied";
         let sanitized = sanitize_message(msg);
         assert!(
             !sanitized.contains("/run/microvm"),

@@ -1,7 +1,7 @@
 //! Build-time gRPC code generation for the `microvm.v1` service.
 //!
 //! Compiles the canonical proto contract (`api/microvm/v1/service.proto`,
-//! defined in todo 8) into Rust server/client stubs using `tonic-prost-build`
+//! defined in the API contract) into Rust server/client stubs using `tonic-prost-build`
 //! and the system `protoc`. The generated code is emitted into `OUT_DIR` and
 //! included by `src/proto.rs`.
 

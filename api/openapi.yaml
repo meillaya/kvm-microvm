@@ -2,7 +2,7 @@ openapi: "3.1.0"
 info:
   title: MicroVM Lifecycle API
   description: >
-    REST lifecycle API for the kvm-microvm-orchestrator platform.
+    REST lifecycle API for the microvm platform.
     Served exclusively over a Unix domain socket. No TCP listener is
     permitted by the platform security model.
   version: "1.0.0"
@@ -11,7 +11,7 @@ info:
     identifier: Apache-2.0
 
 servers:
-  - url: "unix:///run/microvm/api.sock"
+  - url: "unix:///run/microvm/rest.sock"
     description: Unix domain socket (no TCP)
 
 paths:
@@ -45,6 +45,22 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+    get:
+      operationId: listVms
+      summary: List VMs
+      description: Returns every VM visible to the caller, sorted by identifier.
+      responses:
+        "200":
+          description: VM list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VmListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /vms/{vm_id}:
     get:
       operationId: getVmStatus
@@ -63,6 +79,24 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      operationId: deleteVm
+      summary: Delete a stopped VM
+      description: Removes a stopped or failed VM record and releases its resources.
+      parameters:
+        - $ref: "#/components/parameters/VmId"
+      responses:
+        "204":
+          description: VM deleted successfully
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -262,6 +296,16 @@ components:
         network_policy:
           $ref: "#/components/schemas/NetworkPolicy"
 
+    VmListResponse:
+      type: object
+      required:
+        - vms
+      properties:
+        vms:
+          type: array
+          items:
+            $ref: "#/components/schemas/VmStatusResponse"
+
     CreateVmResponse:
       type: object
       required:
@@ -309,7 +353,7 @@ components:
     VmMetricsRecord:
       type: object
       description: >-
-        Full per-VM metrics snapshot (plan todo 23). Canonical schema:
+        Full per-VM metrics snapshot (the metrics contract). Canonical schema:
         schemas/vm-metrics-record.v1.json. Includes boot time, memory usage,
         CPU usage/throttling, guest CPU steal when available, RX/TX
         throughput, per-source timestamps, and explicit availability flags.
@@ -444,8 +488,8 @@ components:
       type: string
       enum:
         - none
-        - nat_only
-        - full_egress
+        - nat-only
+        - egress-allowed
       description: Network egress policy for the VM
 
     VmState:

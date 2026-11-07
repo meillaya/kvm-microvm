@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 /// Default socket path for the REST API.
-pub const DEFAULT_SOCKET_PATH: &str = "/run/microvm/api/rest.sock";
+pub const DEFAULT_SOCKET_PATH: &str = "/run/microvm/rest.sock";
 
 /// Default socket file mode: owner+group read/write only.
 pub const DEFAULT_SOCKET_MODE: u32 = 0o660;
@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn default_config_uses_expected_path() {
         let cfg = SocketConfig::default();
-        assert_eq!(cfg.path, PathBuf::from("/run/microvm/api/rest.sock"));
+        assert_eq!(cfg.path, PathBuf::from("/run/microvm/rest.sock"));
         assert_eq!(cfg.mode, 0o660);
         assert!(cfg.expected_uid.is_none());
         assert!(cfg.expected_gid.is_none());

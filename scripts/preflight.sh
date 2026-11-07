@@ -54,7 +54,7 @@ usage() {
     cat <<'EOF'
 Usage: preflight.sh [--json <path>] [--strict] [--help]
 
-Read-only host capability probe for kvm-microvm-orchestrator.
+Read-only host capability probe for microvm.
 
   --json <path>   Emit JSON to <path> atomically (temp + mv). Required for CI.
   --strict        Treat warnings as blockers (exit 77 instead of 2).

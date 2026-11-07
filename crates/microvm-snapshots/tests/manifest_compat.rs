@@ -1,4 +1,4 @@
-//! Deterministic manifest + compatibility-gate contract tests (plan todo 21).
+//! Deterministic manifest + compatibility-gate contract tests (the snapshot manifest).
 //!
 //! These tests require no `/dev/kvm` and spawn no child process. They prove
 //! that every rejection: unsupported schema, foreign owner, binary/CPU/KVM/

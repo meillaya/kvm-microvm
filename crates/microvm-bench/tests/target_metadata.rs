@@ -1,4 +1,4 @@
-//! Target-is-metadata (not-SLA) tests (plan todo 27, requirement 10).
+//! Target-is-metadata (not-SLA) tests (the benchmark harness, the contract).
 //!
 //! Named QA scenario: `cargo test -p microvm-bench --test target_metadata`.
 //!

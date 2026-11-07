@@ -200,7 +200,7 @@ async fn create_vm_with_network_policy() {
     let svc = mock_service();
     let principal = test_principal();
     let body =
-        br#"{"vcpu_count":4,"memory_mib":1024,"disk_mib":2048,"network_policy":"egress_allowed"}"#;
+        br#"{"vcpu_count":4,"memory_mib":1024,"disk_mib":2048,"network_policy":"egress-allowed"}"#;
 
     let route = match_route("POST", "/vms").unwrap();
     let resp = router::dispatch(&route, body, &principal, &svc).await;
@@ -567,7 +567,7 @@ fn socket_config_default_path() {
     let config = SocketConfig::default();
     assert_eq!(
         config.path,
-        std::path::PathBuf::from("/run/microvm/api/rest.sock")
+        std::path::PathBuf::from("/run/microvm/rest.sock")
     );
 }
 

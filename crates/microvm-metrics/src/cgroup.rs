@@ -1,5 +1,5 @@
 //! Host cgroup-v2 metrics: CPU usage/throttling, memory current/events, IO,
-//! and pids (plan todo 23).
+//! and pids.
 //!
 //! # Determinism
 //! The parsers ([`parse_cpu_stat`], [`parse_memory_events`], [`parse_io_stat`],

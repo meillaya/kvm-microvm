@@ -10,7 +10,7 @@ package microvm.v1;
 option go_package = "microvm/v1;microvmv1";
 
 // MicrovmService provides lifecycle management for microVMs.
-// Transport: Unix domain socket only (unix:///run/microvm/api.sock).
+// Transport: Unix domain socket only (default grpc_socket /run/microvm/grpc.sock).
 service MicrovmService {
   // Create a new virtual machine from a resource specification.
   // The VM starts in the "created" state.
@@ -31,6 +31,12 @@ service MicrovmService {
 
   // Query the current lifecycle status of a VM.
   rpc GetVmStatus(GetVmStatusRequest) returns (GetVmStatusResponse);
+
+  // List the VMs visible to the caller.
+  rpc ListVms(ListVmsRequest) returns (ListVmsResponse);
+
+  // Delete a stopped or failed VM.
+  rpc DeleteVm(DeleteVmRequest) returns (DeleteVmResponse);
 
   // Query per-VM metrics.
   rpc GetVmMetrics(GetVmMetricsRequest) returns (GetVmMetricsResponse);
@@ -58,7 +64,7 @@ enum NetworkPolicy {
   NETWORK_POLICY_UNSPECIFIED = 0;
   NETWORK_POLICY_NONE = 1;
   NETWORK_POLICY_NAT_ONLY = 2;
-  NETWORK_POLICY_FULL_EGRESS = 3;
+  NETWORK_POLICY_EGRESS_ALLOWED = 3;
 }
 
 // ---------------------------------------------------------------------------
@@ -178,6 +184,28 @@ message GetVmStatusResponse {
 }
 
 // ---------------------------------------------------------------------------
+// ListVms
+// ---------------------------------------------------------------------------
+
+message ListVmsRequest {}
+
+message ListVmsResponse {
+  // VMs visible to the caller, sorted by identifier.
+  repeated GetVmStatusResponse vms = 1;
+}
+
+// ---------------------------------------------------------------------------
+// DeleteVm
+// ---------------------------------------------------------------------------
+
+message DeleteVmRequest {
+  // Target VM identifier.
+  string vm_id = 1;
+}
+
+message DeleteVmResponse {}
+
+// ---------------------------------------------------------------------------
 // GetVmMetrics
 // ---------------------------------------------------------------------------
 
@@ -191,7 +219,7 @@ message GetVmMetricsResponse {
   string vm_id = 1;
   // Current lifecycle state at time of collection.
   VmState state = 2;
-  // The full per-VM metrics record (plan todo 23) serialized as canonical JSON
+  // The full per-VM metrics record (the metrics contract) serialized as canonical JSON
   // per schemas/vm-metrics-record.v1.json: host cgroup/TAP metrics, monotonic
   // boot/restore phases, and optional guest metrics, each availability-flagged
   // (missing data is flagged unavailable, never zero-filled). Carried as JSON

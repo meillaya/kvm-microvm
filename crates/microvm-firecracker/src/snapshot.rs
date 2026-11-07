@@ -20,11 +20,11 @@
 //!    `PATCH /vm {"state":"Paused"}` *before* `PUT /snapshot/create`. A create
 //!    against a running VM is rejected by Firecracker; we make the pause
 //!    explicit and ordered.
-//! 2. Fresh-process load via `mem_backend.backend_path`. Restore loads on a
-//!    brand-new VMM process *before* any ordinary boot configuration, using the
-//!    supported [`MemBackend`] (`backend_path` + `backend_type`). The
-//!    deprecated top-level `mem_file_path` field is never emitted and is
-//!    rejected when ingesting an external spec
+//! 2. Create writes `mem_file_path`; load reads `mem_backend`. Firecracker
+//!    1.16.1 requires the top-level memory path on create and accepts the
+//!    structured [`MemBackend`] (`backend_path` + `backend_type`) on load.
+//!    The deprecated top-level `mem_file_path` is never emitted on load and is
+//!    rejected when ingesting an external load spec
 //!    ([`reject_deprecated_mem_file_path`]).
 //! 3. Rebind, don't assume continuity. After load, host-side network (TAP)
 //!    and vsock resources are reattached through load overrides. Established
@@ -61,12 +61,13 @@ use std::sync::{Arc, Mutex};
 
 use crate::api::{NetworkInterface, UdsApiClient};
 
-/// The deprecated top-level snapshot memory field that must not be used.
+/// The deprecated top-level snapshot memory field on load.
 ///
-/// Firecracker replaced `mem_file_path` with the structured `mem_backend`
-/// object. We reject the deprecated field outright rather than translate it,
-/// so a stale manifest or spec cannot silently steer a restore onto the
-/// deprecated path.
+/// Firecracker accepts `mem_backend` on load and still accepts
+/// `mem_file_path` as a deprecated fallback. The orchestrator emits only
+/// `mem_backend` on load and rejects the deprecated field when ingesting an
+/// external load spec. Create is different: Firecracker 1.16.1 requires
+/// `mem_file_path` there, which [`SnapshotCreateParams`] models.
 pub const DEPRECATED_MEM_FILE_PATH: &str = "mem_file_path";
 
 /// Error label for an attempt to apply fresh-boot configuration to a VM that
@@ -204,20 +205,17 @@ impl SnapshotType {
 
 /// `PUT /snapshot/create` body.
 ///
-/// Deliberately has no `mem_file_path` field: the memory destination is
-/// expressed only through [`MemBackend`].
+/// Firecracker 1.16.1 requires the top-level `mem_file_path` on create. The
+/// structured `mem_backend` object is accepted only on load.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SnapshotCreateParams {
     /// Path where the microVM state file is written.
     pub snapshot_path: String,
-    /// Memory backend (destination for the memory image).
-    pub mem_backend: MemBackend,
+    /// Path where the guest memory image is written.
+    pub mem_file_path: String,
     /// Full or differential snapshot.
     #[serde(default)]
     pub snapshot_type: SnapshotType,
-    /// Optional target snapshot version.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -272,13 +270,14 @@ impl VsockOverride {
 // Deprecated-field rejection
 // ---------------------------------------------------------------------------
 
-/// Reject a raw snapshot spec that uses the deprecated `mem_file_path` field.
+/// Reject a raw load spec that uses the deprecated `mem_file_path` field.
 ///
-/// Used when ingesting an externally supplied create/load spec (for example a
-/// stored restore request). The supported contract requires
+/// Used when ingesting an externally supplied load spec (for example a stored
+/// restore request). The supported load contract requires
 /// `mem_backend.backend_path`; a spec still carrying `mem_file_path` fails
 /// closed with [`ErrorCode::SnapshotIncompatible`] rather than being silently
-/// translated.
+/// translated. This check does not apply to create, where Firecracker 1.16.1
+/// requires `mem_file_path`.
 pub fn reject_deprecated_mem_file_path(spec: &serde_json::Value) -> Result<(), MicrovmError> {
     if spec.get(DEPRECATED_MEM_FILE_PATH).is_some() {
         return Err(MicrovmError::new(
@@ -390,14 +389,13 @@ pub struct SnapshotCreateRequest {
 
 impl SnapshotCreateRequest {
     /// Build a full-snapshot create request writing state to `snapshot_path`
-    /// and the memory image to `mem_backend_path` (file backend).
-    pub fn full(snapshot_path: impl Into<String>, mem_backend_path: impl Into<String>) -> Self {
+    /// and the memory image to `mem_file_path`.
+    pub fn full(snapshot_path: impl Into<String>, mem_file_path: impl Into<String>) -> Self {
         Self {
             params: SnapshotCreateParams {
                 snapshot_path: snapshot_path.into(),
-                mem_backend: MemBackend::file(mem_backend_path),
+                mem_file_path: mem_file_path.into(),
                 snapshot_type: SnapshotType::Full,
-                version: None,
             },
         }
     }
@@ -915,15 +913,13 @@ mod tests {
     // -- serialization ------------------------------------------------------
 
     #[test]
-    fn create_params_serialize_with_mem_backend_not_deprecated_field() {
+    fn create_params_serialize_with_mem_file_path_not_mem_backend() {
         let req = SnapshotCreateRequest::full("/snap/state.vmstate", "/snap/mem.img");
         let json = serde_json::to_string(req.params()).unwrap();
-        assert!(json.contains("\"mem_backend\""));
-        assert!(json.contains("\"backend_path\":\"/snap/mem.img\""));
-        assert!(json.contains("\"backend_type\":\"File\""));
+        assert!(json.contains("\"mem_file_path\":\"/snap/mem.img\""));
         assert!(json.contains("\"snapshot_type\":\"Full\""));
-        // The deprecated field must never be emitted.
-        assert!(!json.contains(DEPRECATED_MEM_FILE_PATH));
+        // Firecracker 1.16.1 rejects mem_backend on create.
+        assert!(!json.contains("mem_backend"));
     }
 
     #[test]

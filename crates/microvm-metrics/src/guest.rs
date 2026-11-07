@@ -1,4 +1,4 @@
-//! Optional guest-agent metrics: CPU steal, load, and RSS (plan todo 23).
+//! Optional guest-agent metrics: CPU steal, load, and RSS.
 //!
 //! Guest-side metrics are only obtainable when a guest agent is reachable over
 //! the VM's vsock channel. They are strictly optional: when no agent is

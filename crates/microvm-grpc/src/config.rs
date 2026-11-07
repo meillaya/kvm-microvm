@@ -9,9 +9,9 @@ use std::path::PathBuf;
 
 /// Default socket path for the gRPC API.
 ///
-/// Distinct from the REST socket (`/run/microvm/api/rest.sock`) so each
+/// Distinct from the REST socket (`/run/microvm/rest.sock`) so each
 /// transport has its own independently-permissioned endpoint.
-pub const DEFAULT_SOCKET_PATH: &str = "/run/microvm/api/grpc.sock";
+pub const DEFAULT_SOCKET_PATH: &str = "/run/microvm/grpc.sock";
 
 /// Default socket file mode: owner+group read/write only.
 pub const DEFAULT_SOCKET_MODE: u32 = 0o660;
@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn default_config_uses_grpc_path() {
         let cfg = SocketConfig::default();
-        assert_eq!(cfg.path, PathBuf::from("/run/microvm/api/grpc.sock"));
+        assert_eq!(cfg.path, PathBuf::from("/run/microvm/grpc.sock"));
         assert_eq!(cfg.mode, 0o660);
         assert!(cfg.expected_uid.is_none());
         assert!(cfg.expected_gid.is_none());
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn grpc_path_differs_from_rest_path() {
         // The gRPC transport must not share the REST socket file.
-        assert_ne!(DEFAULT_SOCKET_PATH, "/run/microvm/api/rest.sock");
+        assert_ne!(DEFAULT_SOCKET_PATH, "/run/microvm/rest.sock");
     }
 
     #[test]

@@ -1,4 +1,4 @@
-//! Composed supervised VM lifecycle service for the kvm-microvm-orchestrator
+//! Composed supervised VM lifecycle service for the microvm
 //! platform.
 //!
 //! [`VmLifecycleService`] is the transport-neutral service that composes the
@@ -58,7 +58,6 @@ use microvm_lifecycle::policy::{
     ResourceType, TenantQuota, TenantUsage,
 };
 use microvm_lifecycle::{LifecycleService, VmMetrics, VmState, VmStatus};
-use microvm_metrics::VmMetricsRecord;
 use microvm_types::{Principal, ResourceSpec, Role, SnapshotId, TenantId, VmId};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -691,9 +690,34 @@ impl LifecycleService for VmLifecycleService {
         snapshot_id: &SnapshotId,
         principal: &Principal,
     ) -> Result<VmId, MicrovmError> {
-        // Restore is delegated to the backend (todo 22); the service audits the
-        // attempt. Ownership is established by the backend on the new VM.
+        // Restore is delegated to the backend. The backend establishes the new
+        // VM's ownership; the service records it in its supervised view so
+        // status, stop, list, and delete work on the restored VM.
         let outcome = self.inner.restore(snapshot_id, principal).await;
+        if let Ok(vm_id) = &outcome {
+            match self.inner.status(vm_id, principal).await {
+                Ok(status) => {
+                    let mut state = SupervisorState::new(
+                        vm_id.clone(),
+                        principal.tenant_id().clone(),
+                        status.resource_spec,
+                        status.created_at,
+                    );
+                    state.set_state(VmState::Running);
+                    state.set_supervisor_alive(true);
+                    self.vms.lock().unwrap().insert(vm_id.clone(), state);
+                }
+                Err(e) => {
+                    self.record_audit(
+                        principal,
+                        snapshot_id.as_str(),
+                        Operation::Restore,
+                        AuditResult::Error,
+                    );
+                    return Err(e);
+                }
+            }
+        }
         self.record_audit(
             principal,
             snapshot_id.as_str(),
@@ -725,6 +749,74 @@ impl LifecycleService for VmLifecycleService {
         })
     }
 
+    async fn list(&self, principal: &Principal) -> Result<Vec<VmStatus>, MicrovmError> {
+        let mut statuses: Vec<VmStatus> = self
+            .vms
+            .lock()
+            .unwrap()
+            .values()
+            .filter(|entry| authorize(principal, entry.owner(), Operation::Status).is_ok())
+            .map(|entry| VmStatus {
+                vm_id: entry.vm_id().clone(),
+                state: entry.state(),
+                created_at: entry.created_at(),
+                resource_spec: entry.spec().clone(),
+            })
+            .collect();
+        statuses.sort_by(|a, b| a.vm_id.as_str().cmp(b.vm_id.as_str()));
+        Ok(statuses)
+    }
+
+    async fn delete(&self, vm_id: &VmId, principal: &Principal) -> Result<(), MicrovmError> {
+        let lock = self.lock_for(&vm_scope(vm_id));
+        let _guard = lock.lock().await;
+
+        let entry = self
+            .vms
+            .lock()
+            .unwrap()
+            .get(vm_id)
+            .cloned()
+            .ok_or_else(|| not_found(vm_id))?;
+        if let Err(e) = authorize(principal, entry.owner(), Operation::Delete) {
+            self.record_audit(
+                principal,
+                vm_id.as_str(),
+                Operation::Delete,
+                AuditResult::Denied,
+            );
+            return Err(e);
+        }
+        if !matches!(entry.state(), VmState::Stopped | VmState::Failed) {
+            let e = MicrovmError::new(
+                ErrorCode::InvalidTransition,
+                format!("cannot delete VM in {} state", entry.state()),
+            )
+            .with_context("vm_id", vm_id.as_str())
+            .with_context("state", entry.state().as_str());
+            self.record_audit(
+                principal,
+                vm_id.as_str(),
+                Operation::Delete,
+                AuditResult::Error,
+            );
+            return Err(e);
+        }
+
+        let outcome = self.inner.delete(vm_id, principal).await;
+        if outcome.is_ok() {
+            self.vms.lock().unwrap().remove(vm_id);
+            self.completed.lock().unwrap().clear();
+        }
+        self.record_audit(
+            principal,
+            vm_id.as_str(),
+            Operation::Delete,
+            audit_result(&outcome),
+        );
+        outcome
+    }
+
     async fn metrics(
         &self,
         vm_id: &VmId,
@@ -741,22 +833,10 @@ impl LifecycleService for VmLifecycleService {
             .cloned()
             .ok_or_else(|| not_found(vm_id))?;
         authorize(principal, entry.owner(), Operation::Metrics)?;
-        // The in-memory supervised service has no host-metrics collector
-        // attached (no real cgroup/TAP/guest sources), so it returns an honest
-        // record whose sources are marked unavailable; never zero-filled. A
-        // privileged backend attaches a `MetricsCollector` to produce real
-        // measurements (plan todo 23).
-        let state = entry.state();
-        Ok(VmMetrics {
-            record: VmMetricsRecord::not_collected(
-                entry.vm_id().clone(),
-                state.metrics_phase(),
-                Utc::now(),
-                0,
-            ),
-            vm_id: entry.vm_id().clone(),
-            state,
-        })
+        drop(entry);
+        // The backend owns the host metrics collector. The service only gates
+        // authorization and supervision.
+        self.inner.metrics(vm_id, principal).await
     }
 }
 
